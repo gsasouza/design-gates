@@ -11,3 +11,5 @@ Scripts:
 
 - `npm run build` — clean `dist/` and compile with `tsc` (output in `dist/src`, `dist/test`).
 - `npm test` — build, then run `dist/test/**/*.test.js`.
+
+Dev dependencies (`typescript`, `@types/node`) are pinned to exact versions; the lockfile is `package-lock.json`.
