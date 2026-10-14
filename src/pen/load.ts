@@ -22,7 +22,16 @@ function stripJsonc(text: string): string {
       i = end + 2;
     } else if (c === ",") {
       let j = i + 1;
-      while (j < text.length && /\s/.test(text[j]!)) j++;
+      for (;;) {
+        if (/\s/.test(text[j] ?? "")) j++;
+        else if (text[j] === "/" && text[j + 1] === "/") {
+          while (j < text.length && text[j] !== "\n") j++;
+        } else if (text[j] === "/" && text[j + 1] === "*") {
+          const end = text.indexOf("*/", j + 2);
+          if (end === -1) break;
+          j = end + 2;
+        } else break;
+      }
       if (text[j] !== "}" && text[j] !== "]") out += c;
       i++;
     } else {

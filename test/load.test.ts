@@ -18,6 +18,19 @@ test("parses JSONC with comments and trailing commas", () => {
   assert.equal(doc["note" as never], "keeps // and , ] inside strings");
 });
 
+test("drops trailing commas followed by comments", () => {
+  const doc = parsePen(`{
+    "version": "2.6",
+    "children": [
+      { "id": "a", "type": "frame", // trailing line comment
+      },
+      { "id": "b", "type": "frame" }, /* block */
+      // only a comment before the bracket
+    ],
+  }`);
+  assert.equal(doc.children.length, 2);
+});
+
 test("loads fixtures/minimal.pen", async () => {
   const doc = await loadPenFile(fixtureUrl("minimal.pen"));
   assert.equal(doc.version, "2.6");
