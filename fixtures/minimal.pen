@@ -1,0 +1,28 @@
+{
+  // minimal fixture
+  "version": "2.6",
+  "themes": { "mode": ["light", "dark"] },
+  "variables": {
+    "bg": {
+      "type": "color",
+      "value": [
+        { "value": "#ffffff", "theme": { "mode": "light" } },
+        { "value": "#000000", "theme": { "mode": "dark" } },
+      ],
+    },
+  },
+  "children": [
+    {
+      "id": "frame1",
+      "type": "frame",
+      "name": "Main",
+      "width": 100,
+      "height": 100,
+      "fill": "$bg",
+      "children": [
+        { "id": "btn", "type": "rectangle", "name": "Button", "reusable": true, "width": 40, "height": 20 }
+      ]
+    },
+    { "id": "inst1", "type": "ref", "ref": "btn", "descendants": {} }
+  ]
+}
