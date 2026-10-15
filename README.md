@@ -125,6 +125,24 @@ Ordering guarantees: files by path; frames by id; nodes by id then change kind (
 
 ![Report screenshot](docs/report.png)
 
+## Design versions (`design` CLI)
+
+`design` keeps versions of the `.pen` files in a folder, entirely on your computer. Run it inside the design folder, or point it there with `--repo <folder>`. Add `--json` to any command to get one machine-readable result instead of a sentence. `design --help` lists every command.
+
+A first session in five steps:
+
+1. `design init` starts keeping versions (safe to run again). Existing designs are saved as the first version.
+2. `design save -m "Bigger header"` saves your changes as a new version. `design status` shows what is not saved yet; `design history` lists versions, newest first.
+3. `design compare #2 #1 --open` builds a visual report of what changed between two versions and opens it. With no versions it compares your last version with your unsaved changes.
+4. `design explore bolder-colours` starts a separate line of experiments; `design switch main` returns to the original line. Save before switching.
+5. `design restore #2` brings the designs back to how they were in version #2. Nothing is erased: the restored files show up as unsaved changes, so you can save them as a new version. `--save-first` saves your unsaved work before restoring.
+
+Version references: `#n` (`#1` is the newest version), a version id (4 or more characters of it), the name of an exploration, or `main`. In `compare`, words are read left to right: up to two leading words that are version references are the versions; the first word that is not one, and everything after it, is a file. A reference that could mean several things is an error (use `#n` or a longer id).
+
+Exit codes: `0` worked (including "nothing to save"); `1` stopped by a safety rule, saving was refused (for example by signing or a hook), or an unexpected failure; `2` the command was not understood, or a version could not be found. With `--json`, errors also print `{"error": "...", "code": n}` on stdout.
+
+Safety promises: everything stays local (nothing is pushed or uploaded); earlier versions are never rewritten or deleted; your global git configuration is never touched (a local name and email are set in the folder only when missing).
+
 ## Gates
 
 `design-gates check` runs a deterministic rule engine over `.pen` documents (phase 1: SCH-001/002/003, TOK-001, TOK-002, A11Y-001, CMP-001, DIF-001). This section is the foundation: the compiler, the config model and the rule registry. Rules are pure functions of the compiled document, the config and an optional diff; they never read the clock or the network.
