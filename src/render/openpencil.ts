@@ -65,18 +65,32 @@ function isTheme(value: unknown): value is Theme {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** Value of `variable` under `theme`: the last themed entry whose axes all match, else the last unthemed one. */
-function resolveVariable(variable: PenVariable, theme: Theme): unknown {
+/** Value of `variable` under `theme`: the last entry (document order) whose theme is satisfied; no theme is always satisfied. */
+export function resolveVariable(variable: PenVariable, theme: Theme): unknown {
   if (!Array.isArray(variable.value)) return variable.value;
   const entries = variable.value as { value: unknown; theme?: Theme }[];
-  const matches = entries.filter((e) => Object.entries(e.theme ?? {}).every(([axis, v]) => theme[axis] === v));
-  const themed = matches.filter((e) => e.theme && Object.keys(e.theme).length > 0);
-  return (themed.length > 0 ? themed : matches).at(-1)?.value;
+  return entries.filter((e) => Object.entries(e.theme ?? {}).every(([axis, v]) => theme[axis] === v)).at(-1)?.value;
+}
+
+/** Resolve `$name` to a concrete value, following alias chains (a variable whose value is `$other`). */
+function resolveReference(ref: string, variables: PenVariables, theme: Theme): unknown {
+  const seen: string[] = [];
+  let current: unknown = ref;
+  while (typeof current === "string" && VARIABLE_REF.test(current)) {
+    const name = current.slice(1);
+    const variable = variables[name];
+    const next = variable ? resolveVariable(variable, theme) : undefined;
+    if (next === undefined) return current;
+    if (seen.includes(name)) throw new Error(`Variable alias cycle: ${[...seen, name].map((n) => `$${n}`).join(" -> ")}`);
+    seen.push(name);
+    current = next;
+  }
+  return current;
 }
 
 /**
  * Replace `$variable` references under `value` with their concrete value for the theme in effect
- * at that point (a node's own `theme` pin overrides the inherited one). OpenPencil 0.16's .pen
+ * at that point (a node's own `theme` pin overrides the inherited one). OpenPencil 0.15's .pen
  * import resolves variables at the first theme regardless of `theme` pins, so the theme is applied
  * here instead and the importer only ever sees literals.
  */
@@ -88,9 +102,7 @@ function bakeVariables(value: unknown, variables: PenVariables, theme: Theme): u
   const out: Record<string, unknown> = {};
   for (const [key, v] of Object.entries(node)) {
     if (typeof v === "string") {
-      const variable = LITERAL_KEYS.has(key) || !VARIABLE_REF.test(v) ? undefined : variables[v.slice(1)];
-      const resolved = variable ? resolveVariable(variable, here) : undefined;
-      out[key] = resolved ?? v;
+      out[key] = LITERAL_KEYS.has(key) || !VARIABLE_REF.test(v) ? v : resolveReference(v, variables, here);
     } else {
       out[key] = key === "theme" ? v : bakeVariables(v, variables, here);
     }
@@ -107,7 +119,7 @@ function defaultTheme(themes: PenThemes | undefined): Theme {
  * Copy of `doc` for OpenPencil with `theme` pinned on the frame and every variable reference
  * resolved for the theme in effect. The caller's document is never mutated.
  */
-function prepareDocument(doc: PenDocument, frameId: string, theme?: Theme): PenDocument {
+export function prepareDocument(doc: PenDocument, frameId: string, theme?: Theme): PenDocument {
   const copy = structuredClone(doc);
   const frame = findNode(copy.children, frameId);
   if (frame && theme) frame.theme = { ...frame.theme, ...theme };

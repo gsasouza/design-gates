@@ -26,6 +26,6 @@
     "typescript": "5.9.3"
   },
   "dependencies": {
-    "@open-pencil/core": "0.16.0"
+    "@open-pencil/core": "0.15.1"
   }
 }
