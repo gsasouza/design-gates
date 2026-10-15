@@ -1,3 +1,4 @@
+import { CONTROLLED_PROPS, isControlledProp, MAX_IGNORE_LENGTH } from "./tok.js";
 import type { Severity } from "./types.js";
 
 export const RULE_IDS = ["A11Y-001", "CMP-001", "DIF-001", "SCH-001", "SCH-002", "SCH-003", "TOK-001", "TOK-002"] as const;
@@ -12,7 +13,7 @@ export interface RuleConfig {
 }
 
 export interface Tok001Config extends RuleConfig {
-  /** Properties checked for hard-coded values (dotted paths, e.g. `stroke.fill`). */
+  /** Properties checked for hard-coded values: any of fill, stroke, effect.color, cornerRadius, gap, padding, fontSize, strokeWidth, fontFamily. */
   properties: string[];
   /** Per property, literal values never reported; a `/.../` string is a regular expression. */
   ignoreValues: Record<string, string[]>;
@@ -116,18 +117,22 @@ const ignoreValues: Check = (v) => {
         } catch {
           return `has an invalid regular expression ${s}`;
         }
+        if (s.length > MAX_IGNORE_LENGTH) return `has a regular expression longer than ${MAX_IGNORE_LENGTH} characters`;
       }
     }
   }
   return undefined;
 };
 
+const properties: Check = (v) =>
+  isStringList(v) && v.every(isControlledProp) ? undefined : `must be an array of ${CONTROLLED_PROPS.join(", ")}`;
+
 /** Validators for the option keys each rule knows; other keys are kept untouched. */
 const OPTION_CHECKS: Partial<Record<RuleId, Record<string, Check>>> = {
   "A11Y-001": { minRatio: number(1), minRatioLarge: number(1) },
   "CMP-001": { minNodes: integer(1) },
   "DIF-001": { warnAt: number(0), blockAt: number(0), scope: stringList },
-  "TOK-001": { properties: stringList, ignoreValues, onlyIn: stringList },
+  "TOK-001": { properties, ignoreValues, onlyIn: stringList },
   "TOK-002": { scales, tolerance: number(0) },
 };
 
