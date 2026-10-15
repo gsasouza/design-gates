@@ -1,0 +1,110 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "screen",
+      "type": "frame",
+      "width": 100,
+      "height": 100,
+      "children": [
+        {
+          "id": "gradient",
+          "type": "rectangle",
+          "width": 10,
+          "height": 10,
+          "fill": {
+            "type": "gradient",
+            "stops": [
+              {
+                "color": "#000000",
+                "position": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": "image",
+          "type": "rectangle",
+          "width": 10,
+          "height": 10,
+          "fill": {
+            "type": "image",
+            "url": "a.png"
+          }
+        },
+        {
+          "id": "odd1",
+          "type": "rectangle",
+          "width": 10,
+          "height": 10,
+          "fill": 5
+        },
+        {
+          "id": "odd2",
+          "type": "rectangle",
+          "width": 10,
+          "height": 10,
+          "fill": [
+            null,
+            7
+          ]
+        },
+        {
+          "id": "odd3",
+          "type": "rectangle",
+          "width": 10,
+          "height": 10,
+          "stroke": {
+            "fill": true,
+            "thickness": "auto"
+          }
+        },
+        {
+          "id": "odd4",
+          "type": "rectangle",
+          "width": 10,
+          "height": 10,
+          "stroke": 7
+        },
+        {
+          "id": "odd5",
+          "type": "rectangle",
+          "width": 10,
+          "height": 10,
+          "effect": "blur"
+        },
+        {
+          "id": "odd6",
+          "type": "rectangle",
+          "width": 10,
+          "height": 10,
+          "effect": [
+            1,
+            null
+          ]
+        },
+        {
+          "id": "odd7",
+          "type": "rectangle",
+          "width": 10,
+          "height": 10,
+          "gap": "auto",
+          "padding": {
+            "x": "y"
+          }
+        },
+        {
+          "id": "off",
+          "type": "rectangle",
+          "width": 10,
+          "height": 10,
+          "fill": {
+            "type": "color",
+            "color": "#FFFFFF",
+            "enabled": false
+          }
+        }
+      ]
+    }
+  ]
+}

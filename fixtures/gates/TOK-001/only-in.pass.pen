@@ -1,0 +1,43 @@
+{
+  "version": "2.6",
+  "variables": {
+    "c": {
+      "type": "color",
+      "value": "#111111"
+    }
+  },
+  "children": [
+    {
+      "id": "A",
+      "type": "frame",
+      "width": 100,
+      "height": 100,
+      "name": "Alpha",
+      "children": [
+        {
+          "id": "inA",
+          "type": "rectangle",
+          "width": 10,
+          "height": 10,
+          "fill": "$c"
+        }
+      ]
+    },
+    {
+      "id": "B",
+      "type": "frame",
+      "width": 100,
+      "height": 100,
+      "name": "Beta",
+      "children": [
+        {
+          "id": "inB",
+          "type": "rectangle",
+          "width": 10,
+          "height": 10,
+          "fill": "#222222"
+        }
+      ]
+    }
+  ]
+}

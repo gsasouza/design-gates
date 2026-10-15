@@ -79,3 +79,20 @@ test("TOK-002 scales accept { base } or a list per category", () => {
     assert.ok("error" in r && /scales/.test(r.error));
   }
 });
+
+test("TOK-001 ignoreValues rejects a regex longer than 200 characters", () => {
+  const long = `/${"a".repeat(199)}/`;
+  const r = resolveConfig({ rules: { "TOK-001": { ignoreValues: { fill: [long] } } } });
+  assert.ok("error" in r && /200/.test(r.error), JSON.stringify(r));
+  const ok = resolveConfig({ rules: { "TOK-001": { ignoreValues: { fill: [`/${"a".repeat(198)}/`] } } } });
+  assert.ok("config" in ok);
+});
+
+test("TOK-001 properties accepts only the nine controlled properties", () => {
+  const all = ["fill", "stroke", "effect.color", "cornerRadius", "gap", "padding", "fontSize", "strokeWidth", "fontFamily"];
+  assert.ok("config" in resolveConfig({ rules: { "TOK-001": { properties: all } } }));
+  for (const bad of [["margin"], ["stroke.fill"], ["fill", 3]]) {
+    const r = resolveConfig({ rules: { "TOK-001": { properties: bad } } });
+    assert.ok("error" in r && /rules\.TOK-001\.properties/.test(r.error), JSON.stringify(bad));
+  }
+});
