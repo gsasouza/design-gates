@@ -214,6 +214,55 @@ Ordering guarantees: files by path; frames by id; nodes by id then change kind (
 
 `rules.<ID>` also accepts `severity`. Unknown option keys under a known rule are kept for later rules to read; known keys of the wrong type are an error.
 
+### CLI: `design-gates check`
+
+```
+design-gates check [paths...] [--base <ref>] [--format agent|sarif|text] [--config <file>]
+                   [--update-baseline] [--scope <id>]...
+```
+
+Runs every registered rule (so new rules need no CLI change) over the `.pen` files of the repository in the current directory: tracked and untracked, not git-ignored. Only files inside the repo root are read (symlinks are resolved and must stay inside it); `file` in every output is a repo-relative POSIX path.
+
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `paths...` | all `.pen` files | Glob pathspecs relative to the repo root narrowing the files; a path outside the repo is a usage error. |
+| `--base <ref>` | none | Compile the base version of each file and give the rules a diff context (`base`, `head`, variable changes); only diff-aware rules such as DIF-001 use it. An invalid ref is a usage error. |
+| `--format <fmt>` | `agent` | `agent`, `sarif` or `text`, written to stdout. |
+| `--config <file>` | `design-gates.config.json` at the repo root, if present | Config file inside the repo. |
+| `--update-baseline` | off | Rewrite `design-gates-baseline.json` with the current violations and exit 0. |
+| `--scope <id>` | none | Repeatable; appended to `rules.DIF-001.scope`. |
+
+Exit codes: `0` no `block` violation left after suppression and baseline; `1` at least one; `2` usage or config error (unknown flag, bad `--format`, invalid config JSON or shape, invalid `--base`, invalid baseline, any unexpected error; the message goes to stderr). `warn`, `review` and `info` never fail the run.
+
+### Suppression
+
+A node may carry `"metadata": { "type": "design-gates", "ignore": ["TOK-001"], "reason": "legacy screen" }`. It suppresses the listed rules on that node and its subtree; suppressed violations are left out of the output. `reason` is mandatory: without a non-empty reason nothing is suppressed and the marker is itself reported as a `block` violation of `SCH-001` ("design-gates suppression without reason"). Setting `rules.SCH-001.severity` to `off` disables SCH-001 entirely, including this report and the file-level report for a `.pen` file that cannot be parsed.
+
+### Baseline
+
+`design-gates-baseline.json` (repo root) lists accepted violations as `{ file, rule, nodeId, prop, theme }` (`theme` as `axis=value` pairs sorted by axis, empty when absent), so a dark-theme entry never hides the light-theme violation. A matching violation is reported with `baselined: true` and never fails the run. `--update-baseline` rewrites the file (sorted, two-space JSON, trailing newline) with the current violations, so entries that no longer match are pruned; without the flag the file is never written, and a symlinked baseline is refused.
+
+### Output formats
+
+`agent` (default): compact one-line JSON, violations sorted by file, nodeId, rule; keys in the fixed order `rule, severity, file, nodeId, path, message`, then `fix`, `affectedInstances`, `theme`, `baselined` only when present.
+
+```json
+{"violations":[{"rule":"SCH-002","severity":"block","file":"bad.pen","nodeId":"use","path":"f/use","message":"Instance refers to missing node \"ghost\""}]}
+```
+
+`sarif`: SARIF 2.1.0, one run; `tool.driver.rules` is generated from the registry (sorted by id). Levels: block -> `error`, warn -> `warning`, review and info -> `note`. Each result has `ruleId`, `level`, `message.text` and a location with `artifactLocation.uri` = file and a logical location (`name` = node id, `fullyQualifiedName` = node path); baselined results have `baselineState: "unchanged"`; `prop`, `fix`, `affectedInstances` and `theme` go in `properties`.
+
+```json
+{"$schema": "https://json.schemastore.org/sarif-2.1.0.json", "version": "2.1.0", "runs": [{"tool": {"driver": {"name": "design-gates", "rules": ["..."]}}, "results": [{"ruleId": "SCH-002", "level": "error", "message": {"text": "Instance refers to missing node \"ghost\""}, "locations": [{"physicalLocation": {"artifactLocation": {"uri": "bad.pen"}}, "logicalLocations": [{"name": "use", "fullyQualifiedName": "f/use", "kind": "element"}]}]}]}]}
+```
+
+`text`: one line per violation, then a summary.
+
+```
+bad.pen#f/use: block SCH-002 Instance refers to missing node "ghost"
+1 violation(s): 1 block, 0 warn, 0 review, 0 info (0 baselined)
+```
+
 ### Compiler
 
 `compile(doc, { file })` indexes every node (compiled id, parent chain, `/`-joined path), expands `ref` instances (component props, then the instance's own props, then `descendants` overrides), computes each node's effective theme, resolves `$variables` per theme with the same resolver the renderer uses (`resolveAlias` in `src/render/themes.ts`) and records per-prop provenance (`component` or `instance`). Problems become diagnostics (SCH-001 schema, SCH-002 refs, SCH-003 variables) instead of exceptions. Nodes expanded from a component get the id `<instance id>::<source id>`; expansion is bounded (nesting depth 128, 100 000 compiled nodes). Known versions: `2.6`.
