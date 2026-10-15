@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { CONTROLLED_PROPS } from "../src/gates/tok.js";
 import { DEFAULT_CONFIG, resolveConfig, RULE_IDS } from "../src/index.js";
 
 test("defaults", () => {
@@ -27,7 +28,7 @@ test("overrides merge over the defaults", () => {
   assert.deepEqual(r.config.rules["A11Y-001"], { minRatio: 7, minRatioLarge: 3, severity: "warn" });
   assert.equal(r.config.rules["SCH-001"].severity, "off");
   assert.deepEqual(r.config.rules["TOK-001"].ignoreValues, ["transparent"]);
-  assert.deepEqual(r.config.rules["TOK-001"].properties, ["fill", "stroke.fill"]);
+  assert.deepEqual(r.config.rules["TOK-001"].properties, [...CONTROLLED_PROPS]);
   assert.equal(r.config.rules["TOK-001"].extra, 1);
   assert.equal(DEFAULT_CONFIG.strict, false);
 });

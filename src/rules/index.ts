@@ -1,5 +1,7 @@
 import type { CompiledDocument } from "../compile/types.js";
 import type { GatesConfig, RuleId } from "../gates/config.js";
+import { run as runTok001 } from "./TOK-001.js";
+import { run as runTok002 } from "./TOK-002.js";
 import type { DiffContext, Rule, Severity, Violation } from "../gates/types.js";
 
 export interface RuleEntry {
@@ -11,7 +13,22 @@ export interface RuleEntry {
 }
 
 /** One entry per rule; each rule card adds its own line here. */
-const ENTRIES: RuleEntry[] = [];
+const ENTRIES: RuleEntry[] = [
+  {
+    id: "TOK-001",
+    title: "Hard-coded value",
+    description: "A controlled property holds a literal instead of a $variable.",
+    defaultSeverity: "warn",
+    run: runTok001,
+  },
+  {
+    id: "TOK-002",
+    title: "Off-scale numeric value",
+    description: "A spacing, radius, font size or stroke width is not on the configured scale.",
+    defaultSeverity: "warn",
+    run: runTok002,
+  },
+];
 
 /** All registered rules, sorted by id. */
 export const registry: readonly RuleEntry[] = [...ENTRIES].sort((a, b) => cmp(a.id, b.id));

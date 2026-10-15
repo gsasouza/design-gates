@@ -130,6 +130,8 @@ Ordering guarantees: files by path; frames by id; nodes by id then change kind (
 
 | Rule | What it checks | Severity | Config | Fix |
 | --- | --- | --- | --- | --- |
+| TOK-001 | A literal (not `$variable`) in `fill`, `stroke`, `effect.color`, `cornerRadius`, `gap`, `padding`, `fontSize`, `strokeWidth` or `fontFamily`. Shapes read: string, paint object or list of either; unknown shapes are skipped. A literal inherited from a reusable component is reported once, on the component, with `affectedInstances`. | `block` for colours and `fontSize`, else `warn` | `properties` (subset of the controlled props; `stroke.fill` aliases `stroke`), `ignoreValues` (list, or list per property; strings or `/regex/` or `/regex/i`, at most 200 chars, no quantified groups, invalid ones are a config error), `onlyIn` (top-level frame ids or names, `*` glob) | `replace` with the one variable resolving to the value in the node's theme (colours compare case-insensitively across `#RGB`/`#RRGGBB`/`#RRGGBBAA`); `candidates` sorted by name when several do; none otherwise |
+| TOK-002 | Numeric values off the scale: spacing (`gap`, `padding`), radius (`cornerRadius`), `fontSize`, `strokeWidth` (`strokeWidth` and `stroke.thickness`). Checks literals and variables used in those properties; an off-scale variable is reported once on the variable (`nodeId` `$name`, path `variables/name`), not on every node using it. Variables not used in a checked property are not checked. | `warn`, `block` when `strict` is true | `scales.<category>`: `{ "base": n }` (multiples of n) or an explicit list (a category given here replaces only that default); `tolerance` (default 0). Defaults: spacing base 4, radius base 2, strokeWidth `[1, 2, 4]`, fontSize `[12, 14, 16, 20, 24, 32, 40, 48]` | `candidates` with the nearest allowed value, or both neighbours ascending when equidistant (`gap: 18` on base 4 gives `[16, 20]`) |
 
 ### Severities
 
@@ -168,8 +170,15 @@ Ordering guarantees: files by path; frames by id; nodes by id then change kind (
     "SCH-003": {},
     "TOK-001": {
       "properties": [
+        "cornerRadius",
+        "effect.color",
         "fill",
-        "stroke.fill"
+        "fontFamily",
+        "fontSize",
+        "gap",
+        "padding",
+        "stroke",
+        "strokeWidth"
       ],
       "ignoreValues": [],
       "onlyIn": []
@@ -186,26 +195,16 @@ Ordering guarantees: files by path; frames by id; nodes by id then change kind (
           40,
           48
         ],
-        "radius": [
-          0,
+        "radius": {
+          "base": 2
+        },
+        "spacing": {
+          "base": 4
+        },
+        "strokeWidth": [
+          1,
           2,
-          4,
-          8,
-          12,
-          16,
-          24
-        ],
-        "spacing": [
-          0,
-          2,
-          4,
-          8,
-          12,
-          16,
-          24,
-          32,
-          48,
-          64
+          4
         ]
       },
       "tolerance": 0
