@@ -208,6 +208,18 @@ test("refuses to write through a symlinked report.html, diff.json or images dir 
   }
 });
 
+test("refuses a symlinked --out dir or a symlinked intermediate dir", async () => {
+  const a = setup([], { linkFiles: ["/work/design-diff"] });
+  assert.notEqual(await runDiff({ repo: "/repo" }, a.deps), 0);
+  assert.match(a.err.join(""), /Refusing to write through a symlink/);
+  assert.equal(a.mem.files.size, 0);
+  assert.deepEqual(a.mem.temps, []);
+  const b = setup([], { linkFiles: ["/work/out/a"] });
+  assert.notEqual(await runDiff({ repo: "/repo", out: "out/a/b" }, b.deps), 0);
+  assert.match(b.err.join(""), /Refusing to write through a symlink/);
+  assert.equal(b.mem.files.size, 0);
+});
+
 test("refuses the common git dir of a linked worktree", async () => {
   const s = setup([], {}, ["/repo/.git/worktrees/w", "/repo/.git"]);
   assert.notEqual(await runDiff({ repo: "/repo", out: "/repo/.git/x" }, s.deps), 0);

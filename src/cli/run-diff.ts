@@ -129,6 +129,17 @@ async function refuseSymlinks(fs: RunFs, targets: string[]): Promise<void> {
   }
 }
 
+/** Refuses when `out` or any existing component between `base` and `out` is a symlink. */
+async function refuseSymlinkedOut(fs: RunFs, base: string, out: string): Promise<void> {
+  const rel = path.relative(base, out);
+  if (rel.startsWith("..") || path.isAbsolute(rel)) return;
+  let cur = base;
+  for (const part of rel.split(path.sep).filter(Boolean)) {
+    cur = path.join(cur, part);
+    if (await fs.isSymlink(cur)) throw new Error(`Refusing to write through a symlink: ${cur}`);
+  }
+}
+
 function validate(o: DiffOptions): void {
   if (o.threshold !== undefined && !(Number.isFinite(o.threshold) && o.threshold >= 0 && o.threshold <= 1)) {
     throw new UsageError(`--threshold must be a number between 0 and 1, got ${o.threshold}`);
@@ -154,6 +165,10 @@ async function build(o: DiffOptions, deps: DiffDeps): Promise<{ result: DiffResu
       throw new Error(`Refusing to write into the git directory: --out ${out} is inside ${dir}`);
     }
   }
+
+  // An absolute --out outside the repo was chosen explicitly by the user; anything else may come from the worktree.
+  const explicit = o.out !== undefined && path.isAbsolute(o.out) && !isInside(repo, out);
+  if (!explicit) await refuseSymlinkedOut(fs, o.out !== undefined && path.isAbsolute(o.out) ? repo : deps.cwd, out);
 
   const tmp = await fs.mkdtemp(path.join(deps.tmpdir, "design-gates-"));
   try {
