@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { constants } from "node:fs";
 import * as nodeFs from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -32,6 +33,8 @@ export interface RunFs {
   cp(from: string, to: string, opts: { recursive: true }): Promise<void>;
   realpath(target: string): Promise<string>;
   exists(target: string): Promise<boolean>;
+  /** True when `target` itself (not its destination) is a symbolic link. */
+  isSymlink(target: string): Promise<boolean>;
   /** Relative `/`-separated paths of every file below `dir`. */
   listFiles(dir: string): Promise<string[]>;
 }
@@ -53,12 +56,14 @@ export class UsageError extends Error {}
 export const defaultFs: RunFs = {
   mkdir: (dir, opts) => nodeFs.mkdir(dir, opts),
   mkdtemp: (prefix) => nodeFs.mkdtemp(prefix),
-  writeFile: (file, data) => nodeFs.writeFile(file, data),
+  writeFile: (file, data) =>
+    nodeFs.writeFile(file, data, { flag: constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC | constants.O_NOFOLLOW }),
   readFile: (file) => nodeFs.readFile(file),
   rm: (target, opts) => nodeFs.rm(target, opts),
   cp: (from, to, opts) => nodeFs.cp(from, to, opts),
   realpath: (target) => nodeFs.realpath(target),
   exists: (target) => nodeFs.access(target).then(() => true, () => false),
+  isSymlink: (target) => nodeFs.lstat(target).then((st) => st.isSymbolicLink(), () => false),
   listFiles: async (dir) =>
     (await nodeFs.readdir(dir, { recursive: true, withFileTypes: true }))
       .filter((e) => e.isFile())
@@ -117,6 +122,13 @@ async function realOrAncestor(fs: RunFs, target: string): Promise<string> {
   }
 }
 
+/** Refuses to write through a symlink planted at any of `targets` (the output tree may come from an untrusted worktree). */
+async function refuseSymlinks(fs: RunFs, targets: string[]): Promise<void> {
+  for (const target of targets) {
+    if (await fs.isSymlink(target)) throw new Error(`Refusing to write through a symlink: ${target}`);
+  }
+}
+
 function validate(o: DiffOptions): void {
   if (o.threshold !== undefined && !(Number.isFinite(o.threshold) && o.threshold >= 0 && o.threshold <= 1)) {
     throw new UsageError(`--threshold must be a number between 0 and 1, got ${o.threshold}`);
@@ -171,9 +183,17 @@ async function build(o: DiffOptions, deps: DiffDeps): Promise<{ result: DiffResu
     const html = renderReport(result, { inline: o.inline === true, imageReader: (rel) => images.get(rel) });
 
     // `<out>/images` is only replaced when a previous run's diff.json proves it is ours.
+    const sorted = [...images].sort(([a], [b]) => (a < b ? -1 : 1));
+    const dirs = new Set(sorted.flatMap(([rel]) => ["images", path.posix.dirname(rel)]));
+    await refuseSymlinks(fs, [
+      ...[...dirs].sort().map((d) => path.join(out, ...d.split("/"))),
+      ...sorted.map(([rel]) => path.join(out, ...rel.split("/"))),
+      path.join(out, "diff.json"),
+      path.join(out, "report.html"),
+    ]);
     await fs.mkdir(out, { recursive: true });
     if (await fs.exists(path.join(out, "diff.json"))) await fs.rm(path.join(out, "images"), { recursive: true, force: true });
-    for (const [rel, data] of [...images].sort(([a], [b]) => (a < b ? -1 : 1))) {
+    for (const [rel, data] of sorted) {
       await fs.mkdir(path.dirname(path.join(out, rel)), { recursive: true });
       await fs.writeFile(path.join(out, rel), data);
     }

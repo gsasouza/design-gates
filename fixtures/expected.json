@@ -126,5 +126,14 @@
     "fileStatus": "removed",
     "frameId": "file-removed-frame",
     "change": "removed"
+  },
+  {
+    "file": "missing-box.pen",
+    "fileStatus": "modified",
+    "frameId": "missing-frame",
+    "nodeId": "ai-prompt",
+    "change": "modified",
+    "path": "content",
+    "matchedBy": "id"
   }
 ]

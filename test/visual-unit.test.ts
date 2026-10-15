@@ -16,6 +16,7 @@ import {
   type NodeChange,
   type PenDocument,
 } from "../src/index.js";
+import { imagePaths } from "../src/visual/render-frames.js";
 import { BLACK, WHITE, fakeRenderer, fillRect, makePng, render, type Rgba } from "./helpers/png.js";
 
 const doc = (label: string): PenDocument => ({ version: "2.6", children: [], label }) as unknown as PenDocument;
@@ -232,13 +233,25 @@ test("computeVisualDiff fills boxes, ratio and images and writes files under out
   assert.match(slug, /^designs-a-b\.pen-[0-9a-f]{8}$/);
   assert.notEqual(fileSlug("a/b"), fileSlug("a-b"));
   const got = out.files[0]!.frames[0]!;
-  assert.deepEqual(got.images, {
-    default: { base: `images/${slug}/f1-base.png`, head: `images/${slug}/f1-head.png`, diff: `images/${slug}/f1-diff.png` },
-  });
+  const stem = /^images\/.+\/f1-[0-9a-f]{8}-(base|head|diff)\.png$/;
+  const paths = got.images!.default!;
+  for (const kind of ["base", "head", "diff"] as const) {
+    assert.match(paths[kind]!, stem);
+    assert.ok(paths[kind]!.startsWith(`images/${slug}/`));
+    assert.ok(paths[kind]!.endsWith(`-${kind}.png`));
+  }
   assert.deepEqual([...mem.files.keys()].sort(), Object.values(got.images!.default!).map((p) => path.join("/out", p)).sort());
   assert.equal(got.pixelDiffRatio?.default, 0.04);
   assert.deepEqual(got.changeBoxes, [{ x: 5, y: 5, w: 4, h: 4, kind: "modified", side: "head", nodeId: "n1", name: "n-n1" }]);
   assert.deepEqual(renderer.calls.map((c) => c.scale), [2, 2]);
+});
+
+test("frame ids that sanitize alike get distinct image paths", async () => {
+  const png = makePng(8, 8, BLACK);
+  const renders = [{ key: "default", diff: pixelDiff(png, png), base: { png, boxes: {} }, head: { png, boxes: {} } }];
+  const a = imagePaths("f.pen", "a/b", renders).images.default!.base;
+  const b = imagePaths("f.pen", "a-b", renders).images.default!.base;
+  assert.notEqual(a, b);
 });
 
 test("added and removed frames get only the side that exists", async () => {
@@ -291,6 +304,6 @@ test("unchanged frames are not rendered; variable-listed ones render per theme",
   assert.deepEqual(Object.keys(themed.images!), ["default", "mode=dark"]);
   assert.equal(themed.pixelDiffRatio?.default, 0);
   assert.equal(themed.pixelDiffRatio!["mode=dark"]! > 0, true);
-  assert.match(themed.images!["mode=dark"]!.head!, /themed-mode-dark-head\.png$/);
+  assert.match(themed.images!["mode=dark"]!.head!, /themed-mode-dark-[0-9a-f]{8}-head\.png$/);
   assert.deepEqual(renderer.calls.filter((c) => c.theme).map((c) => c.theme), [{ mode: "dark" }, { mode: "dark" }]);
 });

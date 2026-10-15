@@ -103,7 +103,8 @@ export function imagePaths(file: string, frameId: string, renders: ThemedRender[
   const files = new Map<string, Buffer>();
   const dir = `images/${fileSlug(file)}`;
   for (const r of renders) {
-    const stem = r.key === "default" ? sanitize(frameId) : `${sanitize(frameId)}-${sanitize(r.key)}`;
+    const hash = createHash("sha256").update(JSON.stringify([frameId, r.key])).digest("hex").slice(0, 8);
+    const stem = `${sanitize(frameId)}${r.key === "default" ? "" : `-${sanitize(r.key)}`}-${hash}`;
     const entry: { base?: string; head?: string; diff?: string } = {};
     const put = (kind: "base" | "head" | "diff", png: Buffer): void => {
       const p = `${dir}/${stem}-${kind}.png`;

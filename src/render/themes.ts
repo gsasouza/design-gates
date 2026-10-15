@@ -63,12 +63,14 @@ function resolveReference(ref: string, variables: PenVariables, theme: Theme): u
 
 /**
  * Replace `$variable` references under `value` with their concrete value for the theme in effect
- * at that point (a node's own `theme` pin overrides the inherited one). OpenPencil 0.15's .pen
+ * at that point (a node's own `theme` pin overrides the inherited one). OpenPencil's .pen
  * import resolves variables at the first theme regardless of `theme` pins, so the theme is applied
  * here instead and the importer only ever sees literals.
  */
-export function bakeVariables(value: unknown, variables: PenVariables, theme: Theme): unknown {
-  if (Array.isArray(value)) return value.map((v) => bakeVariables(v, variables, theme));
+export function bakeVariables(value: unknown, variables: PenVariables, theme: Theme, key?: string): unknown {
+  if (Array.isArray(value)) {
+    return value.map((v) => (typeof v === "string" ? (isVariableRef(key, v) ? resolveReference(v, variables, theme) : v) : bakeVariables(v, variables, theme, key)));
+  }
   if (typeof value !== "object" || value === null) return value;
   const node = value as Record<string, unknown>;
   const here = isTheme(node.theme) ? { ...theme, ...node.theme } : theme;
@@ -77,7 +79,7 @@ export function bakeVariables(value: unknown, variables: PenVariables, theme: Th
     if (typeof v === "string") {
       out[key] = isVariableRef(key, v) ? resolveReference(v, variables, here) : v;
     } else {
-      out[key] = key === "theme" ? v : bakeVariables(v, variables, here);
+      out[key] = key === "theme" ? v : bakeVariables(v, variables, here, key);
     }
   }
   return out;
@@ -88,13 +90,27 @@ export function defaultTheme(themes: PenThemes | undefined): Theme {
   return Object.fromEntries(Object.entries(themes ?? {}).flatMap(([axis, values]) => (values[0] ? [[axis, values[0]]] : [])));
 }
 
+/** Theme in effect at the node `id`: axis defaults overridden by the `theme` pins on its ancestors and itself. */
+function effectiveTheme(nodes: PenNode[], id: string, inherited: Theme): Theme | undefined {
+  for (const node of nodes) {
+    const here = isTheme(node.theme) ? { ...inherited, ...node.theme } : inherited;
+    if (node.id === id) return here;
+    const found = node.children && effectiveTheme(node.children, id, here);
+    if (found) return found;
+  }
+  return undefined;
+}
+
 /**
  * Copy of `doc` for OpenPencil with `theme` pinned on the frame and every variable reference
- * resolved for the theme in effect. The caller's document is never mutated.
+ * resolved for the theme in effect. Reusable components outside the frame are baked with the
+ * frame's effective theme, since their instances render under it. The caller's document is never mutated.
  */
 export function prepareDocument(doc: PenDocument, frameId: string, theme?: Theme): PenDocument {
   const copy = withFrameTheme(doc, frameId, theme && findNode(doc.children, frameId) ? theme : undefined);
   const variables = copy.variables ?? {};
-  const children = bakeVariables(copy.children, variables, defaultTheme(copy.themes)) as PenNode[];
+  const base = defaultTheme(copy.themes);
+  const frameTheme = effectiveTheme(copy.children, frameId, base) ?? base;
+  const children = bakeVariables(copy.children, variables, frameTheme) as PenNode[];
   return { ...copy, children };
 }

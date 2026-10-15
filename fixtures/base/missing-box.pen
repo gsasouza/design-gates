@@ -1,0 +1,23 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "missing-frame",
+      "type": "frame",
+      "name": "MissingBox",
+      "layout": "none",
+      "width": 100,
+      "height": 60,
+      "children": [
+        {
+          "id": "ai-prompt",
+          "type": "prompt",
+          "name": "ai-prompt",
+          "width": 40,
+          "height": 20,
+          "content": "Make it blue"
+        }
+      ]
+    }
+  ]
+}

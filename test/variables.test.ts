@@ -39,3 +39,25 @@ test("an alias cycle throws a clear error", () => {
   const doc = docWith({ c: { type: "color", value: "$d" }, d: { type: "color", value: "$c" } });
   assert.throws(() => prepareDocument(doc, "frame"), /alias cycle: \$c -> \$d -> \$c/);
 });
+
+test("a $name string inside an array is resolved like any other reference", () => {
+  const doc = docWith({ c: { type: "color", value: "#123456" } });
+  (doc.children[0] as unknown as { stops: unknown }).stops = ["$c", "plain", { color: "$c" }];
+  const baked = prepareDocument(doc, "frame").children[0] as unknown as { stops: unknown };
+  assert.deepEqual(baked.stops, ["#123456", "plain", { color: "#123456" }]);
+});
+
+test("a component outside the frame is baked with the rendered frame's theme", () => {
+  const doc = {
+    version: "2.6",
+    themes: { mode: ["light", "dark"] },
+    variables: { c: { type: "color", value: [{ value: "#ffffff", theme: { mode: "light" } }, { value: "#000000", theme: { mode: "dark" } }] } },
+    children: [
+      { id: "comp", type: "frame", width: 5, height: 5, reusable: true, fill: "$c" },
+      { id: "frame", type: "frame", width: 10, height: 10, children: [{ id: "i", type: "ref", ref: "comp" }] },
+    ],
+  } as unknown as PenDocument;
+  const fill = (d: PenDocument): unknown => (d.children[0] as PenNode & { fill?: unknown }).fill;
+  assert.equal(fill(prepareDocument(doc, "frame", { mode: "dark" })), "#000000");
+  assert.equal(fill(prepareDocument(doc, "frame")), "#ffffff");
+});

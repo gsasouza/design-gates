@@ -17,6 +17,7 @@ The text uses the font pinned in `fonts/` (Inter).
 | `id-recreated.pen` | `recreated-new` (was `recreated-old`) | same frame, every id recreated | `none` (matched by structure; zero added/removed/modified nodes) |
 | `id-recreated-changed.pen` | `recreated-changed-new` (was `recreated-changed-old`) | every id recreated AND child `chg-new-extra` added; frame name `RecreatedChanged` stays unique | `added` on `chg-new-extra` (matched by name) |
 | `variable.pen` | `var-comp-frame`, `var-frame`, `var-ref-frame` | variable `bg` value in theme `mode=dark` `#000000` -> `#444444` | variable `modified` for each referencing frame; `var-none-frame` is not affected |
+| `missing-box.pen` | `missing-frame` | `content` of a `prompt` node (OpenPencil does not render it, so no node box exists) | `modified` on `ai-prompt`; frame lists it in `missingBoxes` |
 | `new/renamed.pen` | `renamed-frame` | renamed from `old/renamed.pen`, content identical | file `renamed`, change `none` |
 | `added.pen` | `file-added-frame` | file only in head | file `added` |
 | `removed.pen` | `file-removed-frame` | file only in base | file `removed` |
