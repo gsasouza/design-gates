@@ -10,6 +10,25 @@ export const MAX_IGNORE_LENGTH = 200;
 /** The source of a `/regex/` ignore entry, or undefined when the entry is a plain string. */
 export const regexSource = (entry: string): string | undefined => (entry.length > 2 && entry.startsWith("/") && entry.endsWith("/") ? entry.slice(1, -1) : undefined);
 
+/** True when a regex source quantifies a group that is itself quantified, e.g. `(a+)+`, the classic catastrophic-backtracking shape. */
+export const hasNestedQuantifier = (source: string): boolean => /\([^()]*[+*}][^()]*\)[+*{]/.test(source);
+
+const compiled = new Map<string, RegExp | null>();
+
+/** Compiles a regex source once per process; null when it is invalid. */
+function compileIgnore(source: string): RegExp | null {
+  let re = compiled.get(source);
+  if (re === undefined) {
+    try {
+      re = new RegExp(source);
+    } catch {
+      re = null;
+    }
+    compiled.set(source, re);
+  }
+  return re;
+}
+
 /** Colour as lowercase #rrggbbaa, or undefined when it is not a hex colour. */
 export function normalizeColor(value: string): string | undefined {
   const m = /^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.exec(value);
@@ -30,11 +49,7 @@ export function isIgnored(value: string | number, entries: readonly string[]): b
       continue;
     }
     if (entry.length > MAX_IGNORE_LENGTH || text.length > MAX_IGNORE_LENGTH) continue;
-    try {
-      if (new RegExp(source).test(text)) return true;
-    } catch {
-      continue;
-    }
+    if (compileIgnore(source)?.test(text)) return true;
   }
   return false;
 }
