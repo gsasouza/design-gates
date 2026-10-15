@@ -73,7 +73,7 @@ export type { ChangedFile, FileState, UnsavedChanges } from "./vcs/state.js";
 export { createDesignRepo, defaultSaveMessage } from "./vcs/repo.js";
 export type { DesignRepo, DesignRepoOptions, HistoryResult, HistoryVersion, InitResult, SaveResult, StatusResult } from "./vcs/repo.js";
 export { buildDiffReport } from "./cli/run-diff.js";
-export { compare, defaultOpenFile } from "./vcs/compare.js";
+export { compare, defaultOpenFile, openerFor } from "./vcs/compare.js";
 export type { CompareDeps, CompareOptions, CompareResult } from "./vcs/compare.js";
 export { restoreVersion } from "./vcs/restore.js";
 export type { RestoreDeps, RestoreOptions, RestoreResult } from "./vcs/restore.js";

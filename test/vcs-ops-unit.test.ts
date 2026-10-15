@@ -5,7 +5,7 @@ import path from "node:path";
 import { test } from "node:test";
 import type { DiffDeps, DiffOptions, RunFs } from "../src/cli/run-diff.js";
 import type { DiffResult } from "../src/diff/model.js";
-import { compare, createDesignRepo, VcsCommitFailedError, VcsRefusedError, VcsUsageError } from "../src/index.js";
+import { compare, createDesignRepo, openerFor, VcsCommitFailedError, VcsRefusedError, VcsUsageError } from "../src/index.js";
 import { gitError, porcelain, recordingGit } from "./vcs-helpers.js";
 
 const NL = "--no-optional-locks";
@@ -311,4 +311,15 @@ test("switchTo: ok, already there, dirty refused, unknown, missing main", async 
     (e: Error) => e instanceof VcsUsageError && /trunk, idea/.test(e.message),
   );
   assert.ok(!noMain.subcommands().includes("switch"));
+});
+
+test("openerFor: win32 uses explorer.exe with the path as one untouched argument", () => {
+  const file = "C:\\Design & Brand\\design-diff\\report.html";
+  assert.deepEqual(openerFor("win32", file), ["explorer.exe", [file]]);
+  assert.deepEqual(openerFor("win32", "C:\\a^b|c\\r.html"), ["explorer.exe", ["C:\\a^b|c\\r.html"]]);
+});
+
+test("openerFor: darwin and linux are unchanged", () => {
+  assert.deepEqual(openerFor("darwin", "/x/r.html"), ["open", ["/x/r.html"]]);
+  assert.deepEqual(openerFor("linux", "/x/r.html"), ["xdg-open", ["/x/r.html"]]);
 });
