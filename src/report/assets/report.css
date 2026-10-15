@@ -16,7 +16,7 @@ code{font-family:ui-monospace,monospace;font-size:12px}
 .swatch{border:1px solid var(--border);margin-right:4px}
 #layout{display:grid;grid-template-columns:280px minmax(0,1fr);align-items:start}
 #sidebar{position:sticky;top:46px;max-height:calc(100vh - 46px);overflow:auto;padding:12px;border-right:1px solid var(--border);background:var(--panel)}
-#sidebar h2{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:12px 0 4px}
+#sidebar h2{font-size:13px;letter-spacing:.04em;color:var(--muted);margin:12px 0 4px}
 #sidebar ul{list-style:none;margin:0;padding:0}
 #sidebar li{padding:2px 0}
 #sidebar a{color:var(--fg);text-decoration:none}
@@ -58,6 +58,13 @@ body.markers-off .box{display:none}
 #help{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5)}
 #help div{background:var(--panel);padding:16px 24px;border-radius:8px;max-width:420px}
 #help kbd{border:1px solid var(--border);border-radius:3px;padding:0 4px;font-family:ui-monospace,monospace}
+#summary{margin:0;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--border);color:var(--fg)}
+#summary p{margin:0}
+#summary a{color:var(--accent)}
+.change-list{list-style:none;margin:0 0 8px;padding:0;color:var(--fg);font-size:13px}
+.change-list li{margin:0}
+.change-line{display:block;width:100%;text-align:left;border:0;background:none;padding:2px 4px;cursor:pointer;color:var(--fg)}
+.change-line:hover,.change-line:focus-visible{background:var(--checker)}
 details.unchanged{margin-top:6px;color:var(--muted)}
 .changes li{margin-bottom:6px}
 @media (max-width:1400px){#layout{grid-template-columns:220px minmax(0,1fr)}}
