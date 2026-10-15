@@ -13,7 +13,7 @@
         {
           "id": "old-r1",
           "type": "rectangle",
-          "name": "old-r1",
+          "name": "Box",
           "width": 40,
           "height": 20,
           "fill": "#123456"
@@ -21,7 +21,7 @@
         {
           "id": "old-t1",
           "type": "text",
-          "name": "old-t1",
+          "name": "Label",
           "fontFamily": "Inter",
           "fontSize": 14,
           "x": 4,
