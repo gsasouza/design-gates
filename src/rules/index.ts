@@ -6,6 +6,8 @@ import { dif001 } from "./DIF-001.js";
 import { sch001 } from "./SCH-001.js";
 import { sch002 } from "./SCH-002.js";
 import { sch003 } from "./SCH-003.js";
+import { run as tok001 } from "./TOK-001.js";
+import { run as tok002 } from "./TOK-002.js";
 import type { DiffContext, Rule, Severity, Violation } from "../gates/types.js";
 
 export interface RuleEntry {
@@ -59,6 +61,20 @@ const ENTRIES: RuleEntry[] = [
     description: "Undefined variable, variable alias cycle or escaped variable string.",
     defaultSeverity: "block",
     run: sch003,
+  },
+  {
+    id: "TOK-001",
+    title: "Hard-coded value",
+    description: "A literal colour, radius, spacing, font or stroke width where a design variable should be used.",
+    defaultSeverity: "warn",
+    run: tok001,
+  },
+  {
+    id: "TOK-002",
+    title: "Off-scale value",
+    description: "A numeric value, or numeric variable, that is not on the configured spacing, radius, font size or stroke width scale.",
+    defaultSeverity: "warn",
+    run: tok002,
   },
 ];
 
