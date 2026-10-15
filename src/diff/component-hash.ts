@@ -1,7 +1,7 @@
 import type { PenNode } from "../pen/types.js";
 
 /** Own props left out of a component-mode hash: identity, placement and copy. */
-const EXCLUDED = new Set(["id", "name", "x", "y", "content", "metadata", "children"]);
+const EXCLUDED = new Set(["id", "name", "x", "y", "content", "metadata", "reusable", "children"]);
 /** Deeper subtrees (or values) are hashed as a marker, so hostile documents cannot overflow the stack. */
 const MAX_DEPTH = 128;
 
@@ -20,7 +20,7 @@ function componentShape(node: PenNode, depth: number): unknown {
 
 /**
  * Hash for finding duplicated components: node type and every own prop except id, name, x, y,
- * content and metadata, plus children recursively; object keys are sorted so key order is
+ * content, metadata and reusable, plus children recursively; object keys are sorted so key order is
  * irrelevant.
  */
 export function componentHash(node: PenNode): string {
