@@ -34,3 +34,5 @@ export { diffVariables } from "./diff/variables.js";
 export type { VariablesDiff } from "./diff/variables.js";
 export { computeSemanticDiff, computeSemanticDiffWithDocs } from "./diff/compute.js";
 export type { ComputeOptions } from "./diff/compute.js";
+export { renderReport } from "./report/render-report.js";
+export type { RenderReportOptions } from "./report/render-report.js";
