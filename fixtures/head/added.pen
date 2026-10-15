@@ -1,0 +1,42 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "file-added-frame",
+      "type": "frame",
+      "name": "FileAdded",
+      "layout": "none",
+      "width": 320,
+      "height": 180,
+      "children": [
+        {
+          "id": "brand-new-title",
+          "type": "text",
+          "name": "brand-new-title",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "x": 4,
+          "y": 4,
+          "content": "Brand new screen"
+        },
+        {
+          "id": "brand-new-card",
+          "type": "rectangle",
+          "name": "brand-new-card",
+          "width": 120,
+          "height": 20,
+          "fill": "#0a0b0c"
+        },
+        {
+          "id": "brand-new-chip",
+          "type": "rectangle",
+          "name": "brand-new-chip",
+          "width": 40,
+          "height": 20,
+          "fill": "#aa00aa",
+          "x": 130
+        }
+      ]
+    }
+  ]
+}

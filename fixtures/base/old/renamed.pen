@@ -1,0 +1,33 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "renamed-frame",
+      "type": "frame",
+      "name": "Renamed",
+      "layout": "none",
+      "width": 200,
+      "height": 100,
+      "children": [
+        {
+          "id": "renamed-rect",
+          "type": "rectangle",
+          "name": "renamed-rect",
+          "width": 40,
+          "height": 20,
+          "fill": "#fedcba"
+        },
+        {
+          "id": "renamed-text",
+          "type": "text",
+          "name": "renamed-text",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "x": 4,
+          "y": 4,
+          "content": "I moved paths"
+        }
+      ]
+    }
+  ]
+}

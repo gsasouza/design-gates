@@ -1,0 +1,55 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "override-comp-frame",
+      "type": "frame",
+      "name": "Components",
+      "layout": "none",
+      "width": 200,
+      "height": 100,
+      "children": [
+        {
+          "id": "btn",
+          "type": "frame",
+          "name": "Button",
+          "reusable": true,
+          "layout": "none",
+          "width": 80,
+          "height": 30,
+          "children": [
+            {
+              "id": "label",
+              "type": "text",
+              "name": "label",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "content": "Go",
+              "fill": "#000000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "override-frame",
+      "type": "frame",
+      "name": "Override",
+      "layout": "none",
+      "width": 200,
+      "height": 100,
+      "children": [
+        {
+          "id": "btn-inst",
+          "type": "ref",
+          "ref": "btn",
+          "descendants": {
+            "label": {
+              "fill": "#445566"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

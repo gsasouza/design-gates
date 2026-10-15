@@ -1,0 +1,25 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "text-frame",
+      "type": "frame",
+      "name": "Text",
+      "layout": "none",
+      "width": 200,
+      "height": 100,
+      "children": [
+        {
+          "id": "text-title",
+          "type": "text",
+          "name": "text-title",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "x": 4,
+          "y": 4,
+          "content": "Hello"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "reorder-frame",
+      "type": "frame",
+      "name": "Reorder",
+      "layout": "none",
+      "width": 200,
+      "height": 100,
+      "children": [
+        {
+          "id": "sib-a",
+          "type": "rectangle",
+          "name": "sib-a",
+          "width": 40,
+          "height": 20,
+          "x": 0
+        },
+        {
+          "id": "sib-b",
+          "type": "rectangle",
+          "name": "sib-b",
+          "width": 40,
+          "height": 20,
+          "x": 50
+        },
+        {
+          "id": "sib-c",
+          "type": "rectangle",
+          "name": "sib-c",
+          "width": 40,
+          "height": 20,
+          "x": 100
+        }
+      ]
+    }
+  ]
+}

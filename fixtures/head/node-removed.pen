@@ -1,0 +1,22 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "removed-frame",
+      "type": "frame",
+      "name": "Removed",
+      "layout": "none",
+      "width": 200,
+      "height": 100,
+      "children": [
+        {
+          "id": "keep-r",
+          "type": "rectangle",
+          "name": "keep-r",
+          "width": 40,
+          "height": 20
+        }
+      ]
+    }
+  ]
+}

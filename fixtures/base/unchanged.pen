@@ -1,0 +1,23 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "same-frame",
+      "type": "frame",
+      "name": "Same",
+      "layout": "none",
+      "width": 200,
+      "height": 100,
+      "children": [
+        {
+          "id": "same-rect",
+          "type": "rectangle",
+          "name": "same-rect",
+          "width": 40,
+          "height": 20,
+          "fill": "#abcdef"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "fill-frame",
+      "type": "frame",
+      "name": "Fill",
+      "layout": "none",
+      "width": 200,
+      "height": 100,
+      "children": [
+        {
+          "id": "fill-rect",
+          "type": "rectangle",
+          "name": "fill-rect",
+          "width": 40,
+          "height": 20,
+          "fill": "#ff0000"
+        }
+      ]
+    }
+  ]
+}

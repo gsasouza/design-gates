@@ -1,0 +1,101 @@
+{
+  "version": "2.6",
+  "themes": {
+    "mode": [
+      "light",
+      "dark"
+    ]
+  },
+  "variables": {
+    "bg": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#ffffff",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#111111",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    }
+  },
+  "children": [
+    {
+      "id": "var-comp-frame",
+      "type": "frame",
+      "name": "Component",
+      "layout": "none",
+      "width": 200,
+      "height": 100,
+      "children": [
+        {
+          "id": "var-comp",
+          "type": "frame",
+          "name": "Card",
+          "reusable": true,
+          "layout": "none",
+          "width": 60,
+          "height": 40,
+          "fill": "$bg"
+        }
+      ]
+    },
+    {
+      "id": "var-frame",
+      "type": "frame",
+      "name": "Direct",
+      "layout": "none",
+      "width": 200,
+      "height": 100,
+      "children": [
+        {
+          "id": "var-rect",
+          "type": "rectangle",
+          "name": "var-rect",
+          "width": 40,
+          "height": 20,
+          "fill": "$bg"
+        }
+      ]
+    },
+    {
+      "id": "var-ref-frame",
+      "type": "frame",
+      "name": "ViaInstance",
+      "layout": "none",
+      "width": 200,
+      "height": 100,
+      "children": [
+        {
+          "id": "var-inst",
+          "type": "ref",
+          "ref": "var-comp"
+        }
+      ]
+    },
+    {
+      "id": "var-none-frame",
+      "type": "frame",
+      "name": "Unrelated",
+      "layout": "none",
+      "width": 200,
+      "height": 100,
+      "children": [
+        {
+          "id": "plain-rect",
+          "type": "rectangle",
+          "name": "plain-rect",
+          "width": 40,
+          "height": 20,
+          "fill": "#cccccc"
+        }
+      ]
+    }
+  ]
+}
