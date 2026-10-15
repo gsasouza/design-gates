@@ -40,3 +40,5 @@ export { pixelDiff } from "./visual/pixel-diff.js";
 export type { PixelDiff, PixelDiffOptions } from "./visual/pixel-diff.js";
 export { nodeChangeBoxes, pixelChangeBoxes, sortBoxes } from "./visual/change-boxes.js";
 export { fileSlug } from "./visual/render-frames.js";
+export { renderReport } from "./report/render-report.js";
+export type { RenderReportOptions } from "./report/render-report.js";
