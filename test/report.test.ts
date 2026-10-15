@@ -427,6 +427,13 @@ test("legend swatches are filled translucent tiles", () => {
   assert.match(r.body, /border:0/);
 });
 
+test("the pixel legend swatch is hatched like the pixel marker", () => {
+  const { html } = load();
+  const r = cssRules(html).find((x) => x.sel === ".legend i.k-pixel")!;
+  assert.ok(r);
+  assert.match(r.body, /repeating-linear-gradient/);
+});
+
 test("m and the Markers button toggle all markers; j ignores hidden markers", () => {
   const { doc, win } = load();
   const btn = doc.getElementById("markers-toggle") as HTMLElement;
@@ -651,6 +658,15 @@ test("clicking a line while markers are hidden turns them back on, then selects"
   assert.equal(doc.body.classList.contains("markers-off"), false);
   assert.equal(btn.getAttribute("aria-pressed"), "true");
   assert.equal(doc.querySelector(".box.selected")!.getAttribute("data-node-id"), "n1");
+});
+
+test("clicking a marker-less line while markers are hidden still turns them back on", () => {
+  const { doc, win } = load();
+  key(win, "m");
+  (doc.querySelector('#frame-0 .change-list li[data-kind="variable"] button') as HTMLElement).click();
+  assert.equal(doc.body.classList.contains("markers-off"), false);
+  assert.equal(doc.getElementById("markers-toggle")!.getAttribute("aria-pressed"), "true");
+  assert.equal(doc.querySelectorAll(".box.selected").length, 0);
 });
 
 test("a status-unchanged frame affected by a variable is labelled as changed, not unchanged", () => {
