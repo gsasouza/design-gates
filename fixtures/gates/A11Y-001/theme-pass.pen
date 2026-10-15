@@ -1,0 +1,61 @@
+{
+  "version": "2.6",
+  "themes": {
+    "mode": [
+      "light",
+      "dark"
+    ]
+  },
+  "variables": {
+    "surface": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#FFFFFF",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#111111",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "ink": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#222222",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#EEEEEE",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    }
+  },
+  "children": [
+    {
+      "id": "card",
+      "type": "frame",
+      "fill": "$surface",
+      "children": [
+        {
+          "id": "label",
+          "type": "text",
+          "content": "Hello",
+          "fill": "$ink",
+          "fontSize": 16
+        }
+      ]
+    }
+  ]
+}

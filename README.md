@@ -130,6 +130,7 @@ Ordering guarantees: files by path; frames by id; nodes by id then change kind (
 
 | Rule | What it checks | Severity | Config | Fix |
 | --- | --- | --- | --- | --- |
+| `A11Y-001` | Text contrast against the effective background (ancestor fills alpha-composited down to an opaque one, else `canvasColor`), per theme combination; a gradient is checked at every stop. 4.5:1, or 3:1 for large text (>= 24px, or >= 18.66px bold). One `block` violation per failing combination, with a `theme`. An image or shader background yields `review`. A result fully inside a component is reported once on it with `affectedInstances`. At most 16 combinations are evaluated per text node; beyond that exactly one `info` violation lists the evaluated and skipped combinations. | `block` | `minRatio` (4.5), `minRatioLarge` (3) | none |
 
 ### Severities
 

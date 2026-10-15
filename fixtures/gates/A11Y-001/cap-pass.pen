@@ -1,0 +1,37 @@
+{
+  "version": "2.6",
+  "themes": {
+    "a": [
+      "a1",
+      "a2"
+    ],
+    "b": [
+      "b1",
+      "b2"
+    ],
+    "c": [
+      "c1",
+      "c2"
+    ],
+    "d": [
+      "d1",
+      "d2"
+    ]
+  },
+  "children": [
+    {
+      "id": "card",
+      "type": "frame",
+      "fill": "#FFFFFF",
+      "children": [
+        {
+          "id": "label",
+          "type": "text",
+          "content": "Hello",
+          "fill": "#000000",
+          "fontSize": 16
+        }
+      ]
+    }
+  ]
+}
