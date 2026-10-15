@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { resolveConfig, runRules, type GatesConfig, type Violation } from "../src/index.js";
 import { compileFixture } from "./helpers/gates.js";
+import { entryOf, fingerprint } from "../src/check/baseline.js";
 
 const config = (raw?: unknown): GatesConfig => {
   const r = resolveConfig(raw);
@@ -143,6 +144,9 @@ test("TOK-002 checks values resolved through a variable chain on the defining va
     "$odd:Variable $odd = 3 is off the strokeWidth scale; nearest: 2, 4",
     "$space:Variable $space = 18 is off the spacing scale; nearest: 16, 20",
   ]);
+  const odd = out.filter((v) => v.nodeId === "$odd");
+  assert.deepEqual(odd.map((v) => v.prop), ["value.radius", "value.strokeWidth"]);
+  assert.equal(new Set(odd.map((v) => fingerprint(entryOf(v)))).size, 2);
   assert.deepEqual(await check("TOK-002", "resolved-through-variable.pass"), []);
 });
 
