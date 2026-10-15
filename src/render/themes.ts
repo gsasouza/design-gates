@@ -104,7 +104,8 @@ function effectiveTheme(nodes: PenNode[], id: string, inherited: Theme): Theme |
 /**
  * Copy of `doc` for OpenPencil with `theme` pinned on the frame and every variable reference
  * resolved for the theme in effect. Reusable components outside the frame are baked with the
- * frame's effective theme, since their instances render under it. The caller's document is never mutated.
+ * frame's effective theme; an instance whose own effective theme differs gets a copy of its
+ * component baked with that theme instead. The caller's document is never mutated.
  */
 export function prepareDocument(doc: PenDocument, frameId: string, theme?: Theme): PenDocument {
   const copy = withFrameTheme(doc, frameId, theme && findNode(doc.children, frameId) ? theme : undefined);
@@ -112,5 +113,58 @@ export function prepareDocument(doc: PenDocument, frameId: string, theme?: Theme
   const base = defaultTheme(copy.themes);
   const frameTheme = effectiveTheme(copy.children, frameId, base) ?? base;
   const children = bakeVariables(copy.children, variables, frameTheme) as PenNode[];
-  return { ...copy, children };
+  const variants: PenNode[] = [];
+  const made = new Map<string, string>();
+  const frameKey = JSON.stringify(sorted(frameTheme));
+
+  /** Re-point instances under `node` whose theme differs from the frame's at a component baked for their theme. */
+  const retarget = (node: PenNode, parent: Theme): void => {
+    const here = isTheme(node.theme) ? { ...parent, ...node.theme } : parent;
+    const hereKey = JSON.stringify(sorted(here));
+    if (typeof node.ref === "string" && hereKey !== frameKey) {
+      const key = `${node.ref}\u0000${hereKey}`;
+      let id = made.get(key);
+      const component = findNode(copy.children, node.ref);
+      if (id === undefined && component) {
+        const n = made.size + 1;
+        id = `${node.ref}@${n}`;
+        made.set(key, id);
+        const variant = suffixIds(bakeVariables({ ...component, id }, variables, here) as PenNode, `@${n}`, true);
+        variants.push(variant);
+        retarget(variant, here);
+      }
+      if (id !== undefined) {
+        node.ref = id;
+        const overrides = node.descendants;
+        if (typeof overrides === "object" && overrides !== null && !Array.isArray(overrides)) {
+          const suffix = id.slice(id.lastIndexOf("@"));
+          node.descendants = Object.fromEntries(
+            Object.entries(overrides as Record<string, unknown>).map(([path, v]) => [path.split("/").map((seg) => `${seg}${suffix}`).join("/"), v]),
+          ) as typeof node.descendants;
+        }
+      }
+    }
+    for (const child of node.children ?? []) retarget(child, here);
+  };
+  const frame = findNode(children, frameId);
+  if (frame) retarget(frame, inheritedTheme(copy.children, frameId, base) ?? base);
+  return { ...copy, children: [...children, ...variants] };
+}
+
+/** Copy of `node` with `suffix` appended to every descendant id (the root keeps its id), so a variant's ids stay unique in the document. */
+function suffixIds(node: PenNode, suffix: string, isRoot = false): PenNode {
+  return { ...node, id: isRoot ? node.id : `${node.id}${suffix}`, ...(node.children ? { children: node.children.map((c) => suffixIds(c, suffix)) } : {}) };
+}
+
+const sorted = (theme: Theme): [string, string][] => Object.entries(theme).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+
+/** Theme inherited by the node `id` from its ancestors (excluding its own pin). */
+function inheritedTheme(nodes: PenNode[], id: string, inherited: Theme): Theme | undefined {
+  for (const node of nodes) {
+    if (node.id === id) return inherited;
+    const here = isTheme(node.theme) ? { ...inherited, ...node.theme } : inherited;
+    const found = node.children && inheritedTheme(node.children, id, here);
+    if (found) return found;
+  }
+  return undefined;
 }

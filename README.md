@@ -54,7 +54,7 @@ const json: string = serializeDiff(result); // deterministic JSON
 
 `computeVisualDiff({ result, docs, renderer, outDir, scale, threshold })` renders every
 `modified`/`added`/`removed` frame (plus frames listed by a variable or theme change) at base and
-head with the injected `Renderer`, writes `images/<file-slug>/<frameId>[-<theme>]-{base,head,diff}.png`
+head with the injected `Renderer`, writes `images/<file-slug>/<frameId>[-<theme>]-<8 hex hash>-{base,head,diff}.png`
 under `outDir`, and fills `images`, `pixelDiffRatio` and `changeBoxes` (node boxes plus `pixel`
 regions) per theme key. `file-slug` is the sanitized path plus the first 8 hex chars of its sha256.
 Sizes that differ are padded top-left onto a transparent common canvas. Added/removed frames are
@@ -87,11 +87,11 @@ design-gates diff [--repo <path>] [--base <ref>] [--head <ref>] [--out <dir>]
 | `--inline` | off | Embed the images in `report.html` as data URIs, so the report is one file. |
 | `paths...` | all `.pen` files | Glob pathspecs (relative to the repo root) narrowing the files considered. |
 
-Output: `<out>/report.html`, `<out>/diff.json` and `<out>/images/<file-slug>/<frameId>[-<theme>]-{base,head,diff}.png` (the images are always written; `--inline` additionally embeds them). A short summary (files, frames and changes counts plus the report path) goes to stdout.
+Output: `<out>/report.html`, `<out>/diff.json` and `<out>/images/<file-slug>/<frameId>[-<theme>]-<8 hex hash>-{base,head,diff}.png` (the images are always written; `--inline` additionally embeds them). A short summary (files, frames and changes counts plus the report path) goes to stdout.
 
 Exit codes: `0` whenever the diff ran, including when it found changes or no `.pen` changes at all (an empty report and `diff.json` are still written). `1` on errors (bad ref, not a git repository, render or write failure) and `2` on invalid arguments; the message goes to stderr and nothing is written to `<out>`.
 
-Safety: the repository, its index and HEAD are only read. The sole exception to "never write into the repo" is the default `./design-diff` output when run from inside a worktree. `--out` is refused when its real path (symlinks resolved through the deepest existing ancestor) lies inside the repo's `.git` directory (`--absolute-git-dir` or `--git-common-dir`). Renders go to a temp directory under `os.tmpdir()` which is always removed, even on error, and are copied to `<out>/images` only after everything succeeded. `<out>/images` is cleared before a re-run only when `<out>/diff.json` from a previous run exists.
+Safety: the repository, its index and HEAD are only read. The sole exception to "never write into the repo" is the default `./design-diff` output when run from inside a worktree. `--out` is refused when its real path (symlinks resolved through the deepest existing ancestor) lies inside the repo's `.git` directory (`--absolute-git-dir` or `--git-common-dir`). Renders go to a temp directory under `os.tmpdir()` which is always removed, even on error, and are copied to `<out>/images` only after everything succeeded. `--out` and every existing path component between the repo (or cwd) and it are refused when they are symlinks, unless `--out` is absolute and outside the repo; image writes use `O_NOFOLLOW`. `<out>/images` is cleared before a re-run only when `<out>/diff.json` from a previous run exists.
 
 Example on the fixture repo (`test/helpers/fixture-repo.ts` builds one with tags `base` and `head`): `npx design-gates diff --base base --head head`.
 

@@ -50,3 +50,64 @@ test("theme renders different pixels without mutating the document", async () =>
   assert.ok(!light.png.equals(dark.png));
   assert.equal(JSON.stringify(themed), before);
 });
+
+test("a component instanced under the frame theme and a nested dark pin renders both instances distinctly", async () => {
+  const doc = {
+    version: "2.6",
+    themes: { mode: ["light", "dark"] },
+    variables: {
+      c: {
+        type: "color",
+        value: [
+          { value: "#ffffff", theme: { mode: "light" } },
+          { value: "#000000", theme: { mode: "dark" } },
+        ],
+      },
+    },
+    children: [
+      {
+        id: "card",
+        type: "frame",
+        reusable: true,
+        layout: "none",
+        width: 20,
+        height: 20,
+        fill: "$c",
+        children: [{ id: "dot", type: "rectangle", x: 5, y: 5, width: 10, height: 10, fill: "#ff0000" }],
+      },
+      {
+        id: "frame",
+        type: "frame",
+        layout: "none",
+        width: 60,
+        height: 20,
+        children: [
+          { id: "light-inst", type: "ref", ref: "card", x: 0, y: 0 },
+          {
+            id: "dark-pin",
+            type: "frame",
+            layout: "none",
+            theme: { mode: "dark" },
+            x: 30,
+            y: 0,
+            width: 30,
+            height: 20,
+            children: [{ id: "dark-inst", type: "ref", ref: "card", x: 0, y: 0, descendants: { dot: { fill: "#00ff00" } } }],
+          },
+        ],
+      },
+    ],
+  } as unknown as Parameters<ReturnType<typeof createOpenPencilRenderer>["renderFrame"]>[0];
+  const out = await createOpenPencilRenderer().renderFrame(doc, "frame", { scale: 1 });
+  const a = out.nodeBoxes["light-inst"];
+  const b = out.nodeBoxes["dark-inst"];
+  assert.ok(a && b);
+  assert.notDeepEqual(a, b);
+  const { PNG } = await import("pngjs");
+  const img = PNG.sync.read(out.png);
+  const px = (x: number, y: number) => [...img.data.subarray((y * img.width + x) * 4, (y * img.width + x) * 4 + 3)];
+  assert.deepEqual(px(1, 1), [255, 255, 255]);
+  assert.deepEqual(px(31, 1), [0, 0, 0]);
+  assert.deepEqual(px(10, 10), [255, 0, 0]);
+  assert.deepEqual(px(40, 10), [0, 255, 0]);
+});

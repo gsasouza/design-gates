@@ -90,3 +90,33 @@ test("prepareDocument with an unknown frame returns a copy without throwing", ()
   const doc = docWith({ c: two });
   assert.equal(fillOf(prepareDocument(doc, "nope", { mode: "dark" })), "#111111");
 });
+
+test("prepareDocument bakes a component with the theme of an instance under a nested pin", () => {
+  const doc = {
+    version: "2.6",
+    themes: { mode: ["light", "dark"] },
+    variables: { c: two },
+    children: [
+      { id: "comp", type: "rectangle", reusable: true, width: 1, height: 1, fill: "$c" },
+      {
+        id: "frame",
+        type: "frame",
+        width: 10,
+        height: 10,
+        children: [
+          { id: "plain", type: "ref", ref: "comp" },
+          { id: "box", type: "frame", theme: { mode: "dark" }, children: [{ id: "dark", type: "ref", ref: "comp" }] },
+        ],
+      },
+    ],
+  } as unknown as Doc;
+  const out = prepareDocument(doc, "frame");
+  const byId = (id: string) => out.children.find((n) => n.id === id) as unknown as { fill?: unknown; ref?: string };
+  const frame = out.children.find((n) => n.id === "frame")!;
+  const plain = frame.children![0] as unknown as { ref: string };
+  const dark = frame.children![1]!.children![0] as unknown as { ref: string };
+  assert.equal(plain.ref, "comp");
+  assert.equal(byId("comp").fill, "#111111");
+  assert.notEqual(dark.ref, "comp");
+  assert.equal(byId(dark.ref).fill, "#222222");
+});

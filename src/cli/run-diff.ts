@@ -168,7 +168,7 @@ async function build(o: DiffOptions, deps: DiffDeps): Promise<{ result: DiffResu
 
   // An absolute --out outside the repo was chosen explicitly by the user; anything else may come from the worktree.
   const explicit = o.out !== undefined && path.isAbsolute(o.out) && !isInside(repo, out);
-  if (!explicit) await refuseSymlinkedOut(fs, o.out !== undefined && path.isAbsolute(o.out) ? repo : deps.cwd, out);
+  if (!explicit) await refuseSymlinkedOut(fs, isInside(repo, out) ? repo : deps.cwd, out);
 
   const tmp = await fs.mkdtemp(path.join(deps.tmpdir, "design-gates-"));
   try {
