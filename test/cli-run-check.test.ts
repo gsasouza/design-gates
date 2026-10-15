@@ -1,11 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFile, symlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defaultFs } from "../src/cli/run-diff.js";
-import { runCheck, type CheckDeps, type CheckOptions } from "../src/cli/run-check.js";
+import { defaultCheckDeps, runCheck, type CheckDeps, type CheckOptions } from "../src/cli/run-check.js";
 import { registry, type RuleEntry } from "../src/rules/index.js";
 import type { Violation } from "../src/gates/types.js";
 import { createFixtureRepo } from "./helpers/fixture-repo.js";
@@ -308,5 +308,34 @@ test("run from a subdirectory, paths resolve against it and `.` means all files"
     assert.equal(dot.out, whole.out);
     const outside = await check(repo, { paths: ["../.."] }, { invokedFrom: sub });
     assert.equal(outside.code, 2);
+  });
+});
+
+test("real git: from a subdirectory the repo root holds config, baseline and the relative file", async () => {
+  await withRepo("check/fail", async (repo) => {
+    const sub = path.join(repo, "nested");
+    await mkdir(sub);
+    await writeFile(path.join(repo, "design-gates.config.json"), '{"rules":{"SCH-002":{"severity":"warn"}}}');
+    const prev = process.cwd();
+    process.chdir(sub);
+    try {
+      const run = async (options: CheckOptions): Promise<Result> => {
+        let out = "";
+        let err = "";
+        const code = await runCheck(options, { ...defaultCheckDeps(), stdout: (t) => (out += t), stderr: (t) => (err += t) });
+        return { code, out, err };
+      };
+      const r = await run({});
+      assert.equal(r.code, 0, r.err);
+      const [v] = parse(r).violations;
+      assert.equal(v!.file, "bad.pen");
+      assert.equal(v!.severity, "warn");
+      const u = await run({ updateBaseline: true });
+      assert.equal(u.code, 0, u.err);
+      assert.match(await readFile(path.join(repo, "design-gates-baseline.json"), "utf8"), /"file": "bad.pen"/);
+      await assert.rejects(readFile(path.join(sub, "design-gates-baseline.json"), "utf8"));
+    } finally {
+      process.chdir(prev);
+    }
   });
 });
