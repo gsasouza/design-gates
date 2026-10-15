@@ -14,7 +14,8 @@ The text uses the font pinned in `fonts/` (Inter).
 | `node-moved.pen` | `moved-frame` | `mover` parent `group-a` -> `group-b` | `moved` |
 | `node-reordered.pen` | `reorder-frame` | siblings `a,b,c` -> `b,c,a` (only `sib-a` is outside the longest increasing subsequence) | `reordered` on `sib-a` |
 | `instance-override.pen` | `override-frame` | `descendants.label.fill` override on `ref` instance `btn-inst` | `modified`, path `descendants.label.fill` |
-| `id-recreated.pen` | `recreated-new` (was `recreated-old`) | same frame, every id recreated | `none` (matched by name; zero added/removed/modified nodes) |
+| `id-recreated.pen` | `recreated-new` (was `recreated-old`) | same frame, every id recreated | `none` (matched by structure; zero added/removed/modified nodes) |
+| `id-recreated-changed.pen` | `recreated-changed-new` (was `recreated-changed-old`) | every id recreated AND child `chg-new-extra` added; frame name `RecreatedChanged` stays unique | `added` on `chg-new-extra` (matched by name) |
 | `variable.pen` | `var-comp-frame`, `var-frame`, `var-ref-frame` | variable `bg` value in theme `mode=dark` `#000000` -> `#111111` | variable `modified` for each referencing frame; `var-none-frame` is not affected |
 | `new/renamed.pen` | `renamed-frame` | renamed from `old/renamed.pen`, content identical | file `renamed`, change `none` |
 | `added.pen` | `file-added-frame` | file only in head | file `added` |

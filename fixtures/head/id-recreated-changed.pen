@@ -1,0 +1,42 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "recreated-changed-new",
+      "type": "frame",
+      "name": "RecreatedChanged",
+      "layout": "none",
+      "width": 200,
+      "height": 100,
+      "fill": "#ffffff",
+      "children": [
+        {
+          "id": "chg-new-r1",
+          "type": "rectangle",
+          "name": "Box",
+          "width": 40,
+          "height": 20,
+          "fill": "#123456"
+        },
+        {
+          "id": "chg-new-t1",
+          "type": "text",
+          "name": "Label",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "x": 4,
+          "y": 4,
+          "content": "Same"
+        },
+        {
+          "id": "chg-new-extra",
+          "type": "rectangle",
+          "name": "Extra",
+          "width": 10,
+          "height": 10,
+          "fill": "#abcdef"
+        }
+      ]
+    }
+  ]
+}
