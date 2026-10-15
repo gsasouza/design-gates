@@ -19,13 +19,15 @@
   },
   "scripts": {
     "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p . && node -e \"fs.mkdirSync('dist/src/report/assets',{recursive:true});for(const f of fs.readdirSync('src/report/assets'))fs.writeFileSync('dist/src/report/assets/'+f,fs.readFileSync('src/report/assets/'+f))\" && node -e \"fs.chmodSync('dist/src/cli.js',0o755)\"",
-    "test": "npm run build && node --test \"dist/test/**/*.test.js\""
+    "test": "npm run build && node --test \"dist/test/**/*.test.js\"",
+    "screenshot": "node scripts/screenshot.mjs"
   },
   "devDependencies": {
     "@types/jsdom": "21.1.7",
     "@types/node": "22.20.5",
     "@types/pngjs": "6.0.5",
     "jsdom": "26.1.0",
+    "playwright": "1.63.0",
     "typescript": "5.9.3"
   },
   "dependencies": {

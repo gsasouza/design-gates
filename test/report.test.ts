@@ -354,3 +354,20 @@ test("rendering is deterministic", () => {
   const b = renderReport(fixture(), { inline: true, imageReader: reader });
   assert.equal(a, b);
 });
+
+test("an unchanged frame rendered for a variable change gets a section and theme switcher", () => {
+  const r = fixture();
+  const frame: FrameDiff = {
+    id: "v1", name: "Var", baseId: "v1", headId: "v1", status: "unchanged", matchedBy: "id",
+    counts: counts(), nodes: [], changeBoxes: [], missingBoxes: [],
+    pixelDiffRatio: { default: 0, "mode=dark": 0.25 },
+    images: { default: imgs("v-d"), "mode=dark": imgs("v-k") },
+  };
+  r.files[0]!.frames.push(frame);
+  const { doc } = load(r);
+  const section = doc.querySelector('section.frame[data-status="unchanged"]')!;
+  assert.ok(section);
+  assert.ok(section.querySelector("select.theme-select"));
+  assert.ok(doc.querySelector('#sidebar li a[href="#frame-' + section.getAttribute("data-frame") + '"]'));
+  assert.match(doc.querySelector("details.unchanged")!.textContent!, /Same/);
+});
