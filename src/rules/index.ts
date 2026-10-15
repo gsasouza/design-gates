@@ -1,6 +1,8 @@
 import type { CompiledDocument } from "../compile/types.js";
 import type { GatesConfig, RuleId } from "../gates/config.js";
 import { runA11y001 } from "./A11Y-001.js";
+import { cmp001 } from "./CMP-001.js";
+import { dif001 } from "./DIF-001.js";
 import { sch001 } from "./SCH-001.js";
 import { sch002 } from "./SCH-002.js";
 import { sch003 } from "./SCH-003.js";
@@ -22,6 +24,20 @@ const ENTRIES: RuleEntry[] = [
     description: "Text color against its effective background meets WCAG contrast in every theme combination.",
     defaultSeverity: "block",
     run: runA11y001,
+  },
+  {
+    id: "CMP-001",
+    title: "Detached instance",
+    description: "A subtree that exactly repeats a reusable component's structure instead of being an instance of it.",
+    defaultSeverity: "warn",
+    run: cmp001,
+  },
+  {
+    id: "DIF-001",
+    title: "Blast radius",
+    description: "A changed component or variable and the instances, nodes and screens it affects.",
+    defaultSeverity: "warn",
+    run: dif001,
   },
   {
     id: "SCH-001",
