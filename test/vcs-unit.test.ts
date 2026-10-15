@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
@@ -44,8 +44,8 @@ test("init in a fresh folder: exact argv and summary", async () => {
     [NO_LOCKS, "config", "--get", "user.email"],
     [NO_LOCKS, "config", "--local", "user.email", "designer@localhost"],
     STATUS,
-    [NO_LOCKS, "add", "--", "a.pen", "assets/x.png"],
-    [NO_LOCKS, "commit", "--message=First version", "--", "a.pen", "assets/x.png"],
+    [NO_LOCKS, "add", "--", ":(literal)a.pen", ":(literal)assets/x.png"],
+    [NO_LOCKS, "commit", "--message=First version", "--", ":(literal)a.pen", ":(literal)assets/x.png"],
     [NO_LOCKS, "log", "--max-count=1", "--format=%H%x1f%h%x1f%s"],
   ]);
   assert.equal(await readFile(path.join(dir, ".gitignore"), "utf8"), "/design-diff/\n");
@@ -70,6 +70,16 @@ test("init on an existing repo with identity set and gitignore present changes n
   assert.equal(r.changed, false);
   assert.equal(r.summary, "Nothing changed: this folder is already set up for versions.");
   assert.equal(await readFile(path.join(dir, ".gitignore"), "utf8"), "node_modules\n/design-diff/\n");
+});
+
+test("init refuses to write through a .gitignore symlink", async () => {
+  const dir = await tmp();
+  const target = path.join(await tmp(), "elsewhere");
+  await writeFile(target, "keep\n");
+  await symlink(target, path.join(dir, ".gitignore"));
+  const rec = recordingGit((a) => (a[0] === "rev-parse" ? dir : undefined));
+  await assert.rejects(createDesignRepo({ repo: dir, exec: rec.exec }).init(), VcsRefusedError);
+  assert.equal(await readFile(target, "utf8"), "keep\n");
 });
 
 test("init extends a .gitignore without trailing newline, once", async () => {
@@ -141,8 +151,8 @@ test("save: explicit message, pathspecs only (no add -A)", async () => {
   });
   const r = await createDesignRepo({ repo: dir, exec: rec.exec }).save({ message: "Tweak" });
   assert.deepEqual(rec.calls.slice(1), [
-    [NO_LOCKS, "add", "--", "a.pen", "sub/b.pen"],
-    [NO_LOCKS, "commit", "--message=Tweak", "--", "a.pen", "sub/b.pen"],
+    [NO_LOCKS, "add", "--", ":(literal)a.pen", ":(literal)sub/b.pen"],
+    [NO_LOCKS, "commit", "--message=Tweak", "--", ":(literal)a.pen", ":(literal)sub/b.pen"],
     [NO_LOCKS, "log", "--max-count=1", "--format=%H%x1f%h%x1f%s"],
   ]);
   assert.equal(r.summary, "Saved a new version (aaaaaaa): Tweak. 2 files included.");
@@ -153,14 +163,14 @@ test("save: messages that look like flags or forbidden words are accepted", asyn
   for (const message of ["reset", "-f", "push", "--hard"]) {
     const rec = recordingGit((a) => (a[0] === "status" ? porcelain(" M a.pen") : a[0] === "log" ? LOG_LINE(SHA1, "aaaaaaa", message) : undefined));
     await createDesignRepo({ repo: await tmp(), exec: rec.exec }).save({ message });
-    assert.deepEqual(rec.calls[2], [NO_LOCKS, "commit", `--message=${message}`, "--", "a.pen"]);
+    assert.deepEqual(rec.calls[2], [NO_LOCKS, "commit", `--message=${message}`, "--", ":(literal)a.pen"]);
   }
 });
 
 test("save: files named like forbidden words are accepted after --", async () => {
   const rec = recordingGit((a) => (a[0] === "status" ? porcelain(" M push.pen", " M clean.pen") : a[0] === "log" ? LOG_LINE(SHA1, "aaaaaaa", "x") : undefined));
   await createDesignRepo({ repo: await tmp(), exec: rec.exec }).save({ message: "x" });
-  assert.deepEqual(rec.calls[1], [NO_LOCKS, "add", "--", "push.pen", "clean.pen"]);
+  assert.deepEqual(rec.calls[1], [NO_LOCKS, "add", "--", ":(literal)push.pen", ":(literal)clean.pen"]);
 });
 
 test("save: default message comes from the injected local clock", async () => {
@@ -168,7 +178,7 @@ test("save: default message comes from the injected local clock", async () => {
   const repo = createDesignRepo({ repo: await tmp(), exec: rec.exec, clock: () => new Date(2026, 0, 2, 3, 4) });
   const r = await repo.save();
   assert.equal(r.message, "Saved 2026-01-02 03:04");
-  assert.deepEqual(rec.calls[2], [NO_LOCKS, "commit", "--message=Saved 2026-01-02 03:04", "--", "a.pen"]);
+  assert.deepEqual(rec.calls[2], [NO_LOCKS, "commit", "--message=Saved 2026-01-02 03:04", "--", ":(literal)a.pen"]);
 });
 
 test("save: nothing changed makes no commit call and is not an error", async () => {
@@ -183,7 +193,8 @@ const SIGN_STDERR = "error: gpg failed to sign the data\nfatal: failed to write 
 const failCases: [string, string, string, string][] = [
   ["signing", SIGN_STDERR, "Saving failed because your git setup signs versions and signing failed: error: gpg failed to sign the data", "signing"],
   ["cannot run gpg", "error: cannot run gpg: No such file or directory\n", "Saving failed because your git setup signs versions and signing failed: error: cannot run gpg: No such file or directory", "signing"],
-  ["hook", "pre-commit hook failed (add --no-verify to bypass)\n", "Saving failed because a git hook rejected it: pre-commit hook failed (add --no-verify to bypass)", "hook"],
+  // The hook branch only fires when the hook's own output mentions "hook" (real git adds no preamble; see vcs-real-git.test.ts).
+  ["hook", "pre-commit hook: lint failed\n", "Saving failed because a git hook rejected it: pre-commit hook: lint failed", "hook"],
   ["unknown", "\nfatal: something odd\nmore\n", "Saving failed: fatal: something odd", "other"],
 ];
 

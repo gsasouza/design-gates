@@ -73,7 +73,7 @@ export async function resolveVersion(git: SafeGit, input: string): Promise<Resol
     }
   }
 
-  const branches = await git(["for-each-ref", "--format=%(refname:short) %(objectname) %(objectname:short)", "refs/heads/"]);
+  const branches = await git(["for-each-ref", "--format=%(refname:lstrip=2) %(objectname) %(objectname:short)", "refs/heads/"]);
   for (const line of branches.split("\n")) {
     if (line === "") continue;
     const [name, sha, shortId] = line.split(" ");

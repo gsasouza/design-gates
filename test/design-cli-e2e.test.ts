@@ -41,7 +41,7 @@ const design = async (args: string[], cwd?: string): Promise<Result> => {
 let fx: FixtureRepo;
 let out: string;
 before(async () => {
-  fx = await createFixtureRepo();
+  fx = await createFixtureRepo({ base: "base", head: "head" });
   out = await mkdtemp(path.join(tmpdir(), "design-e2e-"));
 });
 after(async () => {
