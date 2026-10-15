@@ -8,3 +8,5 @@ export type {
   PenVersion,
 } from "./pen/types.js";
 export { loadPenFile, parsePen } from "./pen/load.js";
+export type { Renderer } from "./render/renderer.js";
+export { createOpenPencilRenderer } from "./render/openpencil.js";
