@@ -61,3 +61,13 @@ export { nodeChangeBoxes, pixelChangeBoxes, sortBoxes } from "./visual/change-bo
 export { fileSlug } from "./visual/render-frames.js";
 export { renderReport } from "./report/render-report.js";
 export type { RenderReportOptions } from "./report/render-report.js";
+export { ALLOWED_GIT_SUBCOMMANDS, createSafeGit, createVcsExecFileGit } from "./vcs/git.js";
+export type { SafeGit } from "./vcs/git.js";
+export { VcsCommitFailedError, VcsRefusedError, VcsUsageError, classifyCommitFailure } from "./vcs/errors.js";
+export { resolveRepoPath } from "./vcs/paths.js";
+export { resolveVersion } from "./vcs/resolve.js";
+export type { ResolvedVersion } from "./vcs/resolve.js";
+export { getUnsavedChanges } from "./vcs/state.js";
+export type { ChangedFile, FileState, UnsavedChanges } from "./vcs/state.js";
+export { createDesignRepo, defaultSaveMessage } from "./vcs/repo.js";
+export type { DesignRepo, DesignRepoOptions, HistoryResult, HistoryVersion, InitResult, SaveResult, StatusResult } from "./vcs/repo.js";
