@@ -12,7 +12,7 @@
           "id": "label",
           "type": "text",
           "content": "Go",
-          "fill": "#000000"
+          "fill": "#F0F0F0"
         }
       ]
     },

@@ -14,6 +14,7 @@ code{font-family:ui-monospace,monospace;font-size:12px}
 .legend{display:flex;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:12px}
 .legend i,.swatch{display:inline-block;width:12px;height:12px;border:0;border-radius:2px;background:color-mix(in srgb,var(--c,var(--pixel)) 30%,transparent);vertical-align:-2px}
 .swatch{border:1px solid var(--border);margin-right:4px}
+.legend i.k-pixel{background:repeating-linear-gradient(45deg,color-mix(in srgb,var(--c) 30%,transparent) 0 3px,color-mix(in srgb,var(--c) 8%,transparent) 3px 6px)}
 #layout{display:grid;grid-template-columns:280px minmax(0,1fr);align-items:start}
 #sidebar{position:sticky;top:46px;max-height:calc(100vh - 46px);overflow:auto;padding:12px;border-right:1px solid var(--border);background:var(--panel)}
 #sidebar h2{font-size:13px;letter-spacing:.04em;color:var(--muted);margin:12px 0 4px}

@@ -65,13 +65,13 @@ function fixture(name = "Login"): DiffResult {
   };
   const added: FrameDiff = {
     id: "f2", name: "Signup", headId: "f2", status: "added", matchedBy: null,
-    counts: counts({ added: 1 }), nodes: [{ id: "n3", name: "Root", type: "frame", change: "added" }],
+    counts: counts(), nodes: [{ id: "n3", name: "Root", type: "frame", change: "added" }],
     changeBoxes: [{ x: 0, y: 0, w: 10, h: 10, kind: "added", side: "head", nodeId: "n3" }],
     missingBoxes: [], pixelDiffRatio: null, images: { default: { head: "images/f2-head.png" } },
   };
   const removed: FrameDiff = {
     id: "f5", name: "Old", baseId: "f5", status: "removed", matchedBy: null,
-    counts: counts({ removed: 1 }), nodes: [], changeBoxes: [], missingBoxes: [],
+    counts: counts(), nodes: [], changeBoxes: [], missingBoxes: [],
     pixelDiffRatio: null, images: { default: { base: "images/f5-base.png" } },
   };
   const themed: FrameDiff = {
@@ -530,7 +530,7 @@ test("summary: totals, per-kind links to the first frame with that kind, variabl
   const s = doc.getElementById("summary")!;
   assert.equal(
     s.textContent,
-    "9 changes in 4 frames: 3 added, 2 removed, 3 modified, 1 variable changed",
+    "7 changes in 4 frames: 2 added, 1 removed, 3 modified, 1 variable changed",
   );
   const href = (k: string) => s.querySelector(`a[data-kind="${k}"]`)?.getAttribute("href");
   assert.equal(href("added"), "#frame-0");

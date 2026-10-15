@@ -1,0 +1,32 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "badge",
+      "type": "frame",
+      "fill": "#FFFFFF",
+      "children": [
+        {
+          "id": "badge-label",
+          "type": "text",
+          "content": "Hello",
+          "fill": "#6B7280",
+          "fontSize": 16
+        }
+      ],
+      "reusable": true
+    },
+    {
+      "id": "screen",
+      "type": "frame",
+      "fill": "#FFFFFF",
+      "children": [
+        {
+          "id": "b1",
+          "type": "ref",
+          "ref": "badge"
+        }
+      ]
+    }
+  ]
+}

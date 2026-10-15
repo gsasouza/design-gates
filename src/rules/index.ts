@@ -1,5 +1,6 @@
 import type { CompiledDocument } from "../compile/types.js";
 import type { GatesConfig, RuleId } from "../gates/config.js";
+import { runA11y001 } from "./A11Y-001.js";
 import { cmp001 } from "./CMP-001.js";
 import { dif001 } from "./DIF-001.js";
 import { sch001 } from "./SCH-001.js";
@@ -17,6 +18,13 @@ export interface RuleEntry {
 
 /** One entry per rule; each rule card adds its own line here. */
 const ENTRIES: RuleEntry[] = [
+  {
+    id: "A11Y-001",
+    title: "Text contrast",
+    description: "Text color against its effective background meets WCAG contrast in every theme combination.",
+    defaultSeverity: "block",
+    run: runA11y001,
+  },
   {
     id: "CMP-001",
     title: "Detached instance",
