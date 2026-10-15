@@ -15,10 +15,11 @@
     }
   },
   "bin": {
-    "design-gates": "dist/src/cli.js"
+    "design-gates": "dist/src/cli.js",
+    "design": "dist/src/design-cli.js"
   },
   "scripts": {
-    "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p . && node -e \"fs.mkdirSync('dist/src/report/assets',{recursive:true});for(const f of fs.readdirSync('src/report/assets'))fs.writeFileSync('dist/src/report/assets/'+f,fs.readFileSync('src/report/assets/'+f))\" && node -e \"fs.chmodSync('dist/src/cli.js',0o755)\"",
+    "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p . && node -e \"fs.mkdirSync('dist/src/report/assets',{recursive:true});for(const f of fs.readdirSync('src/report/assets'))fs.writeFileSync('dist/src/report/assets/'+f,fs.readFileSync('src/report/assets/'+f))\" && node -e \"for(const f of ['cli','design-cli'])fs.chmodSync('dist/src/'+f+'.js',0o755)\"",
     "test": "npm run build && node --test \"dist/test/**/*.test.js\"",
     "screenshot": "node scripts/screenshot.mjs"
   },
