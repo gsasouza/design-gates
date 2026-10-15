@@ -18,6 +18,8 @@ export const ALLOWED_GIT_SUBCOMMANDS = [
   "for-each-ref",
   "restore",
   "switch",
+  "merge-base",
+  "check-ref-format",
 ] as const;
 
 export type AllowedGitSubcommand = (typeof ALLOWED_GIT_SUBCOMMANDS)[number];

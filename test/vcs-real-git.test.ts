@@ -171,3 +171,84 @@ test("real git: a failing pre-commit hook has no git preamble, so it reports the
     return true;
   });
 });
+
+test("restore never changes history: git log is identical before and after; no assets/ folder needed", async () => {
+  const dir = await folder();
+  await writeFile(path.join(dir, "a.pen"), "1");
+  const repo = make(dir);
+  await repo.init();
+  await writeFile(path.join(dir, "a.pen"), "2");
+  await writeFile(path.join(dir, "b.pen"), "new");
+  await repo.save({ message: "Two" });
+  await writeFile(path.join(dir, "a.pen"), "3");
+  await repo.save({ message: "Three" });
+
+  const before = rawGit(dir, "log", "--format=%H", "--all");
+  const branchesBefore = rawGit(dir, "for-each-ref", "--format=%(refname) %(objectname)");
+  const out = await repo.restore({ version: "3" });
+  assert.equal(rawGit(dir, "log", "--format=%H", "--all"), before);
+  assert.equal(rawGit(dir, "for-each-ref", "--format=%(refname) %(objectname)"), branchesBefore);
+  assert.equal(out.restored, true);
+  assert.equal(await readFile(path.join(dir, "a.pen"), "utf8"), "1");
+  await assert.rejects(readFile(path.join(dir, "b.pen"), "utf8"), /ENOENT/);
+  assert.equal((await repo.status()).clean, false);
+
+  await assert.rejects(repo.restore({ version: "1" }), VcsRefusedError);
+  const again = await repo.restore({ version: "1", saveFirst: true });
+  assert.equal(again.savedFirst?.message, "Before restore to #1");
+  assert.equal(rawGit(dir, "log", "--max-count=1", "--format=%s"), "Before restore to #1\n");
+  assert.equal(await readFile(path.join(dir, "a.pen"), "utf8"), "3");
+});
+
+test("restore is refused for a never-saved .pen; explore and switch work on real history", async () => {
+  const dir = await folder();
+  await writeFile(path.join(dir, "a.pen"), "1");
+  const repo = make(dir);
+  await repo.init();
+  await writeFile(path.join(dir, "new.pen"), "x");
+  await assert.rejects(repo.restore({ version: "1" }), VcsRefusedError);
+  await assert.rejects(repo.explore({ name: "idea" }), VcsRefusedError);
+  await rm(path.join(dir, "new.pen"));
+
+  const created = await repo.explore({ name: "idea" });
+  assert.equal(created.exploration, "idea");
+  assert.deepEqual((await repo.explore()).explorations, [{ name: "idea", current: true }, { name: "main", current: false }]);
+  await assert.rejects(repo.explore({ name: "idea" }), /already an exploration/);
+  await assert.rejects(repo.explore({ name: "bad name" }), /can't be used/);
+  await writeFile(path.join(dir, "a.pen"), "2");
+  await assert.rejects(repo.switchTo("main"), /design save/);
+  await repo.save({ message: "On idea" });
+  assert.equal((await repo.switchTo("main")).switched, true);
+  assert.equal(await readFile(path.join(dir, "a.pen"), "utf8"), "1");
+  await assert.rejects(repo.switchTo("nope"), /no exploration/);
+});
+
+test("compare writes a real report between a saved version and the working files", async () => {
+  const { compare } = await import("../src/index.js");
+  const { defaultFs } = await import("../src/cli/run-diff.js");
+  const { WHITE, fakeRenderer, makePng, render } = await import("./helpers/png.js");
+  const pen = (color: string) =>
+    JSON.stringify({ version: "2.10", children: [{ type: "frame", id: "f1", name: "F", layout: "none", width: 8, height: 8, children: [{ type: "rectangle", id: "r1", name: "R", fill: color, x: 0, y: 0, width: 4, height: 4 }] }] });
+  const dir = await folder();
+  await writeFile(path.join(dir, "a.pen"), pen("#ff0000"));
+  const repo = make(dir);
+  await repo.init();
+  await writeFile(path.join(dir, "a.pen"), pen("#00ff00"));
+  const renderer = fakeRenderer(() => render(makePng(8, 8, WHITE), { f1: { x: 0, y: 0, w: 8, h: 8 }, r1: { x: 0, y: 0, w: 4, h: 4 } }));
+  const opened: string[] = [];
+  const log = rawGit(dir, "log", "--format=%H");
+  const r = await compare(
+    { open: true },
+    {
+      repo: dir,
+      exec: createVcsExecFileGit(dir, ISOLATED),
+      diff: { cwd: dir, tmpdir: os.tmpdir(), stdout() {}, stderr() {}, fs: defaultFs, gitDirs: async () => [], createRenderer: () => renderer },
+      openFile: async (f) => void opened.push(f),
+    },
+  );
+  assert.equal(r.reportPath, path.join(dir, "design-diff", "report.html"));
+  assert.ok((await readFile(r.reportPath, "utf8")).length > 0);
+  assert.equal(r.files, 1);
+  assert.deepEqual(opened, [r.reportPath]);
+  assert.equal(rawGit(dir, "log", "--format=%H"), log);
+});

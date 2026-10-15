@@ -9,7 +9,7 @@ import { gitError, porcelain, recordingGit } from "./vcs-helpers.js";
 test("allowlist is an exact, deliberate list", () => {
   assert.deepEqual(
     [...ALLOWED_GIT_SUBCOMMANDS],
-    ["init", "rev-parse", "config", "status", "add", "commit", "log", "diff", "ls-files", "show", "branch", "for-each-ref", "restore", "switch"],
+    ["init", "rev-parse", "config", "status", "add", "commit", "log", "diff", "ls-files", "show", "branch", "for-each-ref", "restore", "switch", "merge-base", "check-ref-format"],
   );
 });
 

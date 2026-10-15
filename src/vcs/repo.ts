@@ -2,7 +2,10 @@ import { readFile, realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createVcsExecFileGit, createSafeGit, type SafeGit } from "./git.js";
 import type { GitExec } from "../git/exec.js";
-import { classifyCommitFailure, stderrOf, VcsRefusedError, VcsUsageError } from "./errors.js";
+import { classifyCommitFailure, VcsRefusedError, VcsUsageError } from "./errors.js";
+import { guardNotRepo } from "./guard.js";
+import { exploreOrList, switchExploration, type ExploreResult, type SwitchResult } from "./explore.js";
+import { restoreVersion, type RestoreOptions, type RestoreResult } from "./restore.js";
 import { COMMIT_LINE_FORMAT, LOG_FORMAT, parseCommitLines, parseLog } from "./log.js";
 import { resolveRepoPath } from "./paths.js";
 import { currentVersions, resolveVersion, type ResolvedVersion } from "./resolve.js";
@@ -70,6 +73,9 @@ export interface DesignRepo {
   history(options?: { file?: string; limit?: number }): Promise<HistoryResult>;
   resolveVersion(ref: string): Promise<ResolvedVersion>;
   unsavedChanges(): Promise<UnsavedChanges>;
+  restore(options: RestoreOptions): Promise<RestoreResult>;
+  explore(options?: { name?: string }): Promise<ExploreResult>;
+  switchTo(name: string): Promise<SwitchResult>;
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -99,17 +105,7 @@ export function createDesignRepo(options: DesignRepoOptions): DesignRepo {
   const clock = options.clock ?? (() => new Date());
   const git: SafeGit = createSafeGit(options.exec ?? createVcsExecFileGit(repo));
 
-  /** Runs git, turning "not a repository" into a friendly refusal. */
-  const guarded: SafeGit = async (args) => {
-    try {
-      return await git(args);
-    } catch (err) {
-      if (/not a git repository/i.test(stderrOf(err))) {
-        throw new VcsRefusedError("This folder doesn't have versions yet. Run init to start saving versions.");
-      }
-      throw err;
-    }
-  };
+  const guarded: SafeGit = guardNotRepo(git);
 
   async function exploration(): Promise<string | null> {
     const name = (await guarded(["branch", "--show-current"])).trim();
@@ -245,5 +241,8 @@ export function createDesignRepo(options: DesignRepoOptions): DesignRepo {
     history,
     resolveVersion: (ref) => resolveVersion(guarded, ref),
     unsavedChanges: () => getUnsavedChanges(guarded),
+    restore: (opts) => restoreVersion({ git: guarded, repo, save: (message) => save({ message }) }, opts),
+    explore: (opts = {}) => exploreOrList(guarded, opts.name),
+    switchTo: (name) => switchExploration(guarded, name),
   };
 }
