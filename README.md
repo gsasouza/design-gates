@@ -49,3 +49,18 @@ const json: string = serializeDiff(result); // deterministic JSON
 ```
 
 `computeSemanticDiffWithDocs` additionally returns the parsed base/head documents (`DiffDocs`, keyed by file path) for the visual diff. Git is only read (`--no-optional-locks`); the repo, index and HEAD are never modified. Pass `git` to inject a custom `GitReader`.
+
+## Visual diff
+
+`computeVisualDiff({ result, docs, renderer, outDir, scale, threshold })` renders every
+`modified`/`added`/`removed` frame (plus frames listed by a variable or theme change) at base and
+head with the injected `Renderer`, writes `images/<file-slug>/<frameId>[-<theme>]-{base,head,diff}.png`
+under `outDir`, and fills `images`, `pixelDiffRatio` and `changeBoxes` (node boxes plus `pixel`
+regions) per theme key. `file-slug` is the sanitized path plus the first 8 hex chars of its sha256.
+Sizes that differ are padded top-left onto a transparent common canvas. Added/removed frames are
+diffed against a blank canvas.
+
+Every frame is rendered in the default theme and in each theme of a variable change that lists it.
+The pixel threshold defaults to 0.1 (pixelmatch, anti-aliasing ignored), so tiny colour shifts
+give a ratio of 0 unless a lower `threshold` is passed. A node the renderer
+gives no box for is listed in `missingBoxes` instead of getting an invented box.

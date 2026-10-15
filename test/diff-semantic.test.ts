@@ -100,7 +100,7 @@ test("variable change per theme lists the frames using it, including via a compo
   assert.deepEqual(themes, []);
   assert.equal(variables.length, 1);
   const v = variables[0]!;
-  assert.deepEqual([v.name, v.change, v.theme, v.old, v.new], ["bg", "modified", "mode=dark", "#000000", "#111111"]);
+  assert.deepEqual([v.name, v.change, v.theme, v.old, v.new], ["bg", "modified", "mode=dark", "#000000", "#444444"]);
   assert.deepEqual(
     v.frames,
     variableExpected.map((e) => ({ file: e.file, frameId: e.frameId })).sort((a, b) => (a.frameId < b.frameId ? -1 : 1)),

@@ -24,10 +24,13 @@
   "devDependencies": {
     "@types/jsdom": "21.1.7",
     "@types/node": "22.20.5",
+    "@types/pngjs": "6.0.5",
     "jsdom": "26.1.0",
     "typescript": "5.9.3"
   },
   "dependencies": {
-    "@open-pencil/core": "0.16.0"
+    "@open-pencil/core": "0.16.0",
+    "pixelmatch": "8.0.0",
+    "pngjs": "7.0.0"
   }
 }
