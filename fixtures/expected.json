@@ -63,6 +63,14 @@
     "fileStatus": "modified",
     "frameId": "recreated-new",
     "change": "none",
+    "matchedBy": "structure"
+  },
+  {
+    "file": "id-recreated-changed.pen",
+    "fileStatus": "modified",
+    "frameId": "recreated-changed-new",
+    "nodeId": "chg-new-extra",
+    "change": "added",
     "matchedBy": "name"
   },
   {
