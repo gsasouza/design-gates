@@ -339,3 +339,23 @@ test("real git: from a subdirectory the repo root holds config, baseline and the
     }
   });
 });
+
+test("--update-baseline replaces an invalid existing baseline", async () => {
+  await withRepo("check/fail", async (repo) => {
+    const file = path.join(repo, "design-gates-baseline.json");
+    await writeFile(file, "[]");
+    assert.equal((await check(repo, { updateBaseline: true })).code, 0);
+    assert.deepEqual((JSON.parse(await readFile(file, "utf8")) as { version: number }).version, 1);
+  });
+});
+
+test("a document too deep to diff under --base is reported as SCH-001, not exit 2", async () => {
+  await withRepo("check/clean", async (repo) => {
+    const n = 5000;
+    const text = `{"version":"2.6","children":[${'{"id":"n","type":"frame","children":['.repeat(n)}{"id":"leaf","type":"frame"}${"]}".repeat(n)}]}`;
+    await writeFile(path.join(repo, "deep.pen"), text);
+    const r = await check(repo, { base: "base" });
+    assert.notEqual(r.code, 2, r.err);
+    assert.ok(parse(r).violations.some((v) => v.file === "deep.pen"));
+  });
+});
