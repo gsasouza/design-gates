@@ -16,7 +16,7 @@ The text uses the font pinned in `fonts/` (Inter).
 | `instance-override.pen` | `override-frame` | `descendants.label.fill` override on `ref` instance `btn-inst` | `modified`, path `descendants.label.fill` |
 | `id-recreated.pen` | `recreated-new` (was `recreated-old`) | same frame, every id recreated | `none` (matched by structure; zero added/removed/modified nodes) |
 | `id-recreated-changed.pen` | `recreated-changed-new` (was `recreated-changed-old`) | every id recreated AND child `chg-new-extra` added; frame name `RecreatedChanged` stays unique | `added` on `chg-new-extra` (matched by name) |
-| `variable.pen` | `var-comp-frame`, `var-frame`, `var-ref-frame` | variable `bg` value in theme `mode=dark` `#000000` -> `#111111` | variable `modified` for each referencing frame; `var-none-frame` is not affected |
+| `variable.pen` | `var-comp-frame`, `var-frame`, `var-ref-frame` | variable `bg` value in theme `mode=dark` `#000000` -> `#444444` | variable `modified` for each referencing frame; `var-none-frame` is not affected |
 | `new/renamed.pen` | `renamed-frame` | renamed from `old/renamed.pen`, content identical | file `renamed`, change `none` |
 | `added.pen` | `file-added-frame` | file only in head | file `added` |
 | `removed.pen` | `file-removed-frame` | file only in base | file `removed` |

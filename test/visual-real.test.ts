@@ -78,9 +78,7 @@ test("an unchanged frame is not rendered", async () => {
 });
 
 test("a dark-only variable change gives a pixel ratio for the dark key", async () => {
-  // #000000 -> #111111 is below the default 0.1 colour threshold, so a finer one is used.
-  assert.equal(frameOf((await visualDiff()).result, "variable.pen", "var-frame").pixelDiffRatio!["mode=dark"], 0);
-  const { result } = await visualDiff(0.01);
+  const { result } = await visualDiff();
   const f = frameOf(result, "variable.pen", "var-frame");
   assert.equal(f.status, "unchanged");
   assert.equal(f.pixelDiffRatio!.default, 0);

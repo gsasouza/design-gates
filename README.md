@@ -61,6 +61,6 @@ Sizes that differ are padded top-left onto a transparent common canvas. Added/re
 diffed against a blank canvas.
 
 Every frame is rendered in the default theme and in each theme of a variable change that lists it.
-The pixel threshold defaults to 0.1 (pixelmatch, anti-aliasing ignored), so tiny colour shifts such
-as `#000000` -> `#111111` give a ratio of 0 unless a lower `threshold` is passed. A node the renderer
+The pixel threshold defaults to 0.1 (pixelmatch, anti-aliasing ignored), so tiny colour shifts
+give a ratio of 0 unless a lower `threshold` is passed. A node the renderer
 gives no box for is listed in `missingBoxes` instead of getting an invented box.
