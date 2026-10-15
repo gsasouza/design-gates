@@ -41,3 +41,10 @@ test("component mode ignores property order and metadata but not other props", (
   assert.notEqual(structureHash(a, opts), structureHash({ ...b, stroke: { thickness: 2, fill: "#000" } }, opts));
   assert.notEqual(structureHash(a, opts), structureHash({ ...b, type: "group" }, opts));
 });
+
+test("component mode: a reusable component equals its detached copy", () => {
+  const opts = { mode: "component" } as const;
+  const component: PenNode = { ...card(), reusable: true };
+  const copy = card({ label: "heading", text: "Other", id: "copy", x: 40 });
+  assert.equal(structureHash(component, opts), structureHash(copy, opts));
+});

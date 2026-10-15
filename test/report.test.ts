@@ -199,7 +199,9 @@ test("boxes carry class and colour per change type", () => {
   for (const [k, c] of [["added", "#16a34a"], ["removed", "#dc2626"], ["modified", "#d98e04"], ["moved", "#2563eb"], ["reordered", "#9333ea"]]) {
     assert.ok(html.includes(`--${k}:${c}`), k);
   }
-  assert.match(html, /\.box\.k-pixel\{border-style:dashed\}/);
+  // Markers were bordered (dashed for pixel boxes); they are now borderless washes, so this
+  // asserts the hatched pixel tint on the pseudo-element instead (see the CSS tests below).
+  assert.match(html, /\.box\.k-pixel::before\{background:repeating-linear-gradient\(/);
 });
 
 test("hover and focus show a tooltip with props old -> new and swatches", () => {
@@ -274,8 +276,11 @@ test("pulse toggle adds and removes the animation class", () => {
 
 test("pulse animation is finite and disabled for reduced motion", () => {
   const { html } = load();
-  assert.match(html, /\.pulse \.box\{animation:pulse \.7s ease-in-out 3\}/);
-  assert.match(html, /prefers-reduced-motion:reduce\)\{\.pulse \.box\{animation:none\}/);
+  // The animation moved from .box to its tint pseudo-element so the tooltip is not faded.
+  assert.match(html, /\.pulse \.box::before\{animation:pulse \.7s ease-in-out 3\}/);
+  assert.match(html, /prefers-reduced-motion:reduce\)\{\.pulse \.box::before\{animation:none\}/);
+  assert.doesNotMatch(html, /animation:[^;}]*infinite/);
+  assert.match(html, /@keyframes pulse\{[^@]*opacity/);
 });
 
 test("theme toggle switches data-theme", () => {
@@ -370,4 +375,135 @@ test("an unchanged frame rendered for a variable change gets a section and theme
   assert.ok(section.querySelector("select.theme-select"));
   assert.ok(doc.querySelector('#sidebar li a[href="#frame-' + section.getAttribute("data-frame") + '"]'));
   assert.match(doc.querySelector("details.unchanged")!.textContent!, /Same/);
+});
+
+function cssRules(html: string): { sel: string; body: string }[] {
+  const css = /<style>([\s\S]*?)<\/style>/.exec(html)![1]!;
+  return [...css.matchAll(/([^{}@]+)\{([^{}]*)\}/g)].map((m) => ({ sel: m[1]!.trim(), body: m[2]! }));
+}
+const boxRules = (html: string) => cssRules(html).filter((r) => /\.box\b/.test(r.sel) && !/\.tip/.test(r.sel) && !/markers-off|pulse/.test(r.sel));
+const alphaOf = (body: string) => Number(/color-mix\(in srgb,var\(--c\) (\d+)%/.exec(body)![1]);
+
+test("markers are borderless translucent washes on ::before, with no ring in any state", () => {
+  const { html } = load();
+  const rules = boxRules(html);
+  assert.ok(rules.length >= 5);
+  for (const r of rules) {
+    assert.doesNotMatch(r.body, /(^|;)\s*border\s*:\s*[^;]*\d+px/, r.sel);
+    assert.doesNotMatch(r.body, /outline\s*:\s*(?!none)/, r.sel);
+    assert.doesNotMatch(r.body, /box-shadow\s*:\s*(?!none)/, r.sel);
+    assert.doesNotMatch(r.body, /mix-blend-mode/, r.sel);
+  }
+  for (const r of cssRules(html).filter((x) => /\.(box|tip)\b/.test(x.sel))) assert.doesNotMatch(r.body, /mix-blend-mode/, r.sel);
+  const base = rules.find((r) => r.sel === ".box::before")!;
+  assert.match(base.body, /background:color-mix\(in srgb,var\(--c\) 30%,transparent\)/);
+  assert.match(base.body, /pointer-events:none/);
+  assert.match(base.body, /inset:0/);
+  const pixel = rules.find((r) => r.sel === ".box.k-pixel::before")!;
+  assert.match(pixel.body, /repeating-linear-gradient/);
+  assert.equal(rules.find((r) => r.sel === ".box")!.body.includes("background:none"), true);
+});
+
+test("a selected or focused marker has a stronger tint than a plain one", () => {
+  const { html } = load();
+  const rules = boxRules(html);
+  const base = alphaOf(rules.find((r) => r.sel === ".box::before")!.body);
+  const sel = rules.find((r) => r.sel === ".box.selected::before,.box:focus::before")!;
+  assert.ok(alphaOf(sel.body) > base);
+  assert.ok(alphaOf(sel.body) >= 45 && alphaOf(sel.body) <= 50);
+});
+
+test("the pulse keyframes animate the tint pseudo-element, not the box", () => {
+  const { html } = load();
+  assert.ok(cssRules(html).some((r) => r.sel === ".pulse .box::before"));
+  assert.ok(!cssRules(html).some((r) => r.sel === ".pulse .box"));
+});
+
+test("legend swatches are filled translucent tiles", () => {
+  const { html } = load();
+  const r = cssRules(html).find((x) => x.sel === ".legend i,.swatch")!;
+  assert.match(r.body, /background:color-mix\(in srgb,var\(--c,var\(--pixel\)\) 30%,transparent\)/);
+  assert.match(r.body, /border:0/);
+});
+
+test("m and the Markers button toggle all markers; j ignores hidden markers", () => {
+  const { doc, win } = load();
+  const btn = doc.getElementById("markers-toggle") as HTMLElement;
+  assert.equal(btn.getAttribute("aria-pressed"), "true");
+  assert.equal(doc.body.classList.contains("markers-off"), false);
+  key(win, "m");
+  assert.equal(doc.body.classList.contains("markers-off"), true);
+  assert.equal(btn.getAttribute("aria-pressed"), "false");
+  key(win, "j");
+  assert.equal(doc.querySelector(".box.selected"), null);
+  btn.click();
+  assert.equal(doc.body.classList.contains("markers-off"), false);
+  assert.equal(btn.getAttribute("aria-pressed"), "true");
+  key(win, "j");
+  assert.ok(doc.querySelector(".box.selected"));
+  key(win, "m");
+  assert.equal(doc.querySelector(".box.selected"), null, "hiding markers clears the selection");
+  win.document.dispatchEvent(new win.KeyboardEvent("keydown", { key: "m", ctrlKey: true, bubbles: true }));
+  assert.equal(doc.body.classList.contains("markers-off"), true, "Ctrl+m is ignored");
+  assert.match(doc.getElementById("help")!.textContent!, /markers/);
+});
+
+function fitDom(availW: number, innerH: number, w: number, h: number) {
+  const { doc, win } = load();
+  // report.js already ran during construction (jsdom has no layout), so mock sizes and resize.
+  Object.defineProperty(win.HTMLElement.prototype, "clientWidth", { configurable: true, get: () => availW });
+  Object.defineProperty(win, "innerHeight", { configurable: true, value: innerH });
+  for (const st of doc.querySelectorAll("#frame-0 .stage")) {
+    st.setAttribute("data-w", String(w));
+    st.setAttribute("data-h", String(h));
+  }
+  win.dispatchEvent(new win.Event("resize"));
+  const stages = [...doc.querySelectorAll('#frame-0 .view[data-view="side"] .stage')] as HTMLElement[];
+  const vps = [...doc.querySelectorAll('#frame-0 .view[data-view="side"] .viewport')] as HTMLElement[];
+  const scale = () => Number(/scale\(([\d.]+)\)/.exec(stages[0]!.style.transform)![1]);
+  return { doc, win, stages, vps, scale };
+}
+
+test("zoom-to-fit: a large frame fits the width/height box and Reset returns to it", () => {
+  const { doc, stages, vps, scale } = fitDom(500, 1000, 2000, 3000);
+  const expected = Math.min(500 / 2000, (1000 * 0.7) / 3000);
+  assert.ok(Math.abs(scale() - expected) < 1e-9);
+  assert.equal(stages[0]!.style.transform, stages[1]!.style.transform);
+  for (const vp of vps) assert.equal(vp.style.height, `${Math.ceil(3000 * expected)}px`);
+  (doc.querySelector('#frame-0 [data-action="zoom-in"]') as HTMLElement).click();
+  assert.ok(Math.abs(scale() - expected * 1.25) < 1e-9);
+  (doc.querySelector('#frame-0 [data-action="reset"]') as HTMLElement).click();
+  assert.ok(Math.abs(scale() - expected) < 1e-9);
+  assert.match(stages[0]!.style.transform, /translate\(0px, 0px\)/);
+});
+
+test("zoom-to-fit: a small frame scales up, capped at 400%, and the viewport hugs it", () => {
+  const a = fitDom(400, 1000, 100, 50);
+  assert.ok(Math.abs(a.scale() - 4) < 1e-9, "capped at 4");
+  for (const vp of a.vps) assert.equal(vp.style.height, `${Math.ceil(50 * 4)}px`);
+  const b = fitDom(300, 1000, 100, 50);
+  assert.ok(Math.abs(b.scale() - 3) < 1e-9, "scaled up but not capped");
+  for (const vp of b.vps) assert.equal(vp.style.height, `${Math.ceil(50 * 3)}px`);
+});
+
+test("legend text keeps WCAG AA contrast (4.5:1) against the panel in both themes", () => {
+  const html = renderReport(fixture(), { inline: false, imageReader: reader });
+  const rules = cssRules(html);
+  const lum = (h: string) => {
+    const hex = h.length === 4 ? "#" + [...h.slice(1)].map((x) => x + x).join("") : h;
+    const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!;
+  };
+  const ratio = (a: string, b: string) => {
+    const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+    return (hi! + 0.05) / (lo! + 0.05);
+  };
+  assert.match(rules.find((r) => r.sel === ".legend")!.body, /color:var\(--muted\)/);
+  const themes = rules.filter((r) => /--muted:#/.test(r.body) && /--panel:#/.test(r.body));
+  assert.ok(themes.length >= 3, "light + two dark theme blocks");
+  for (const t of themes) {
+    const muted = /--muted:(#[0-9a-f]{3,6})/i.exec(t.body)![1]!;
+    const panel = /--panel:(#[0-9a-f]{3,6})/i.exec(t.body)![1]!;
+    assert.ok(ratio(muted, panel) >= 4.5, `${t.sel}: ${muted} on ${panel}`);
+  }
 });
