@@ -36,7 +36,21 @@ export function createExecFileGit(repo: string): GitExec {
 }
 
 export function buildPathspecs(globs: string[]): string[] {
-  return [":(glob)**/*.pen", ...globs.map((g) => `:(glob)${g}`)];
+  if (globs.length === 0) return [":(glob)**/*.pen"];
+  return globs.map((g) => `:(glob)${g}`);
+}
+
+/** User globs narrow the result to .pen files; a rename across the .pen boundary becomes added/removed. */
+function onlyPen(files: ChangedFile[]): ChangedFile[] {
+  return files.flatMap((f): ChangedFile[] => {
+    const newPen = f.path.endsWith(".pen");
+    if (f.oldPath === undefined) return newPen ? [f] : [];
+    const oldPen = f.oldPath.endsWith(".pen");
+    if (newPen && oldPen) return [f];
+    if (oldPen) return [{ path: f.oldPath, status: "removed" }];
+    if (newPen) return [{ path: f.path, status: "added" }];
+    return [];
+  });
 }
 
 /** Parses `git diff --name-status -z` output, including two-path renames/copies. */
@@ -88,15 +102,15 @@ export function createGitReader(repo: string, exec: GitExec = createExecFileGit(
       const rb = await resolve(base);
       if (head !== WORKTREE) {
         const rh = await resolve(head);
-        return parseNameStatus(await git("diff", "--name-status", "-M", "-z", rb, rh, "--", ...specs));
+        return onlyPen(parseNameStatus(await git("diff", "--name-status", "-M", "-z", rb, rh, "--", ...specs)));
       }
-      const tracked = parseNameStatus(await git("diff", "--name-status", "-M", "-z", rb, "--", ...specs));
+      const tracked = onlyPen(parseNameStatus(await git("diff", "--name-status", "-M", "-z", rb, "--", ...specs)));
       const seen = new Set(tracked.map((f) => f.path));
       const untracked = parseNul(
         await git("ls-files", "--others", "--exclude-standard", "-z", "--", ...specs),
       );
       for (const p of untracked) {
-        if (!seen.has(p)) tracked.push({ path: p, status: "added" });
+        if (p.endsWith(".pen") && !seen.has(p)) tracked.push({ path: p, status: "added" });
       }
       return tracked;
     },
@@ -110,13 +124,13 @@ export function createGitReader(repo: string, exec: GitExec = createExecFileGit(
       const root = await realpath(repo);
       const target = path.resolve(root, filePath);
       const rel = path.relative(root, target);
-      if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) {
+      if (rel === "" || (rel === ".." || rel.startsWith(".." + path.sep)) || path.isAbsolute(rel)) {
         throw new Error(`Path escapes the repository: ${filePath}`);
       }
       // Resolve symlinks so a link inside the repo cannot point outside it.
       const real = await realpath(target);
       const realRel = path.relative(root, real);
-      if (realRel.startsWith("..") || path.isAbsolute(realRel)) {
+      if ((realRel === ".." || realRel.startsWith(".." + path.sep)) || path.isAbsolute(realRel)) {
         throw new Error(`Path escapes the repository: ${filePath}`);
       }
       return readFile(real, "utf8");
