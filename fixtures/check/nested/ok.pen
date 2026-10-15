@@ -1,0 +1,1 @@
+{ "version": "2.6", "children": [{ "id": "f", "type": "frame", "metadata": { "type": "design-gates", "ignore": ["SCH-002"], "reason": "whole frame is a sketch" }, "children": [{ "id": "g", "type": "frame", "children": [{ "id": "use", "type": "ref", "ref": "ghost" }] }] }] }
