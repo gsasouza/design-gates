@@ -39,16 +39,20 @@ export interface CompareDeps {
   openFile?: (file: string) => Promise<void>;
 }
 
+/** Picks the platform's opener; args are passed verbatim, never through a shell. */
+export function openerFor(platform: string, file: string): [string, string[]] {
+  if (platform === "darwin") return ["open", [file]];
+  // explorer.exe takes the path as one argument; cmd.exe would re-parse &, ^ and |.
+  if (platform === "win32") return ["explorer.exe", [file]];
+  return ["xdg-open", [file]];
+}
+
 /** Opens a file with the system viewer; no shell is involved. */
 export function defaultOpenFile(file: string): Promise<void> {
-  const [cmd, args] =
-    process.platform === "darwin"
-      ? ["open", [file]]
-      : process.platform === "win32"
-        ? ["cmd", ["/c", "start", "", file]]
-        : ["xdg-open", [file]];
+  const [cmd, args] = openerFor(process.platform, file);
+  const ignoreExitCode = process.platform === "win32"; // explorer.exe exits non-zero even on success
   return new Promise((resolve, reject) => {
-    execFile(cmd, args, { shell: false }, (err) => (err ? reject(err) : resolve()));
+    execFile(cmd, args, { shell: false }, (err) => (err && !(ignoreExitCode && typeof err.code === "number") ? reject(err) : resolve()));
   });
 }
 
