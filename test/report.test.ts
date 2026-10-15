@@ -485,3 +485,25 @@ test("zoom-to-fit: a small frame scales up, capped at 400%, and the viewport hug
   assert.ok(Math.abs(b.scale() - 3) < 1e-9, "scaled up but not capped");
   for (const vp of b.vps) assert.equal(vp.style.height, `${Math.ceil(50 * 3)}px`);
 });
+
+test("legend text keeps WCAG AA contrast (4.5:1) against the panel in both themes", () => {
+  const html = renderReport(fixture(), { inline: false, imageReader: reader });
+  const rules = cssRules(html);
+  const lum = (h: string) => {
+    const hex = h.length === 4 ? "#" + [...h.slice(1)].map((x) => x + x).join("") : h;
+    const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!;
+  };
+  const ratio = (a: string, b: string) => {
+    const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+    return (hi! + 0.05) / (lo! + 0.05);
+  };
+  assert.match(rules.find((r) => r.sel === ".legend")!.body, /color:var\(--muted\)/);
+  const themes = rules.filter((r) => /--muted:#/.test(r.body) && /--panel:#/.test(r.body));
+  assert.ok(themes.length >= 3, "light + two dark theme blocks");
+  for (const t of themes) {
+    const muted = /--muted:(#[0-9a-f]{3,6})/i.exec(t.body)![1]!;
+    const panel = /--panel:(#[0-9a-f]{3,6})/i.exec(t.body)![1]!;
+    assert.ok(ratio(muted, panel) >= 4.5, `${t.sel}: ${muted} on ${panel}`);
+  }
+});
