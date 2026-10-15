@@ -8,6 +8,21 @@ import type {
   NodeChange,
   ThemeKey,
 } from "../diff/model.js";
+import {
+  KINDS,
+  type FrameRefs,
+  type RenderedFrame,
+  changeLines,
+  changeListHtml,
+  frameRefs,
+  hasRefs,
+  hasSemanticChange,
+  statusLabel,
+  summaryHtml,
+} from "./changes.js";
+import { esc, valueHtml } from "./html.js";
+
+export { esc } from "./html.js";
 
 export interface RenderReportOptions {
   /** Embed images as base64 data URIs instead of relative `images/...` references. */
@@ -16,7 +31,6 @@ export interface RenderReportOptions {
   imageReader?: (relPath: string) => Uint8Array | undefined;
 }
 
-const KINDS = ["added", "removed", "modified", "moved", "reordered"] as const;
 const KIND_LABEL: Record<string, string> = {
   added: "added",
   removed: "removed",
@@ -25,11 +39,23 @@ const KIND_LABEL: Record<string, string> = {
   reordered: "reordered",
   pixel: "pixel difference",
 };
-const VIEW_LABELS = ["Side by side", "Swipe", "Onion skin", "Diff", "Head only"];
+const VIEW_LABELS = ["Side by side", "Swipe", "Onion skin", "Diff", "After only"];
+const VIEW_TITLES = [
+  "Before and After next to each other",
+  "Drag the slider to wipe between Before and After",
+  "Fade After over Before",
+  "Changed pixels highlighted",
+  "Only the After image",
+];
+const LEGEND: Record<string, string> = {
+  added: "green: added (new in After)",
+  removed: "red: removed (gone in After)",
+  modified: "amber: modified (a property changed)",
+  moved: "blue: moved (new parent)",
+  reordered: "purple: reordered (same parent, new order)",
+  pixel: "hatched grey: pixels changed with no matching node",
+};
 const VIEW_KEYS = ["side", "swipe", "onion", "diff", "head"];
-
-const HEX_COLOR = /^#[0-9a-fA-F]{3,8}$/;
-const FN_COLOR = /^(?:rgba?|hsla?)\(\s*-?\d*\.?\d+%?(?:\s*[,/ ]\s*-?\d*\.?\d+%?)*\s*\)$/;
 
 const MIME: Record<string, string> = {
   png: "image/png",
@@ -52,27 +78,6 @@ function loadAsset(name: string): string {
     }
   }
   throw new Error(`report asset not found: ${name}`);
-}
-
-export function esc(value: unknown): string {
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function isColor(v: unknown): v is string {
-  return typeof v === "string" && (HEX_COLOR.test(v) || FN_COLOR.test(v));
-}
-
-function valueHtml(v: unknown): string {
-  if (isColor(v)) {
-    return `<span class="swatch" style="background:${esc(v)}"></span><code>${esc(v)}</code>`;
-  }
-  const text = typeof v === "string" ? v : (JSON.stringify(v) ?? String(v));
-  return `<code>${esc(text)}</code>`;
 }
 
 function num(n: number): number {
@@ -108,8 +113,11 @@ function maxRatio(f: FrameDiff): number | undefined {
 }
 
 function pct(r: number): string {
-  return `${(r * 100).toFixed(2)}%`;
+  const text = `${(r * 100).toFixed(2)}%`;
+  return r > 0 && text === "0.00%" ? "<0.01%" : text;
 }
+
+const NO_PIXEL_CHANGE = "no visible pixel change";
 
 function countBadges(c: FrameCounts): string {
   return KINDS.filter((k) => c[k] > 0)
@@ -125,7 +133,7 @@ interface ImgRef {
 
 class Renderer {
   private frameIndex = new Map<string, number>();
-  private changed: { file: FileDiff; frame: FrameDiff; index: number }[] = [];
+  private changed: RenderedFrame[] = [];
 
   constructor(
     private result: DiffResult,
@@ -135,9 +143,11 @@ class Renderer {
     this.reader = reader ?? (opts.inline ? defaultReader : undefined);
     for (const file of result.files) {
       for (const frame of file.frames) {
-        if (frame.status === "unchanged" && frame.images === null) continue;
+        const refs = frameRefs(result, file, frame);
+        if (frame.status === "unchanged" && frame.images === null && !hasRefs(refs)) continue;
         const index = this.changed.length;
-        this.changed.push({ file, frame, index });
+        this.changed.push({ file, frame, index, refs });
+        this.rendered.add(frame);
         for (const id of [frame.id, frame.baseId, frame.headId]) {
           if (id !== undefined) this.frameIndex.set(`${file.path}\u0000${id}`, index);
         }
@@ -145,6 +155,7 @@ class Renderer {
     }
   }
 
+  private rendered = new Set<FrameDiff>();
   private reader: ((p: string) => Uint8Array | undefined) | undefined;
 
   private image(rel: string | undefined): ImgRef | undefined {
@@ -247,7 +258,7 @@ class Renderer {
     const single = !(hasBase && hasHead);
     if (single) {
       const side = hasHead ? "head" : "base";
-      const label = hasHead ? "Added frame: head only" : "Removed frame: base only";
+      const label = hasHead ? "Added frame: only in After" : "Removed frame: only in Before";
       const img = hasHead ? head : base;
       h += view(
         "side",
@@ -256,12 +267,12 @@ class Renderer {
     } else {
       h += view(
         "side",
-        `<div class="pair">${this.pane("Base", "base", this.stage(base, this.boxes(frame, "base")))}` +
-          `${this.pane("Head", "head", this.stage(head, this.boxes(frame, "head")))}</div>`,
+        `<div class="pair">${this.pane("Before", "base", this.stage(base, this.boxes(frame, "base")))}` +
+          `${this.pane("After", "head", this.stage(head, this.boxes(frame, "head")))}</div>`,
       );
       h += view("swipe", this.layered(frame, base, head, "swipe"));
       h += view("onion", this.layered(frame, base, head, "onion"));
-      h += view("head", `<div class="pair single">${this.pane("Head", "head", this.stage(head, this.boxes(frame)))}</div>`);
+      h += view("head", `<div class="pair single">${this.pane("After", "head", this.stage(head, this.boxes(frame)))}</div>`);
     }
     h += view(
       "diff",
@@ -270,19 +281,30 @@ class Renderer {
     return h + "</div>";
   }
 
-  private frameSection(file: FileDiff, frame: FrameDiff, index: number): string {
+  /** The pixel ratio as a secondary detail; a zero ratio is explained, never shown as 0.00%. */
+  private pixelNote(frame: FrameDiff, refs: FrameRefs): string {
+    const mr = maxRatio(frame);
+    if (mr === undefined) return "";
+    if (mr > 0) return `<span class="ratio">pixels changed: ${esc(pct(mr))}</span>`;
+    let why = "";
+    if (hasSemanticChange(frame, refs)) {
+      why = hasRefs(refs) ? " (change is not visible in this theme)" : " (e.g. reordered or same-looking value)";
+    }
+    return `<span class="ratio">${NO_PIXEL_CHANGE}${why}</span>`;
+  }
+
+  private frameSection({ file, frame, index, refs }: RenderedFrame): string {
     const keys = themeKeys(frame);
     const ratios = frame.pixelDiffRatio ?? {};
-    let h = `<section class="frame" id="frame-${index}" data-frame="${index}" data-status="${frame.status}" data-tkey="${esc(keys[0])}">`;
-    h += `<header><h3>${esc(frame.name)}</h3><span class="status">${esc(frame.status)} · ${esc(file.path)}</span>`;
+    let h = `<section class="frame" id="frame-${index}" data-frame="${index}" data-status="${esc(hasSemanticChange(frame, refs) && frame.status === "unchanged" ? "changed" : frame.status)}" data-tkey="${esc(keys[0])}">`;
+    h += `<header><h3>${esc(frame.name)}</h3><span class="status">${esc(statusLabel(frame, refs))} · ${esc(file.path)}</span>`;
     h += countBadges(frame.counts);
-    const mr = maxRatio(frame);
-    if (mr !== undefined) h += `<span class="ratio">${pct(mr)} pixels</span>`;
+    h += this.pixelNote(frame, refs);
     if (keys.length > 1) {
       h += `<select class="theme-select" aria-label="Theme">`;
       for (const k of keys) {
         const r = ratios[k];
-        h += `<option value="${esc(k)}">${esc(k)}${r === undefined ? "" : ` (${pct(r)})`}</option>`;
+        h += `<option value="${esc(k)}">${esc(k)}${r === undefined ? "" : r > 0 ? ` (${esc(pct(r))})` : " (no visible change)"}</option>`;
       }
       h += "</select>";
     }
@@ -292,6 +314,7 @@ class Renderer {
     if (frame.missingBoxes.length > 0) {
       h += `<p class="missing-note">no layout box: ${frame.missingBoxes.map((id) => `<code>${esc(id)}</code>`).join(", ")}</p>`;
     }
+    h += changeListHtml(changeLines(file, frame, refs));
     for (const k of keys) h += this.themePane(frame, k);
     return h + "</section>";
   }
@@ -302,7 +325,7 @@ class Renderer {
       h += `<h2>${esc(file.path)}</h2><ul data-file="${fi}">`;
       const unchanged: FrameDiff[] = [];
       for (const frame of file.frames) {
-        if (frame.status === "unchanged" && frame.images === null) {
+        if (!this.rendered.has(frame)) {
           unchanged.push(frame);
           continue;
         }
@@ -310,7 +333,7 @@ class Renderer {
         const keys = themeKeys(frame);
         const mr = maxRatio(frame);
         h += `<li data-frame="${index}"><a href="#frame-${index}">${esc(frame.name)}</a>${countBadges(frame.counts)}`;
-        if (mr !== undefined) h += `<span class="ratio">${pct(mr)}</span>`;
+        if (mr !== undefined) h += `<span class="ratio">${mr > 0 ? esc(pct(mr)) : NO_PIXEL_CHANGE}</span>`;
         if (keys.length > 1) {
           for (const k of keys) {
             if ((frame.pixelDiffRatio?.[k] ?? 0) > 0) h += `<span class="tbadge" title="theme changed">${esc(k)}</span>`;
@@ -358,18 +381,20 @@ class Renderer {
       `<title>${esc(title)}</title><style>${loadAsset("report.css")}</style></head><body data-view="side">`;
     h += `<div id="topbar"><h1>${esc(title)}</h1><div id="views" class="group" role="group" aria-label="View mode">`;
     VIEW_KEYS.forEach((k, i) => {
-      h += `<button type="button" data-view="${k}" aria-pressed="${i === 0}">${i + 1} ${VIEW_LABELS[i]}</button>`;
+      h += `<button type="button" data-view="${k}" title="${esc(VIEW_TITLES[i])}" aria-pressed="${i === 0}">${i + 1} ${VIEW_LABELS[i]}</button>`;
     });
     h += `</div><div class="group"><button type="button" id="pulse-toggle" aria-pressed="false">Pulse</button>` +
+      `<button type="button" id="markers-toggle" aria-pressed="true">Markers</button>` +
       `<button type="button" id="theme-toggle">Theme</button><button type="button" id="help-toggle">?</button></div>`;
     h += `<div class="legend">`;
-    for (const k of [...KINDS, "pixel"]) h += `<span><i class="k-${k}"></i> ${KIND_LABEL[k]}</span>`;
-    h += `</div></div><div id="layout">${this.sidebar()}<main>`;
-    for (const { file, frame, index } of this.changed) h += this.frameSection(file, frame, index);
+    for (const k of [...KINDS, "pixel"]) h += `<span><i class="k-${k}"></i> ${esc(LEGEND[k])}</span>`;
+    h += `</div></div>${summaryHtml(this.result, this.changed)}<div id="layout">${this.sidebar()}<main>`;
+    for (const entry of this.changed) h += this.frameSection(entry);
     if (this.changed.length === 0) h += `<p class="empty">No changed frames.</p>`;
     h += `</main></div>`;
     h += `<div id="help" hidden><div><h2>Keyboard</h2><p><kbd>j</kbd>/<kbd>k</kbd> or arrows: next/previous change<br>` +
       `<kbd>n</kbd>/<kbd>p</kbd>: next/previous frame<br><kbd>1</kbd>-<kbd>5</kbd>: view mode<br>` +
+      `<kbd>m</kbd>: show/hide markers<br>` +
       `<kbd>?</kbd>: toggle this help, <kbd>Esc</kbd>: close</p></div></div>`;
     h += `<script>${loadAsset("report.js")}</script></body></html>\n`;
     return h;

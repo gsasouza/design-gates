@@ -13,8 +13,8 @@ const entry = (id: RuleEntry["id"], violations: Violation[], defaultSeverity: Se
   run: () => violations,
 });
 
-test("the registry is sorted by id and every entry has the full shape", () => {
-  assert.deepEqual(registry.map((e) => e.id), [...registry.map((e) => e.id)].sort());
+test("the registry holds the registered rules sorted by id", () => {
+  assert.deepEqual(registry.map((r) => r.id), ["SCH-001", "SCH-002", "SCH-003", "TOK-001", "TOK-002"]);
   assert.ok(registry.every((e) => e.title && e.description && e.defaultSeverity && typeof e.run === "function"));
   assert.deepEqual(runRules([{ file: "a.pen", compiled }], DEFAULT_CONFIG), []);
 });

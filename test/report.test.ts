@@ -129,9 +129,10 @@ test("added/removed frames show only the existing side with a label", () => {
   const { doc } = load();
   const added = doc.getElementById("frame-1")!;
   assert.equal(added.querySelectorAll('.view[data-view="side"] .pane').length, 1);
-  assert.match(added.textContent!, /Added frame: head only/);
+  // Head/Base wording was replaced by the plain Before/After labels.
+  assert.match(added.textContent!, /Added frame: only in After/);
   const removed = doc.getElementById("frame-2")!;
-  assert.match(removed.textContent!, /Removed frame: base only/);
+  assert.match(removed.textContent!, /Removed frame: only in Before/);
   assert.equal(removed.querySelector('.pane[data-side="head"]'), null);
 });
 
@@ -199,7 +200,9 @@ test("boxes carry class and colour per change type", () => {
   for (const [k, c] of [["added", "#16a34a"], ["removed", "#dc2626"], ["modified", "#d98e04"], ["moved", "#2563eb"], ["reordered", "#9333ea"]]) {
     assert.ok(html.includes(`--${k}:${c}`), k);
   }
-  assert.match(html, /\.box\.k-pixel\{border-style:dashed\}/);
+  // Markers were bordered (dashed for pixel boxes); they are now borderless washes, so this
+  // asserts the hatched pixel tint on the pseudo-element instead (see the CSS tests below).
+  assert.match(html, /\.box\.k-pixel::before\{background:repeating-linear-gradient\(/);
 });
 
 test("hover and focus show a tooltip with props old -> new and swatches", () => {
@@ -274,8 +277,11 @@ test("pulse toggle adds and removes the animation class", () => {
 
 test("pulse animation is finite and disabled for reduced motion", () => {
   const { html } = load();
-  assert.match(html, /\.pulse \.box\{animation:pulse \.7s ease-in-out 3\}/);
-  assert.match(html, /prefers-reduced-motion:reduce\)\{\.pulse \.box\{animation:none\}/);
+  // The animation moved from .box to its tint pseudo-element so the tooltip is not faded.
+  assert.match(html, /\.pulse \.box::before\{animation:pulse \.7s ease-in-out 3\}/);
+  assert.match(html, /prefers-reduced-motion:reduce\)\{\.pulse \.box::before\{animation:none\}/);
+  assert.doesNotMatch(html, /animation:[^;}]*infinite/);
+  assert.match(html, /@keyframes pulse\{[^@]*opacity/);
 });
 
 test("theme toggle switches data-theme", () => {
@@ -370,4 +376,376 @@ test("an unchanged frame rendered for a variable change gets a section and theme
   assert.ok(section.querySelector("select.theme-select"));
   assert.ok(doc.querySelector('#sidebar li a[href="#frame-' + section.getAttribute("data-frame") + '"]'));
   assert.match(doc.querySelector("details.unchanged")!.textContent!, /Same/);
+});
+
+function cssRules(html: string): { sel: string; body: string }[] {
+  const css = /<style>([\s\S]*?)<\/style>/.exec(html)![1]!;
+  return [...css.matchAll(/([^{}@]+)\{([^{}]*)\}/g)].map((m) => ({ sel: m[1]!.trim(), body: m[2]! }));
+}
+const boxRules = (html: string) => cssRules(html).filter((r) => /\.box\b/.test(r.sel) && !/\.tip/.test(r.sel) && !/markers-off|pulse/.test(r.sel));
+const alphaOf = (body: string) => Number(/color-mix\(in srgb,var\(--c\) (\d+)%/.exec(body)![1]);
+
+test("markers are borderless translucent washes on ::before, with no ring in any state", () => {
+  const { html } = load();
+  const rules = boxRules(html);
+  assert.ok(rules.length >= 5);
+  for (const r of rules) {
+    assert.doesNotMatch(r.body, /(^|;)\s*border\s*:\s*[^;]*\d+px/, r.sel);
+    assert.doesNotMatch(r.body, /outline\s*:\s*(?!none)/, r.sel);
+    assert.doesNotMatch(r.body, /box-shadow\s*:\s*(?!none)/, r.sel);
+    assert.doesNotMatch(r.body, /mix-blend-mode/, r.sel);
+  }
+  for (const r of cssRules(html).filter((x) => /\.(box|tip)\b/.test(x.sel))) assert.doesNotMatch(r.body, /mix-blend-mode/, r.sel);
+  const base = rules.find((r) => r.sel === ".box::before")!;
+  assert.match(base.body, /background:color-mix\(in srgb,var\(--c\) 30%,transparent\)/);
+  assert.match(base.body, /pointer-events:none/);
+  assert.match(base.body, /inset:0/);
+  const pixel = rules.find((r) => r.sel === ".box.k-pixel::before")!;
+  assert.match(pixel.body, /repeating-linear-gradient/);
+  assert.equal(rules.find((r) => r.sel === ".box")!.body.includes("background:none"), true);
+});
+
+test("a selected or focused marker has a stronger tint than a plain one", () => {
+  const { html } = load();
+  const rules = boxRules(html);
+  const base = alphaOf(rules.find((r) => r.sel === ".box::before")!.body);
+  const sel = rules.find((r) => r.sel === ".box.selected::before,.box:focus::before")!;
+  assert.ok(alphaOf(sel.body) > base);
+  assert.ok(alphaOf(sel.body) >= 45 && alphaOf(sel.body) <= 50);
+});
+
+test("the pulse keyframes animate the tint pseudo-element, not the box", () => {
+  const { html } = load();
+  assert.ok(cssRules(html).some((r) => r.sel === ".pulse .box::before"));
+  assert.ok(!cssRules(html).some((r) => r.sel === ".pulse .box"));
+});
+
+test("legend swatches are filled translucent tiles", () => {
+  const { html } = load();
+  const r = cssRules(html).find((x) => x.sel === ".legend i,.swatch")!;
+  assert.match(r.body, /background:color-mix\(in srgb,var\(--c,var\(--pixel\)\) 30%,transparent\)/);
+  assert.match(r.body, /border:0/);
+});
+
+test("m and the Markers button toggle all markers; j ignores hidden markers", () => {
+  const { doc, win } = load();
+  const btn = doc.getElementById("markers-toggle") as HTMLElement;
+  assert.equal(btn.getAttribute("aria-pressed"), "true");
+  assert.equal(doc.body.classList.contains("markers-off"), false);
+  key(win, "m");
+  assert.equal(doc.body.classList.contains("markers-off"), true);
+  assert.equal(btn.getAttribute("aria-pressed"), "false");
+  key(win, "j");
+  assert.equal(doc.querySelector(".box.selected"), null);
+  btn.click();
+  assert.equal(doc.body.classList.contains("markers-off"), false);
+  assert.equal(btn.getAttribute("aria-pressed"), "true");
+  key(win, "j");
+  assert.ok(doc.querySelector(".box.selected"));
+  key(win, "m");
+  assert.equal(doc.querySelector(".box.selected"), null, "hiding markers clears the selection");
+  win.document.dispatchEvent(new win.KeyboardEvent("keydown", { key: "m", ctrlKey: true, bubbles: true }));
+  assert.equal(doc.body.classList.contains("markers-off"), true, "Ctrl+m is ignored");
+  assert.match(doc.getElementById("help")!.textContent!, /markers/);
+});
+
+function fitDom(availW: number, innerH: number, w: number, h: number) {
+  const { doc, win } = load();
+  // report.js already ran during construction (jsdom has no layout), so mock sizes and resize.
+  Object.defineProperty(win.HTMLElement.prototype, "clientWidth", { configurable: true, get: () => availW });
+  Object.defineProperty(win, "innerHeight", { configurable: true, value: innerH });
+  for (const st of doc.querySelectorAll("#frame-0 .stage")) {
+    st.setAttribute("data-w", String(w));
+    st.setAttribute("data-h", String(h));
+  }
+  win.dispatchEvent(new win.Event("resize"));
+  const stages = [...doc.querySelectorAll('#frame-0 .view[data-view="side"] .stage')] as HTMLElement[];
+  const vps = [...doc.querySelectorAll('#frame-0 .view[data-view="side"] .viewport')] as HTMLElement[];
+  const scale = () => Number(/scale\(([\d.]+)\)/.exec(stages[0]!.style.transform)![1]);
+  return { doc, win, stages, vps, scale };
+}
+
+test("zoom-to-fit: a large frame fits the width/height box and Reset returns to it", () => {
+  const { doc, stages, vps, scale } = fitDom(500, 1000, 2000, 3000);
+  const expected = Math.min(500 / 2000, (1000 * 0.7) / 3000);
+  assert.ok(Math.abs(scale() - expected) < 1e-9);
+  assert.equal(stages[0]!.style.transform, stages[1]!.style.transform);
+  for (const vp of vps) assert.equal(vp.style.height, `${Math.ceil(3000 * expected)}px`);
+  (doc.querySelector('#frame-0 [data-action="zoom-in"]') as HTMLElement).click();
+  assert.ok(Math.abs(scale() - expected * 1.25) < 1e-9);
+  (doc.querySelector('#frame-0 [data-action="reset"]') as HTMLElement).click();
+  assert.ok(Math.abs(scale() - expected) < 1e-9);
+  assert.match(stages[0]!.style.transform, /translate\(0px, 0px\)/);
+});
+
+test("zoom-to-fit: a small frame scales up, capped at 400%, and the viewport hugs it", () => {
+  const a = fitDom(400, 1000, 100, 50);
+  assert.ok(Math.abs(a.scale() - 4) < 1e-9, "capped at 4");
+  for (const vp of a.vps) assert.equal(vp.style.height, `${Math.ceil(50 * 4)}px`);
+  const b = fitDom(300, 1000, 100, 50);
+  assert.ok(Math.abs(b.scale() - 3) < 1e-9, "scaled up but not capped");
+  for (const vp of b.vps) assert.equal(vp.style.height, `${Math.ceil(50 * 3)}px`);
+});
+
+test("legend text keeps WCAG AA contrast (4.5:1) against the panel in both themes", () => {
+  const html = renderReport(fixture(), { inline: false, imageReader: reader });
+  const rules = cssRules(html);
+  const lum = (h: string) => {
+    const hex = h.length === 4 ? "#" + [...h.slice(1)].map((x) => x + x).join("") : h;
+    const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!;
+  };
+  const ratio = (a: string, b: string) => {
+    const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+    return (hi! + 0.05) / (lo! + 0.05);
+  };
+  assert.match(rules.find((r) => r.sel === ".legend")!.body, /color:var\(--muted\)/);
+  const themes = rules.filter((r) => /--muted:#/.test(r.body) && /--panel:#/.test(r.body));
+  assert.ok(themes.length >= 3, "light + two dark theme blocks");
+  for (const t of themes) {
+    const muted = /--muted:(#[0-9a-f]{3,6})/i.exec(t.body)![1]!;
+    const panel = /--panel:(#[0-9a-f]{3,6})/i.exec(t.body)![1]!;
+    assert.ok(ratio(muted, panel) >= 4.5, `${t.sel}: ${muted} on ${panel}`);
+  }
+});
+
+// ---- summary, change list, labels (plain-language report) ----
+
+type Node = FrameDiff["nodes"][number];
+const frameOf = (o: Partial<FrameDiff> & { id: string }): FrameDiff => ({
+  name: o.id, baseId: o.id, headId: o.id, status: "modified", matchedBy: "id", counts: counts(),
+  nodes: [], changeBoxes: [], missingBoxes: [], pixelDiffRatio: { default: 0.01 },
+  images: { default: imgs(o.id) }, ...o,
+});
+const resultOf = (frames: FrameDiff[], extra: Partial<DiffResult> = {}): DiffResult => ({
+  schemaVersion: 1, base: { ref: "main", sha: "a" }, head: { ref: "feat", sha: "b" },
+  files: [{ path: "a.pen", status: "modified", frames }], variables: [], themes: [], ...extra,
+});
+const node = (o: Partial<Node> & { id: string; change: Node["change"] }): Node => ({ name: o.id, type: "rectangle", ...o });
+const linesOf = (r: DiffResult, i = 0) =>
+  [...load(r).doc.querySelectorAll(`#frame-${i} .change-list li`)].map((l) => l.textContent);
+
+test("summary: totals, per-kind links to the first frame with that kind, variables", () => {
+  const { doc } = load();
+  const s = doc.getElementById("summary")!;
+  assert.equal(
+    s.textContent,
+    "9 changes in 4 frames: 3 added, 2 removed, 3 modified, 1 variable changed",
+  );
+  const href = (k: string) => s.querySelector(`a[data-kind="${k}"]`)?.getAttribute("href");
+  assert.equal(href("added"), "#frame-0");
+  assert.equal(href("removed"), "#frame-2");
+  assert.equal(href("modified"), "#frame-0");
+  assert.equal(href("moved"), undefined);
+  assert.equal(href("reordered"), undefined);
+  assert.ok(s.compareDocumentPosition(doc.getElementById("frame-0")!) & 4, "summary precedes the frames");
+});
+
+test("summary: a result that only adds a frame, and one with nothing", () => {
+  const added = frameOf({ id: "new", name: "Newbie", baseId: undefined, status: "added", images: null, pixelDiffRatio: null });
+  const { doc } = load(resultOf([added]));
+  assert.equal(doc.getElementById("summary")!.textContent, "1 change in 1 frame: 1 added");
+  assert.equal(doc.querySelector('#summary a[data-kind="added"]')!.getAttribute("href"), "#frame-0");
+  assert.deepEqual(linesOf(resultOf([added])), ["Newbie frame added"]);
+  const none = load(resultOf([frameOf({ id: "z", status: "unchanged", images: null })]));
+  assert.equal(none.doc.getElementById("summary")!.textContent, "No changes");
+});
+
+test("change list: added and removed nodes", () => {
+  const f = frameOf({ id: "f", nodes: [node({ id: "n", name: "Card", change: "added" }), node({ id: "m", name: "Gone", change: "removed" })] });
+  assert.deepEqual(linesOf(resultOf([f])), ["Card added", "Gone removed"]);
+  const li = load(resultOf([f])).doc.querySelector("#frame-0 .change-list li")!;
+  assert.equal(li.getAttribute("data-node-id"), "n");
+  assert.equal(li.getAttribute("data-kind"), "added");
+});
+
+test("change list: colour and text props, strings quoted", () => {
+  const f = frameOf({ id: "f", nodes: [
+    node({ id: "r", name: "Button", change: "modified", props: [{ path: "fill", old: "#FF0000", new: "#00FF00" }] }),
+    node({ id: "t", name: "Title", type: "text", change: "modified", props: [{ path: "text", old: "Hello", new: "Olá" }, { path: "size", old: 12, new: 14 }] }),
+  ] });
+  const r = resultOf([f]);
+  assert.deepEqual(linesOf(r), [
+    "Button / fill: #FF0000 -> #00FF00",
+    "Title / text: 'Hello' -> 'Olá'",
+    "Title / size: 12 -> 14",
+  ]);
+  assert.equal(load(r).doc.querySelectorAll("#frame-0 .change-list .swatch").length, 2);
+});
+
+test("change list: x and y combine into one moved line; non-numeric falls back", () => {
+  const mk = (props: { path: string; old: unknown; new: unknown }[]) =>
+    resultOf([frameOf({ id: "f", nodes: [node({ id: "c", name: "Card", change: "modified", props })] })]);
+  assert.deepEqual(linesOf(mk([{ path: "x", old: 10, new: 34 }, { path: "y", old: 20, new: 28 }])), ["Card moved 24px right, 8px down"]);
+  assert.deepEqual(linesOf(mk([{ path: "x", old: 10, new: 4.5 }, { path: "y", old: 20, new: 20 }])), ["Card moved 5.5px left"]);
+  assert.deepEqual(linesOf(mk([{ path: "y", old: 20, new: 12 }])), ["Card moved 8px up"]);
+  assert.deepEqual(linesOf(mk([{ path: "x", old: "fit", new: 3 }])), ["Card / x: 'fit' -> 3"]);
+});
+
+test("change list: moved to another parent resolves names, falls back to the raw id", () => {
+  const header = frameOf({ id: "hdr", name: "Header", status: "unchanged", images: null });
+  const f = frameOf({ id: "f", name: "Page", nodes: [
+    node({ id: "c1", name: "Card", change: "moved", from: "hdr", to: "f" }),
+    node({ id: "c2", name: "Chip", change: "moved", from: "p-unknown", to: "ftr" }),
+    node({ id: "ftr", name: "Footer", type: "frame", change: "added" }),
+  ] });
+  assert.deepEqual(linesOf(resultOf([f, header])), [
+    "Card moved from Header to Page",
+    "Chip moved from p-unknown to Footer",
+    "Footer added",
+  ]);
+});
+
+test("change list: reordered, and unnamed nodes fall back to the id (instance override)", () => {
+  const f = frameOf({ id: "f", nodes: [
+    node({ id: "sib-a", name: "Card", change: "reordered" }),
+    node({ id: "btn-inst", name: "", type: "ref", change: "modified", props: [{ path: "descendants.label.fill", old: "#112233", new: "#445566" }] }),
+  ] });
+  assert.deepEqual(linesOf(resultOf([f])), [
+    "Card reordered",
+    "btn-inst / descendants.label.fill: #112233 -> #445566",
+  ]);
+});
+
+test("change list: variable and theme lines", () => {
+  const f = frameOf({ id: "vf", name: "Var" });
+  const ref = [{ file: "a.pen", frameId: "vf" }];
+  const r = resultOf([f], {
+    variables: [
+      { file: "a.pen", name: "color.bg", change: "modified", theme: "dark", old: "#000000", new: "#444444", frames: ref },
+      { file: "a.pen", name: "gap", change: "added", new: 4, frames: ref },
+      { file: "a.pen", name: "old", change: "removed", old: "x", frames: ref },
+      { file: "a.pen", name: "other", change: "modified", old: 1, new: 2, frames: [{ file: "b.pen", frameId: "vf" }] },
+    ],
+    themes: [{ file: "a.pen", name: "mode", change: "added", frames: ref }],
+  });
+  assert.deepEqual(linesOf(r), [
+    "variable color.bg (dark): #000000 -> #444444",
+    "variable gap added: 4",
+    "variable old removed: 'x'",
+    "theme mode added",
+  ]);
+  const { doc } = load(r);
+  assert.equal(doc.getElementById("summary")!.textContent, "5 changes in 1 frame: 4 variables changed, 1 theme changed");
+});
+
+test("clicking a change-list line selects the matching marker and makes the frame current", () => {
+  const { doc } = load();
+  const line = doc.querySelector('#frame-0 .change-list li[data-node-id="n2"] button') as HTMLElement;
+  line.click();
+  const sel = doc.querySelectorAll(".box.selected");
+  assert.equal(sel.length, 1);
+  assert.equal(sel[0]!.getAttribute("data-node-id"), "n2");
+  assert.ok(doc.getElementById("frame-0")!.classList.contains("current"));
+  // a line with no marker (variable line) does nothing harmful
+  (doc.querySelector('#frame-0 .change-list li[data-kind="variable"] button') as HTMLElement).click();
+  assert.equal(doc.querySelectorAll(".box.selected").length, 0);
+});
+
+test("clicking a line while markers are hidden turns them back on, then selects", () => {
+  const { doc, win } = load();
+  key(win, "m");
+  const btn = doc.getElementById("markers-toggle")!;
+  assert.equal(btn.getAttribute("aria-pressed"), "false");
+  (doc.querySelector('#frame-0 .change-list li[data-node-id="n1"] button') as HTMLElement).click();
+  assert.equal(doc.body.classList.contains("markers-off"), false);
+  assert.equal(btn.getAttribute("aria-pressed"), "true");
+  assert.equal(doc.querySelector(".box.selected")!.getAttribute("data-node-id"), "n1");
+});
+
+test("a status-unchanged frame affected by a variable is labelled as changed, not unchanged", () => {
+  const same = frameOf({ id: "vf", name: "Var", status: "unchanged", images: null, pixelDiffRatio: null });
+  const r = resultOf([same, frameOf({ id: "quiet", name: "Quiet", status: "unchanged", images: null, pixelDiffRatio: null })], {
+    variables: [
+      { file: "a.pen", name: "color.bg", change: "modified", old: "#000000", new: "#111111", frames: [{ file: "a.pen", frameId: "vf" }] },
+      { file: "a.pen", name: "color.fg", change: "modified", old: "#ffffff", new: "#eeeeee", frames: [{ file: "a.pen", frameId: "vf" }] },
+    ],
+  });
+  const { doc } = load(r);
+  const sec = doc.getElementById("frame-0")!;
+  assert.match(sec.querySelector(".status")!.textContent!, /changed via variable color\.bg, color\.fg/);
+  assert.doesNotMatch(sec.textContent!, /unchanged/);
+  assert.match(sec.textContent!, /No image available/);
+  const un = doc.querySelector("details.unchanged")!.textContent!;
+  assert.match(un, /Quiet/);
+  assert.doesNotMatch(un, /Var/);
+  const themed = frameOf({ id: "tf", name: "T", status: "unchanged" });
+  const t = load(resultOf([themed], { themes: [{ file: "a.pen", name: "dark", change: "added", frames: [{ file: "a.pen", frameId: "tf" }] }] }));
+  assert.match(t.doc.querySelector("#frame-0 .status")!.textContent!, /changed via theme dark/);
+});
+
+test("no bare 0.00%: zero ratios say no visible pixel change, with a reason", () => {
+  const varFrame = frameOf({ id: "vf", status: "unchanged", pixelDiffRatio: { default: 0 } });
+  const reorder = frameOf({ id: "ro", nodes: [node({ id: "a", change: "reordered" })], pixelDiffRatio: { default: 0 } });
+  const tiny = frameOf({ id: "ti", nodes: [node({ id: "b", change: "added" })], pixelDiffRatio: { default: 0.000001 } });
+  const r = resultOf([varFrame, reorder, tiny], {
+    variables: [{ file: "a.pen", name: "v", change: "added", new: 1, frames: [{ file: "a.pen", frameId: "vf" }] }],
+  });
+  const { doc, html } = load(r);
+  assert.match(doc.querySelector("#frame-0 .ratio")!.textContent!, /^no visible pixel change \(change is not visible in this theme\)$/);
+  assert.match(doc.querySelector("#frame-1 .ratio")!.textContent!, /^no visible pixel change \(e\.g\. reordered or same-looking value\)$/);
+  assert.equal(doc.querySelector("#frame-2 .ratio")!.textContent, "pixels changed: <0.01%");
+  assert.doesNotMatch(html, /0\.00%/);
+  assert.doesNotMatch(doc.getElementById("sidebar")!.textContent!, /0\.00%/);
+  assert.equal(doc.querySelector('#sidebar li[data-frame="0"] .ratio')!.textContent, "no visible pixel change");
+  // headline is the semantic change, with the pixel ratio as a muted secondary detail
+  assert.equal(load().doc.querySelector("#frame-0 .ratio")!.textContent, "pixels changed: 1.23%");
+});
+
+test("theme options with a zero ratio read 'no visible change'", () => {
+  const opts = [...load().doc.querySelectorAll("#frame-3 select option")].map((o) => o.textContent);
+  assert.deepEqual(opts, ["default (no visible change)", "mode=dark (50.00%)"]);
+});
+
+test("labels: Before/After everywhere, titles on view buttons, worded legend, normal-case headers", () => {
+  const { doc, html } = load();
+  const visible = doc.body.cloneNode(true) as HTMLElement;
+  visible.querySelectorAll("script").forEach((x) => x.remove());
+  assert.doesNotMatch(visible.textContent!, /\b(Base|Head|head only|base only)\b/);
+  assert.deepEqual([...doc.querySelectorAll("#frame-0 .view[data-view=side] .label")].map((l) => l.textContent), ["Before", "After"]);
+  assert.equal(doc.querySelector('#views button[data-view="head"]')!.textContent, "5 After only");
+  assert.deepEqual([...doc.querySelectorAll("#views button")].map((b) => b.getAttribute("data-view")), ["side", "swipe", "onion", "diff", "head"]);
+  const titles = (v: string) => doc.querySelector(`#views button[data-view="${v}"]`)!.getAttribute("title");
+  assert.equal(titles("swipe"), "Drag the slider to wipe between Before and After");
+  assert.equal(titles("onion"), "Fade After over Before");
+  assert.equal(titles("diff"), "Changed pixels highlighted");
+  assert.ok(titles("side") && titles("head"));
+  const legend = doc.querySelector(".legend")!.textContent!;
+  for (const t of ["green: added (new in After)", "red: removed (gone in After)", "amber: modified (a property changed)",
+    "blue: moved (new parent)", "purple: reordered (same parent, new order)", "hatched grey: pixels changed with no matching node"]) {
+    assert.ok(legend.includes(t), t);
+  }
+  const h2 = cssRules(html).find((r) => r.sel === "#sidebar h2")!;
+  assert.doesNotMatch(h2.body, /text-transform/);
+});
+
+test("summary and change-list text meet WCAG AA on the panel in every theme", () => {
+  const html = renderReport(fixture(), { inline: false, imageReader: reader });
+  const rules = cssRules(html);
+  const lum = (hex: string) => {
+    const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!;
+  };
+  const ratio = (a: string, b: string) => {
+    const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+    return (hi! + 0.05) / (lo! + 0.05);
+  };
+  for (const sel of ["#summary", ".change-list"]) assert.match(rules.find((r) => r.sel === sel)!.body, /color:var\(--fg\)/);
+  assert.match(rules.find((r) => r.sel === "#summary a")!.body, /color:var\(--accent\)/);
+  assert.match(rules.find((r) => r.sel === "#summary")!.body, /background:var\(--panel\)/);
+  for (const t of rules.filter((r) => /--muted:#/.test(r.body) && /--panel:#/.test(r.body))) {
+    const get = (n: string) => {
+      const h = new RegExp(`--${n}:(#[0-9a-f]{3,6})`, "i").exec(t.body)![1]!;
+      return h.length === 4 ? "#" + [...h.slice(1)].map((x) => x + x).join("") : h;
+    };
+    for (const n of ["fg", "muted", "accent"]) assert.ok(ratio(get(n), get("panel")) >= 4.5, `${t.sel} ${n}`);
+  }
+});
+
+test("change-list lines are keyboard-activatable buttons and user text is escaped", () => {
+  const f = frameOf({ id: "f", nodes: [node({ id: "n", name: "<img src=x>", change: "added" })] });
+  const { doc, html } = load(resultOf([f]));
+  assert.ok(doc.querySelector('#frame-0 .change-list li button[type="button"]'));
+  assert.equal(doc.querySelector("#frame-0 .change-list img"), null);
+  assert.ok(html.includes("&lt;img src=x&gt; added"));
 });

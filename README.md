@@ -112,13 +112,16 @@ Ordering guarantees: files by path; frames by id; nodes by id then change kind (
 
 `report.html` is a single self-contained file: inline CSS and JS, no external URLs, works offline. With `--inline` the images are embedded too; otherwise it references `images/...` next to it, so keep the folder together.
 
-- Views (buttons or keys `1`-`5`): **side by side** (base and head panes with synced zoom and pan), **swipe** (a slider reveals head over base), **onion skin** (opacity slider), **diff** (the pixelmatch mask) and **head only**. Added/removed frames show only the side that exists.
-- Emphasis boxes outline every change, coloured by kind: added green, removed red, modified amber, moved blue, reordered purple, pixel-only difference grey (legend in the top bar). **Pulse** toggles a short pulse animation on the boxes (disabled under `prefers-reduced-motion`).
-- Hover (or focus) a box for details: node name, type, change and the old/new property values.
-- Zoom with the wheel or the `+`/`-` buttons, pan by dragging, `Reset` re-fits. Zoom and pan are shared between the base and head panes of a frame.
+- **Summary** (below the top bar): "N changes in M frames: x added, y removed, ..." with the non-zero kinds in a fixed order, plus changed variables and themes. Each kind links to the first frame that has it. A frame added or removed as a whole counts as one added/removed change; with nothing changed it says "No changes".
+- **Change list** (under every frame header, always visible): one plain-language line per change, e.g. `Button / fill: #FF0000 -> #00FF00`, `Title / text: 'Hello' -> 'Olá'`, `Card moved 24px right, 8px down` (x/y changes are combined), `Card moved from Header to Footer`, `Card added`, `Card reordered`, and `variable color.bg (dark): #000000 -> #444444` or `theme dark added` for variable-driven changes. Nodes without a name show their id. Clicking a line (or Enter on it) selects the matching marker and turns markers back on if they were hidden. Known limitation: a moved node's parent is shown by name only when that name is in the diff (a changed node, or a frame); otherwise the raw id is shown.
+- A frame that is only here because a variable or theme changed reads "changed via variable ..." instead of "unchanged". The pixel ratio is a secondary detail ("pixels changed: 1.23%"); when it is zero the report says "no visible pixel change" with a short reason, never a bare 0.00%.
+- Panes are labelled **Before** and **After**. Views (buttons with tooltips, or keys `1`-`5`): **side by side**, **swipe** (a slider wipes between Before and After), **onion skin** (opacity slider), **diff** (the pixelmatch mask) and **After only**. Added/removed frames show only the side that exists.
+- Markers are borderless highlighter tints over each change, coloured by kind, and the legend spells them out: green added, red removed, amber modified, blue moved, purple reordered, hatched grey for pixels changed with no matching node. Press `m` (or the **Markers** button) to hide or show them. **Pulse** toggles a short pulse animation (disabled under `prefers-reduced-motion`).
+- Hover (or focus) a marker for details: node name, type, change and the old/new property values.
+- Each frame is zoomed to fit on load; zoom with the wheel or the `+`/`-` buttons, pan by dragging, `Reset` re-fits. Zoom and pan are shared between the Before and After panes of a frame.
 - Frames with themed renders get a theme switcher with each theme's pixel ratio; the sidebar badges the themes that changed. Frames with `missingBoxes` show a "no layout box" note.
-- Sidebar: changed frames per file with change-count badges and pixel ratio, unchanged frames collapsed, and a Variables & themes section linking to affected frames.
-- Keyboard: `j`/`k` (or arrows) next/previous change box, `n`/`p` next/previous frame, `1`-`5` views, `?` help, `Esc` closes help. A button toggles light/dark; the default follows `prefers-color-scheme`.
+- Sidebar: changed frames per file with change-count badges and pixel ratio, truly unchanged frames collapsed, and a Variables & themes section linking to affected frames.
+- Keyboard: `j`/`k` (or arrows) next/previous marker, `n`/`p` next/previous frame, `m` markers, `1`-`5` views, `?` help, `Esc` closes help. A button toggles light/dark; the default follows `prefers-color-scheme`.
 
 ![Report screenshot](docs/report.png)
 
@@ -130,13 +133,16 @@ Ordering guarantees: files by path; frames by id; nodes by id then change kind (
 
 | Rule | What it checks | Severity | Config | Fix |
 | --- | --- | --- | --- | --- |
-| TOK-001 | A literal (not `$variable`) in `fill`, `stroke`, `effect.color`, `cornerRadius`, `gap`, `padding`, `fontSize`, `strokeWidth` or `fontFamily`. Shapes read: string, paint object or list of either; unknown shapes are skipped. A literal inherited from a reusable component is reported once, on the component, with `affectedInstances`. | `block` for colours and `fontSize`, else `warn` | `properties` (subset of the controlled props; `stroke.fill` aliases `stroke`), `ignoreValues` (list, or list per property; strings or `/regex/` or `/regex/i`, at most 200 chars, no quantified groups, invalid ones are a config error), `onlyIn` (top-level frame ids or names, `*` glob) | `replace` with the one variable resolving to the value in the node's theme (colours compare case-insensitively across `#RGB`/`#RRGGBB`/`#RRGGBBAA`); `candidates` sorted by name when several do; none otherwise |
-| TOK-002 | Numeric values off the scale: spacing (`gap`, `padding`), radius (`cornerRadius`), `fontSize`, `strokeWidth` (`strokeWidth` and `stroke.thickness`). Checks literals and variables used in those properties; an off-scale variable is reported once on the variable (`nodeId` `$name`, path `variables/name`), not on every node using it. Numeric variables no checked property uses are still checked, with the category taken from the variable name (`spacing`/`gap`/`padding`, `radius`, `font-size`, `stroke`/`border-width`); names with no hint are skipped. | `warn`, `block` when `strict` is true | `scales.<category>`: `{ "base": n }` (multiples of n) or an explicit list (a category given here replaces only that default); `tolerance` (default 0). Defaults: spacing base 4, radius base 2, strokeWidth `[1, 2, 4]`, fontSize `[12, 14, 16, 20, 24, 32, 40, 48]` | `candidates` with the nearest allowed value, or both neighbours ascending when equidistant (`gap: 18` on base 4 gives `[16, 20]`) |
+| SCH-001 | Invalid document: duplicate node id, id containing `/`, unknown node `type`; an unknown document `version` is a `warn` (the check ran in degraded mode; severity cannot be overridden). A file that cannot be parsed is a file-level block with empty `nodeId` and `path`. | block (`warn` for version) | `severity` | none |
+| SCH-002 | Broken reference: `ref` to a missing or non-reusable node, `descendants` path missing in the expanded component, reference cycle. | block | `severity` | none |
+| SCH-003 | Broken variable: undefined `$name`, alias cycle (message lists the chain), escaped variable string `"\\$name"`. | block | `severity` | escaped variable: `replace` with `$name` |
+| TOK-001 | A literal (not `$variable`) in `fill`, `stroke`, `effect.color`, `cornerRadius`, `gap`, `padding`, `fontSize`, `strokeWidth` or `fontFamily`. Shapes read: string, paint object or list of either; unknown shapes are skipped. A literal inherited from a reusable component is reported once, on the component, with `affectedInstances`. | `block` for colours and `fontSize`, else `warn` | `properties` (subset of the controlled props; `stroke.fill` aliases `stroke`), `ignoreValues` (list per property; strings or `/regex/` or `/regex/i`; an unparsable regex is a config error, and the rule skips regexes over 200 chars or with quantified groups), `onlyIn` (top-level frame ids or names, `*` glob) | `replace` with the one variable resolving to the value in the node's theme (colours compare case-insensitively across `#RGB`/`#RRGGBB`/`#RRGGBBAA`); `candidates` sorted by name when several do; none otherwise |
+| TOK-002 | Numeric values off the scale: spacing (`gap`, `padding`), radius (`cornerRadius`), `fontSize`, `strokeWidth` (`strokeWidth` and `stroke.thickness`). Checks literals and variables used in those properties; an off-scale variable is reported once on the variable (`nodeId` `$name`, path `variables/name`), not on every node using it. Numeric variables no checked property uses are still checked, with the category taken from the variable name (`spacing`/`gap`/`padding`, `radius`, `font-size`, `stroke`/`border-width`); names with no hint are skipped. | `warn`, `block` when `strict` is true | `scales.<category>`: `{ "base": n }` (multiples of n) or an explicit list (`scales` given here replaces the whole default map; a category left out is not checked); `tolerance` (default 0). Defaults: spacing base 4, radius base 2, strokeWidth `[1, 2, 4]`, fontSize `[12, 14, 16, 20, 24, 32, 40, 48]` | `candidates` with the nearest allowed value, or both neighbours ascending when equidistant (`gap: 18` on base 4 gives `[16, 20]`) |
 
 ### Severities
 
 - `block`: fails the run (the only severity that can).
-- `warn`: reported; fails only with `strict: true`.
+- `warn`: reported; never fails the run.
 - `review`: needs a human look; never changed by config.
 - `info`: purely informational; never changed by config.
 
@@ -144,7 +150,7 @@ Ordering guarantees: files by path; frames by id; nodes by id then change kind (
 
 ### Config
 
-`design-gates.config.json` (all keys optional; unknown top-level keys or rule ids are an error). Defaults:
+`design-gates.config.json` (all keys optional; `strict` only escalates the rules that say so (TOK-002 warn -> block), the exit code still fails only on `block`; `DIF-001.scope` lists component ids/names or variable names (`*` glob) whose block is downgraded to warn; `TOK-001.ignoreValues` is per property, a `/.../` string being a regex; `TOK-002.scales` takes `{ "base": n }` or a list per category; unknown top-level keys or rule ids are an error). Defaults:
 
 ```json
 {
@@ -161,26 +167,24 @@ Ordering guarantees: files by path; frames by id; nodes by id then change kind (
     "DIF-001": {
       "warnAt": 5,
       "blockAt": 20,
-      "scope": [
-        "*"
-      ]
+      "scope": []
     },
     "SCH-001": {},
     "SCH-002": {},
     "SCH-003": {},
     "TOK-001": {
       "properties": [
-        "cornerRadius",
-        "effect.color",
         "fill",
-        "fontFamily",
-        "fontSize",
+        "stroke",
+        "effect.color",
+        "cornerRadius",
         "gap",
         "padding",
-        "stroke",
-        "strokeWidth"
+        "fontSize",
+        "strokeWidth",
+        "fontFamily"
       ],
-      "ignoreValues": [],
+      "ignoreValues": {},
       "onlyIn": []
     },
     "TOK-002": {

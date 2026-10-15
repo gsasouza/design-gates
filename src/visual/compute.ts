@@ -62,7 +62,10 @@ export async function computeVisualDiff(opts: VisualDiffOptions): Promise<DiffRe
       const { boxes: nodeBoxes, missing } = nodeChangeBoxes(frame.nodes, first.base?.boxes, first.head?.boxes);
       const pixelBoxes: ChangeBox[] = [];
       for (const r of renders) {
-        const found = pixelChangeBoxes(r.diff.mask, r.diff.width, r.diff.height, nodeBoxes, { minArea: opts.minArea ?? DEFAULT_MIN_AREA });
+        const found = pixelChangeBoxes(r.diff.mask, r.diff.width, r.diff.height, nodeBoxes, {
+          minArea: opts.minArea ?? DEFAULT_MIN_AREA,
+          rootIds: [frame.id, frame.baseId, frame.headId].filter((id): id is string => !!id),
+        });
         for (const b of found) if (!pixelBoxes.some((p) => sameBox(p, b))) pixelBoxes.push(b);
       }
       frame.changeBoxes = sortBoxes([...nodeBoxes, ...pixelBoxes]);

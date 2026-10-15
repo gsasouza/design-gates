@@ -1,20 +1,20 @@
 import { themeCombinations } from "../compile/query.js";
 import { resolveAlias } from "../render/themes.js";
 import type { CompiledDocument, CompiledNode } from "../compile/types.js";
-import type { GatesConfig, Tok002Scale } from "../gates/config.js";
+import type { GatesConfig, Scale, ScaleCategory } from "../gates/config.js";
 import type { ControlledProp } from "../gates/tok.js";
 import type { Violation } from "../gates/types.js";
 import { affectedInstances, affectedKey, isInherited, literalSlots, rootProp, type Slot } from "./tok-slots.js";
 
 const NUMERIC: ReadonlySet<ControlledProp> = new Set(["cornerRadius", "fontSize", "gap", "padding", "strokeWidth"]);
-const CATEGORY: Partial<Record<ControlledProp, string>> = { cornerRadius: "radius", fontSize: "fontSize", gap: "spacing", padding: "spacing", strokeWidth: "strokeWidth" };
+const CATEGORY: Partial<Record<ControlledProp, ScaleCategory>> = { cornerRadius: "radius", fontSize: "fontSize", gap: "spacing", padding: "spacing", strokeWidth: "strokeWidth" };
 const EPS = 1e-9;
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 const round = (n: number): number => Math.round(n * 1e6) / 1e6;
 
 /** Nearest allowed value(s), ascending, or undefined when `value` is on the scale (within `tolerance`). */
-export function offScale(value: number, scale: Tok002Scale, tolerance: number): number[] | undefined {
+export function offScale(value: number, scale: Scale, tolerance: number): number[] | undefined {
   let below: number;
   let above: number;
   if (Array.isArray(scale)) {
@@ -36,14 +36,14 @@ export function offScale(value: number, scale: Tok002Scale, tolerance: number): 
 }
 
 /** Category of a variable use, from the property path it was found at. */
-function useCategory(prop: string): string | undefined {
+function useCategory(prop: string): ScaleCategory | undefined {
   const root = rootProp(prop);
   if (root === "stroke") return /(^|[.[\]])thickness([.[\]]|$)/.test(prop) ? "strokeWidth" : undefined;
   return CATEGORY[root as ControlledProp];
 }
 
 /** Category hint from a variable name; undefined when the name says nothing. */
-function nameCategory(name: string): string | undefined {
+function nameCategory(name: string): ScaleCategory | undefined {
   const n = name.toLowerCase();
   if (/stroke|border-?width|thickness/.test(n)) return "strokeWidth";
   if (/radius|radii|corner/.test(n)) return "radius";
@@ -81,7 +81,7 @@ export function run(compiled: CompiledDocument, config: GatesConfig): Violation[
   }
 
   // Values resolved through a variable are reported once, on the variable definition, for every theme combination.
-  const used = new Map<string, { ref: string; category: string }>();
+  const used = new Map<string, { ref: string; category: ScaleCategory }>();
   for (const node of compiled.nodes) {
     for (const use of node.uses) {
       const category = useCategory(use.prop);

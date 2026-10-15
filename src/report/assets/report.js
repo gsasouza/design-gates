@@ -9,7 +9,10 @@
   var states = new Map();
 
   function all(sel, ctx) { return Array.prototype.slice.call((ctx || document).querySelectorAll(sel)); }
-  function shown(el) { return !el.closest('[hidden]'); }
+  function shown(el) {
+    if (el.classList.contains('box') && body.classList.contains('markers-off')) return false;
+    return !el.closest('[hidden]');
+  }
   function frames() { return all('.frame'); }
   function frameOf(el) { return el.closest('.frame'); }
 
@@ -23,13 +26,18 @@
     var t = 'translate(' + s.x + 'px, ' + s.y + 'px) scale(' + s.fit * s.zoom + ')';
     all('.stage', frame).forEach(function (st) { st.style.transform = t; });
   }
+  // Scale that fits a w x h image into availW x availH: at most 400%, at least 10%; 1 when unknown.
+  function fitScale(w, h, availW, availH) {
+    if (!(w > 0 && h > 0 && availW > 0 && availH > 0)) return 1;
+    return Math.min(4, Math.max(0.1, Math.min(availW / w, availH / h)));
+  }
   function fitFrame(frame) {
     var s = stateFor(frame);
     var vp = all('.viewport', frame).filter(shown)[0];
     var st = vp && vp.querySelector('.stage');
     var w = st ? Number(st.getAttribute('data-w')) : 0;
-    s.fit = 1;
-    if (vp && w > 0 && vp.clientWidth > 0) s.fit = Math.min(1, vp.clientWidth / w);
+    var h = st ? Number(st.getAttribute('data-h')) : 0;
+    s.fit = vp ? fitScale(w, h, vp.clientWidth, window.innerHeight * 0.7) : 1;
     all('.viewport', frame).forEach(function (v) {
       var sg = v.querySelector('.stage');
       var sh = sg ? Number(sg.getAttribute('data-h')) : 0;
@@ -92,6 +100,18 @@
     setCurrent(frameOf(box));
     reveal(box);
   }
+  // A change-list line selects the first shown marker of its node; hidden markers are switched back on.
+  function selectFromLine(li) {
+    var frame = frameOf(li);
+    var id = li.getAttribute('data-node-id');
+    if (!frame) return;
+    var cands = id === null ? [] : all('.box', frame).filter(function (b) {
+      return b.getAttribute('data-node-id') === id && !b.closest('[hidden]');
+    });
+    if (!cands.length) { select(null); setCurrent(frame); return; }
+    if (body.classList.contains('markers-off')) toggleMarkers();
+    select(cands[0]);
+  }
   function boxes() { return all('.box').filter(shown); }
   function frameIndex(el) { return frames().indexOf(frameOf(el)); }
   function moveBox(dir) {
@@ -123,11 +143,18 @@
     var cur = root.getAttribute('data-theme');
     if (!cur) cur = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     setTheme(cur === 'dark' ? 'light' : 'dark');
+    frames().forEach(fitFrame);
   }
   function togglePulse() {
     var on = body.classList.toggle('pulse');
     var b = document.getElementById('pulse-toggle');
     if (b) b.setAttribute('aria-pressed', String(on));
+  }
+  function toggleMarkers() {
+    var off = body.classList.toggle('markers-off');
+    var b = document.getElementById('markers-toggle');
+    if (b) b.setAttribute('aria-pressed', String(!off));
+    if (off && selected) select(null);
   }
   function toggleHelp(force) {
     var h = document.getElementById('help');
@@ -142,6 +169,8 @@
     if (tb) tb.addEventListener('click', toggleTheme);
     var pb = document.getElementById('pulse-toggle');
     if (pb) pb.addEventListener('click', togglePulse);
+    var mb = document.getElementById('markers-toggle');
+    if (mb) mb.addEventListener('click', toggleMarkers);
     var hb = document.getElementById('help-toggle');
     if (hb) hb.addEventListener('click', function () { toggleHelp(); });
     var help = document.getElementById('help');
@@ -172,6 +201,7 @@
         var apply = function () {
           var layer = inp.closest('.view').querySelector('.head-layer');
           var v = Number(inp.value);
+          if (!layer) return;
           layer.setAttribute('data-clip', String(v));
           layer.style.setProperty('clip-path', 'inset(0 ' + (100 - v) + '% 0 0)');
         };
@@ -180,7 +210,8 @@
       });
       all('.onion input', frame).forEach(function (inp) {
         var apply = function () {
-          inp.closest('.view').querySelector('.head-layer').style.opacity = String(Number(inp.value) / 100);
+          var layer = inp.closest('.view').querySelector('.head-layer');
+          if (layer) layer.style.opacity = String(Number(inp.value) / 100);
         };
         inp.addEventListener('input', apply);
         apply();
@@ -216,7 +247,10 @@
       box.addEventListener('blur', close);
       box.addEventListener('click', function () { select(box); });
     });
-    all('#sidebar a[href^="#frame-"]').forEach(function (a) {
+    all('.change-line').forEach(function (b) {
+      b.addEventListener('click', function () { selectFromLine(b.closest('li')); });
+    });
+    all('#sidebar a[href^="#frame-"], #summary a[href^="#frame-"]').forEach(function (a) {
       a.addEventListener('click', function () {
         var f = document.getElementById(a.getAttribute('href').slice(1));
         if (f) { select(null); setCurrent(f); }
@@ -238,6 +272,7 @@
         moveBox(-1);
       } else if (k === 'n') moveFrame(1);
       else if (k === 'p') moveFrame(-1);
+      else if (k === 'm') toggleMarkers();
       else if (k >= '1' && k <= '5') setView(VIEWS[Number(k) - 1]);
       else if (k === '?') toggleHelp();
       else if (k === 'Escape') toggleHelp(false);

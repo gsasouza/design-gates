@@ -54,8 +54,7 @@ export function run(compiled: CompiledDocument, config: GatesConfig): Violation[
     return names.some((n) => n !== undefined && only.some((re) => re.test(n)));
   };
   const ignored = (slot: Slot): boolean => {
-    const list = Array.isArray(cfg.ignoreValues) ? cfg.ignoreValues : (cfg.ignoreValues[slot.controlled] ?? []);
-    return isIgnored(slot.value, list);
+    return isIgnored(slot.value, cfg.ignoreValues[slot.controlled] ?? []);
   };
 
   const all = compiled.nodes.flatMap((node) => literalSlots(node, enabled).map((slot) => ({ node, slot })));

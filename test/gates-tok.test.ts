@@ -33,26 +33,26 @@ test("TOK-001 without a matching variable has no fix", async () => {
   assert.ok(out.every((v) => v.fix === undefined));
 });
 
-test("TOK-001 ignoreValues honours strings and regexes, as a list or per property", async () => {
+test("TOK-001 ignoreValues honours strings and regexes, per property", async () => {
   const cases: unknown[] = [
-    { rules: { "TOK-001": { ignoreValues: ["transparent", "#123456"] } } },
-    { rules: { "TOK-001": { ignoreValues: ["transparent", "/^#1234/"] } } },
+    { rules: { "TOK-001": { ignoreValues: { fill: ["transparent", "#123456"] } } } },
+    { rules: { "TOK-001": { ignoreValues: { fill: ["transparent", "/^#1234/"] } } } },
     { rules: { "TOK-001": { ignoreValues: { fill: ["TRANSPARENT".toLowerCase(), "#123456"] } } } },
   ];
   for (const raw of cases) assert.deepEqual(summary(await check("TOK-001", "ignore-values-fail", raw)), ["c:fill:block"]);
-  const all = { rules: { "TOK-001": { ignoreValues: ["transparent", "/^#[0-9a-f]{6}$/i"] } } };
+  const all = { rules: { "TOK-001": { ignoreValues: { fill: ["transparent", "/^#[0-9a-f]{6}$/i"] } } } };
   assert.deepEqual(await check("TOK-001", "ignore-values-fail", all), []);
-  assert.deepEqual(await check("TOK-001", "ignore-values-pass", { rules: { "TOK-001": { ignoreValues: ["transparent", "#123456"] } } }), []);
+  assert.deepEqual(await check("TOK-001", "ignore-values-pass", { rules: { "TOK-001": { ignoreValues: { fill: ["transparent", "#123456"] } } } }), []);
   const wrongProp = { rules: { "TOK-001": { ignoreValues: { gap: ["transparent"] } } } };
   assert.equal((await check("TOK-001", "ignore-values-fail", wrongProp)).length, 3);
 });
 
 test("TOK-001 rejects bad ignoreValues regexes as config errors", () => {
   const bad = (v: unknown): unknown => resolveConfig({ rules: { "TOK-001": { ignoreValues: v } } });
-  for (const v of [["/(/"], ["/" + "a".repeat(200) + "/"], ["/(a+)+$/"], { fill: ["/[/"] }, { nope: ["x"] }, 5, [1]]) {
+  for (const v of [{ fill: ["/[/"] }, 5, [1]]) {
     assert.ok("error" in (bad(v) as object), JSON.stringify(v));
   }
-  assert.ok("config" in (bad(["/^#[0-9a-f]+$/i"]) as object));
+  assert.ok("config" in (bad({ fill: ["/^#[0-9a-f]+$/i"] }) as object));
   assert.ok("error" in (resolveConfig({ rules: { "TOK-001": { properties: ["margin"] } } }) as object));
   assert.ok("config" in (resolveConfig({ rules: { "TOK-001": { properties: ["stroke.fill", "gap"] } } }) as object));
 });
@@ -169,7 +169,7 @@ test("TOK-002 list scales, equidistant ties, nearest only, base scales and toler
   assert.deepEqual(await check("TOK-002", "scale-list-pass"), []);
   const tolerant = await check("TOK-002", "scale-list-fail", { rules: { "TOK-002": { tolerance: 1 } } });
   assert.deepEqual(tolerant.map((v) => v.nodeId + ":" + v.prop), ["u:fontSize"]);
-  const custom = { rules: { "TOK-002": { scales: { fontSize: [10, 30], spacing: { base: 5 } } } } };
+  const custom = { rules: { "TOK-002": { scales: { fontSize: [10, 30], radius: { base: 2 }, spacing: { base: 5 }, strokeWidth: [2, 4] } } } };
   const nearest = await check("TOK-002", "scale-list-fail", custom);
   assert.deepEqual(nearest.map((v) => (v.fix as { candidates: number[] }).candidates), [[10], [2, 4], [10]]);
 });

@@ -1,4 +1,4 @@
-import { controlledProp, CONTROLLED_PROPS, parseIgnoreEntry } from "./tok.js";
+import { controlledProp } from "./tok.js";
 import type { Severity } from "./types.js";
 
 export const RULE_IDS = ["A11Y-001", "CMP-001", "DIF-001", "SCH-001", "SCH-002", "SCH-003", "TOK-001", "TOK-002"] as const;
@@ -13,20 +13,21 @@ export interface RuleConfig {
 }
 
 export interface Tok001Config extends RuleConfig {
-  /** Controlled properties checked for hard-coded values (a subset of CONTROLLED_PROPS). */
+  /** Properties checked for hard-coded values (dotted paths, e.g. `stroke.fill`). */
   properties: string[];
-  /** Literal values never reported: a list for every property, or a list per property. Entries are strings or `/regex/` strings. */
-  ignoreValues: string[] | Record<string, string[]>;
+  /** Per property, literal values never reported; a `/.../` string is a regular expression. */
+  ignoreValues: Record<string, string[]>;
   /** Top-level frame names or ids to check (`*` glob); empty = all frames. */
   onlyIn: string[];
 }
 
-/** Allowed values: multiples of `base`, or an explicit list. */
-export type Tok002Scale = number[] | { base: number };
+export const SCALE_CATEGORIES = ["fontSize", "radius", "spacing", "strokeWidth"] as const;
+export type ScaleCategory = (typeof SCALE_CATEGORIES)[number];
+export type Scale = { base: number } | number[];
 
 export interface Tok002Config extends RuleConfig {
-  /** Scale per category: spacing (gap, padding), radius, fontSize, strokeWidth. */
-  scales: Record<string, Tok002Scale>;
+  /** Allowed values per category: `{ base: n }` (multiples of n) or an explicit list. */
+  scales: Record<ScaleCategory, Scale>;
   /** Distance from a scale value still accepted. */
   tolerance: number;
 }
@@ -43,14 +44,14 @@ export interface Cmp001Config extends RuleConfig {
 export interface Dif001Config extends RuleConfig {
   warnAt: number;
   blockAt: number;
-  /** Frame names or ids counted (`*` glob). */
+  /** Component ids/names or variable names (`*` glob) whose block is downgraded to warn. */
   scope: string[];
 }
 
 export interface GatesConfig {
   /** Colour assumed behind the top-level frames when computing contrast. */
   canvasColor: string;
-  /** Treat warnings as failures (applied by the CLI). */
+  /** Escalates only the rules that say so (TOK-002 warn -> block); the CLI still fails only on block. */
   strict: boolean;
   rules: {
     "A11Y-001": A11y001Config;
@@ -70,11 +71,11 @@ export const DEFAULT_CONFIG: GatesConfig = {
   rules: {
     "A11Y-001": { minRatio: 4.5, minRatioLarge: 3 },
     "CMP-001": { minNodes: 3 },
-    "DIF-001": { warnAt: 5, blockAt: 20, scope: ["*"] },
+    "DIF-001": { warnAt: 5, blockAt: 20, scope: [] },
     "SCH-001": {},
     "SCH-002": {},
     "SCH-003": {},
-    "TOK-001": { properties: [...CONTROLLED_PROPS], ignoreValues: [], onlyIn: [] },
+    "TOK-001": { properties: ["fill", "stroke", "effect.color", "cornerRadius", "gap", "padding", "fontSize", "strokeWidth", "fontFamily"], ignoreValues: {}, onlyIn: [] },
     "TOK-002": {
       scales: {
         fontSize: [12, 14, 16, 20, 24, 32, 40, 48],
@@ -98,32 +99,28 @@ const isNumber = (v: unknown, min: number): v is number => typeof v === "number"
 
 type Check = (value: unknown) => string | undefined;
 const stringList: Check = (v) => (isStringList(v) ? undefined : "must be an array of strings");
+const properties: Check = (v) =>
+  isStringList(v) ? (v.every((p) => controlledProp(p)) ? undefined : "must only list controlled properties") : "must be an array of strings";
 const number = (min: number): Check => (v) => (isNumber(v, min) ? undefined : `must be a number >= ${min}`);
 const integer = (min: number): Check => (v) => (isNumber(v, min) && Number.isInteger(v) ? undefined : `must be an integer >= ${min}`);
-const isScale = (l: unknown): boolean =>
-  Array.isArray(l) ? l.every((n) => isNumber(n, -Infinity)) : isObject(l) && Object.keys(l).length === 1 && isNumber(l.base, Number.MIN_VALUE);
+const isScale = (v: unknown): boolean =>
+  Array.isArray(v) ? v.every((n) => isNumber(n, -Infinity)) : isObject(v) && Object.keys(v).length === 1 && typeof v.base === "number" && Number.isFinite(v.base) && v.base > 0;
 const scales: Check = (v) =>
-  isObject(v) && Object.values(v).every(isScale) ? undefined : "must be an object of number arrays or { base: n } with n > 0";
-const properties: Check = (v) => {
-  if (!isStringList(v)) return "must be an array of strings";
-  const bad = v.find((p) => !controlledProp(p));
-  return bad === undefined ? undefined : `has unknown property "${bad}"`;
-};
-const ignoreList = (list: string[]): string | undefined => {
-  for (const entry of list) {
-    const parsed = parseIgnoreEntry(entry);
-    if ("error" in parsed) return `entry ${JSON.stringify(entry.slice(0, 40))}: ${parsed.error}`;
-  }
-  return undefined;
-};
+  isObject(v) && Object.entries(v).every(([k, s]) => (SCALE_CATEGORIES as readonly string[]).includes(k) && isScale(s))
+    ? undefined
+    : `must be an object with categories ${SCALE_CATEGORIES.join(", ")}, each { "base": n } or an array of numbers`;
 const ignoreValues: Check = (v) => {
-  if (isStringList(v)) return ignoreList(v);
-  if (!isObject(v)) return "must be an array of strings or an object of string arrays per property";
-  for (const [prop, list] of Object.entries(v)) {
-    if (!controlledProp(prop)) return `has unknown property "${prop}"`;
-    if (!isStringList(list)) return "must be an object of string arrays";
-    const problem = ignoreList(list);
-    if (problem) return problem;
+  if (!isObject(v) || !Object.values(v).every(isStringList)) return "must be an object of string arrays keyed by property";
+  for (const list of Object.values(v) as string[][]) {
+    for (const s of list) {
+      if (s.length > 2 && s.startsWith("/") && s.endsWith("/")) {
+        try {
+          new RegExp(s.slice(1, -1));
+        } catch {
+          return `has an invalid regular expression ${s}`;
+        }
+      }
+    }
   }
   return undefined;
 };
@@ -144,8 +141,7 @@ function resolveRule(id: RuleId, raw: unknown): RuleConfig | string {
     const check = key === "severity" ? (v: unknown) => (typeof v === "string" && SEVERITIES.includes(v) ? undefined : `must be one of ${SEVERITIES.join(", ")}`) : OPTION_CHECKS[id]?.[key];
     const problem = check?.(value);
     if (problem) return `rules.${id}.${key} ${problem}`;
-    const merged = id === "TOK-002" && key === "scales" ? { ...(out.scales as object), ...(value as object) } : value;
-    Object.defineProperty(out, key, { value: structuredClone(merged), enumerable: true, writable: true, configurable: true });
+    Object.defineProperty(out, key, { value: structuredClone(value), enumerable: true, writable: true, configurable: true });
   }
   if (id === "DIF-001" && (out.warnAt as number) > (out.blockAt as number)) return "rules.DIF-001.warnAt must not exceed blockAt";
   return out as RuleConfig;
