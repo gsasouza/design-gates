@@ -126,13 +126,23 @@ export function prepareDocument(doc: PenDocument, frameId: string, theme?: Theme
       let id = made.get(key);
       const component = findNode(copy.children, node.ref);
       if (id === undefined && component) {
-        id = `${node.ref}@${made.size + 1}`;
+        const n = made.size + 1;
+        id = `${node.ref}@${n}`;
         made.set(key, id);
-        const variant = bakeVariables({ ...component, id }, variables, here) as PenNode;
+        const variant = suffixIds(bakeVariables({ ...component, id }, variables, here) as PenNode, `@${n}`, true);
         variants.push(variant);
         retarget(variant, here);
       }
-      if (id !== undefined) node.ref = id;
+      if (id !== undefined) {
+        node.ref = id;
+        const overrides = node.descendants;
+        if (typeof overrides === "object" && overrides !== null && !Array.isArray(overrides)) {
+          const suffix = id.slice(id.lastIndexOf("@"));
+          node.descendants = Object.fromEntries(
+            Object.entries(overrides as Record<string, unknown>).map(([path, v]) => [path.split("/").map((seg) => `${seg}${suffix}`).join("/"), v]),
+          ) as typeof node.descendants;
+        }
+      }
     }
     for (const child of node.children ?? []) retarget(child, here);
   };
@@ -141,7 +151,12 @@ export function prepareDocument(doc: PenDocument, frameId: string, theme?: Theme
   return { ...copy, children: [...children, ...variants] };
 }
 
-const sorted = (theme: Theme): [string, string][] => Object.entries(theme).sort(([a], [b]) => a.localeCompare(b));
+/** Copy of `node` with `suffix` appended to every descendant id (the root keeps its id), so a variant's ids stay unique in the document. */
+function suffixIds(node: PenNode, suffix: string, isRoot = false): PenNode {
+  return { ...node, id: isRoot ? node.id : `${node.id}${suffix}`, ...(node.children ? { children: node.children.map((c) => suffixIds(c, suffix)) } : {}) };
+}
+
+const sorted = (theme: Theme): [string, string][] => Object.entries(theme).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
 
 /** Theme inherited by the node `id` from its ancestors (excluding its own pin). */
 function inheritedTheme(nodes: PenNode[], id: string, inherited: Theme): Theme | undefined {
