@@ -59,11 +59,13 @@ describe("git reader (fake exec)", () => {
     const reader = createGitReader("/repo", exec);
     for (const head of ["head", WORKTREE] as const) {
       const files = await reader.listChangedPenFiles("base", head, ["screens/**"]);
-      assert.ok(files.length > 0);
-      for (const f of files) {
-        assert.ok(f.path.endsWith(".pen"), f.path);
-        if (f.oldPath) assert.ok(f.oldPath.endsWith(".pen"), f.oldPath);
-      }
+      const expected = [
+        { path: "screens/a.pen", status: "modified" },
+        { path: "screens/o.pen", status: "removed" },
+        { path: "screens/p.pen", status: "added" },
+        ...(head === WORKTREE ? [{ path: "screens/u.pen", status: "added" }] : []),
+      ];
+      assert.deepEqual(files, expected);
     }
   });
 

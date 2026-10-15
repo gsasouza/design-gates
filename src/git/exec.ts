@@ -40,9 +40,17 @@ export function buildPathspecs(globs: string[]): string[] {
   return globs.map((g) => `:(glob)${g}`);
 }
 
-/** User globs narrow the result, so non-.pen matches are dropped (path and oldPath). */
+/** User globs narrow the result to .pen files; a rename across the .pen boundary becomes added/removed. */
 function onlyPen(files: ChangedFile[]): ChangedFile[] {
-  return files.filter((f) => f.path.endsWith(".pen") && (f.oldPath === undefined || f.oldPath.endsWith(".pen")));
+  return files.flatMap((f): ChangedFile[] => {
+    const newPen = f.path.endsWith(".pen");
+    if (f.oldPath === undefined) return newPen ? [f] : [];
+    const oldPen = f.oldPath.endsWith(".pen");
+    if (newPen && oldPen) return [f];
+    if (oldPen) return [{ path: f.oldPath, status: "removed" }];
+    if (newPen) return [{ path: f.path, status: "added" }];
+    return [];
+  });
 }
 
 /** Parses `git diff --name-status -z` output, including two-path renames/copies. */
