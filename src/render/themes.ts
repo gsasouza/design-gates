@@ -32,7 +32,7 @@ export function isVariableRef(key: string | undefined, value: unknown): value is
   return typeof value === "string" && !(key !== undefined && LITERAL_KEYS.has(key)) && VARIABLE_REF.test(value);
 }
 
-type Theme = Record<string, string>;
+export type Theme = Record<string, string>;
 
 function isTheme(value: unknown): value is Theme {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -45,20 +45,49 @@ export function resolveVariable(variable: PenVariable, theme: Theme): unknown {
   return entries.filter((e) => Object.entries(e.theme ?? {}).every(([axis, v]) => theme[axis] === v)).at(-1)?.value;
 }
 
-/** Resolve `$name` to a concrete value, following alias chains (a variable whose value is `$other`). */
-function resolveReference(ref: string, variables: PenVariables, theme: Theme): unknown {
-  const seen: string[] = [];
+/** Longest alias chain followed before giving up (bounds untrusted documents). */
+export const MAX_ALIAS_DEPTH = 256;
+
+/**
+ * Outcome of following a `$name` alias chain:
+ * - `ok`: `value` is the concrete value;
+ * - `undefined`: a variable in the chain is not declared;
+ * - `no-value`: a variable is declared but no entry matches the theme;
+ * - `cycle`: the chain revisits a variable (the last `chain` entry repeats an earlier one);
+ * - `too-deep`: the chain exceeds MAX_ALIAS_DEPTH.
+ * `chain` lists the variable names visited (without `$`), including the one that ended the walk;
+ * for every status but `ok`, `value` is the unresolved `$name` reference.
+ */
+export interface ResolveResult {
+  value: unknown;
+  chain: string[];
+  status: "ok" | "undefined" | "no-value" | "cycle" | "too-deep";
+}
+
+/** Resolve `$name` to a concrete value for `theme`, following alias chains. Bounded; never throws. */
+export function resolveAlias(ref: string, variables: PenVariables, theme: Theme): ResolveResult {
+  const chain: string[] = [];
   let current: unknown = ref;
   while (typeof current === "string" && VARIABLE_REF.test(current)) {
     const name = current.slice(1);
-    const variable = variables[name];
-    const next = variable ? resolveVariable(variable, theme) : undefined;
-    if (next === undefined) return current;
-    if (seen.includes(name)) throw new Error(`Variable alias cycle: ${[...seen, name].map((n) => `$${n}`).join(" -> ")}`);
-    seen.push(name);
+    if (chain.includes(name)) return { value: current, chain: [...chain, name], status: "cycle" };
+    if (chain.length >= MAX_ALIAS_DEPTH) return { value: current, chain, status: "too-deep" };
+    chain.push(name);
+    const variable = Object.hasOwn(variables, name) ? variables[name] : undefined;
+    if (!variable) return { value: current, chain, status: "undefined" };
+    const next = resolveVariable(variable, theme);
+    if (next === undefined) return { value: current, chain, status: "no-value" };
     current = next;
   }
-  return current;
+  return { value: current, chain, status: "ok" };
+}
+
+/** Renderer wrapper over resolveAlias: unresolvable references stay as `$name`; a cycle throws. */
+function resolveReference(ref: string, variables: PenVariables, theme: Theme): unknown {
+  const result = resolveAlias(ref, variables, theme);
+  if (result.status === "cycle") throw new Error(`Variable alias cycle: ${result.chain.map((n) => `$${n}`).join(" -> ")}`);
+  if (result.status === "too-deep") throw new Error(`Variable alias chain too deep: ${ref}`);
+  return result.value;
 }
 
 /**

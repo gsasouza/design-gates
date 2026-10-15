@@ -1,0 +1,50 @@
+import type { CompiledDocument } from "../compile/types.js";
+import type { GatesConfig, RuleId } from "../gates/config.js";
+import type { DiffContext, Rule, Severity, Violation } from "../gates/types.js";
+
+export interface RuleEntry {
+  id: RuleId;
+  title: string;
+  description: string;
+  defaultSeverity: Severity;
+  run: Rule;
+}
+
+/** One entry per rule; each rule card adds its own line here. */
+const ENTRIES: RuleEntry[] = [];
+
+/** All registered rules, sorted by id. */
+export const registry: readonly RuleEntry[] = [...ENTRIES].sort((a, b) => cmp(a.id, b.id));
+
+export interface RuleInput {
+  /** Repo-relative POSIX path. */
+  file: string;
+  compiled: CompiledDocument;
+  /** Diff context for this file only. */
+  diff?: DiffContext;
+}
+
+function cmp(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/** Only block and warn are adjustable; review and info, and violations that fix their severity, are left alone. */
+function adjust(v: Violation, override: Severity | "off" | undefined): Violation {
+  if (!override || override === "off" || v.fixedSeverity || (v.severity !== "block" && v.severity !== "warn")) return v;
+  return { ...v, severity: override };
+}
+
+/** Run every enabled rule on every file; output sorted by file, nodeId, rule, prop, message. */
+export function runRules(files: readonly RuleInput[], config: GatesConfig, entries: readonly RuleEntry[] = registry): Violation[] {
+  const out: Violation[] = [];
+  for (const input of files) {
+    for (const entry of entries) {
+      const override = config.rules[entry.id]?.severity;
+      if (override === "off") continue;
+      for (const v of entry.run(input.compiled, config, input.diff)) out.push(adjust({ ...v, file: input.file }, override));
+    }
+  }
+  return out.sort(
+    (a, b) => cmp(a.file, b.file) || cmp(a.nodeId, b.nodeId) || cmp(a.rule, b.rule) || cmp(a.prop ?? "", b.prop ?? "") || cmp(a.message, b.message),
+  );
+}

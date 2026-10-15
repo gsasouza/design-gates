@@ -1,5 +1,6 @@
 import type { MatchedBy } from "./model.js";
 import type { PenNode } from "../pen/types.js";
+import { componentHash } from "./component-hash.js";
 
 export interface FramePair {
   base: PenNode;
@@ -22,8 +23,17 @@ function shape(n: PenNode): unknown[] {
   return entry;
 }
 
-/** Hash of the subtree shape: node type + name (+ text content), ignoring ids, positions and styles. */
-export function structureHash(frame: PenNode): string {
+export interface StructureHashOptions {
+  /** `component`: hash type and all props except id, name, x, y, content and metadata (see componentHash). */
+  mode?: "component";
+}
+
+/**
+ * Hash of the subtree shape: node type + name (+ text content), ignoring ids, positions and styles.
+ * With `{ mode: "component" }` the styles are included and names and copy are ignored instead.
+ */
+export function structureHash(frame: PenNode, options?: StructureHashOptions): string {
+  if (options?.mode === "component") return componentHash(frame);
   return JSON.stringify(shape(frame));
 }
 

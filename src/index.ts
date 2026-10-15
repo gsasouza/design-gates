@@ -6,7 +6,26 @@ export type {
   PenVariable,
   PenVariables,
   PenVersion,
+  PenColor,
+  PenEffect,
+  PenFill,
+  PenFillObject,
+  PenGradientStop,
+  PenStroke,
 } from "./pen/types.js";
+export { gradientStops, solidColor } from "./pen/paint.js";
+export { MAX_ALIAS_DEPTH, resolveAlias } from "./render/themes.js";
+export type { ResolveResult } from "./render/themes.js";
+export { compile } from "./compile/compile.js";
+export { getNode, iterateNodes, listComponents, listInstances, resolveForTheme, themeCombinations, topFrameOf } from "./compile/query.js";
+export type { ThemeCombination } from "./compile/query.js";
+export { KNOWN_TYPES, KNOWN_VERSIONS } from "./compile/constants.js";
+export type { CompileDiagnostic, CompileOptions, CompiledDocument, CompiledNode, DiagnosticRule, Provenance, VariableUse } from "./compile/types.js";
+export type { DiffContext, Fix, Rule, Severity, Violation } from "./gates/types.js";
+export { DEFAULT_CONFIG, RULE_IDS, resolveConfig } from "./gates/config.js";
+export type { ConfigResult, GatesConfig, RuleConfig, RuleId, SeverityOverride } from "./gates/config.js";
+export { registry, runRules } from "./rules/index.js";
+export type { RuleEntry, RuleInput } from "./rules/index.js";
 export { loadPenFile, parsePen } from "./pen/load.js";
 export type { Renderer } from "./render/renderer.js";
 export { createOpenPencilRenderer } from "./render/openpencil.js";
@@ -27,7 +46,7 @@ export type {
 } from "./diff/model.js";
 export { serializeDiff } from "./diff/serialize.js";
 export { matchFrames, structureHash } from "./diff/match.js";
-export type { FrameMatches, FramePair } from "./diff/match.js";
+export type { FrameMatches, FramePair, StructureHashOptions } from "./diff/match.js";
 export { diffFrame } from "./diff/semantic.js";
 export type { FrameDiffResult } from "./diff/semantic.js";
 export { diffVariables } from "./diff/variables.js";
