@@ -104,7 +104,8 @@ function effectiveTheme(nodes: PenNode[], id: string, inherited: Theme): Theme |
 /**
  * Copy of `doc` for OpenPencil with `theme` pinned on the frame and every variable reference
  * resolved for the theme in effect. Reusable components outside the frame are baked with the
- * frame's effective theme, since their instances render under it. The caller's document is never mutated.
+ * frame's effective theme; an instance whose own effective theme differs gets a copy of its
+ * component baked with that theme instead. The caller's document is never mutated.
  */
 export function prepareDocument(doc: PenDocument, frameId: string, theme?: Theme): PenDocument {
   const copy = withFrameTheme(doc, frameId, theme && findNode(doc.children, frameId) ? theme : undefined);
@@ -112,5 +113,43 @@ export function prepareDocument(doc: PenDocument, frameId: string, theme?: Theme
   const base = defaultTheme(copy.themes);
   const frameTheme = effectiveTheme(copy.children, frameId, base) ?? base;
   const children = bakeVariables(copy.children, variables, frameTheme) as PenNode[];
-  return { ...copy, children };
+  const variants: PenNode[] = [];
+  const made = new Map<string, string>();
+  const frameKey = JSON.stringify(sorted(frameTheme));
+
+  /** Re-point instances under `node` whose theme differs from the frame's at a component baked for their theme. */
+  const retarget = (node: PenNode, parent: Theme): void => {
+    const here = isTheme(node.theme) ? { ...parent, ...node.theme } : parent;
+    const hereKey = JSON.stringify(sorted(here));
+    if (typeof node.ref === "string" && hereKey !== frameKey) {
+      const key = `${node.ref}\u0000${hereKey}`;
+      let id = made.get(key);
+      const component = findNode(copy.children, node.ref);
+      if (id === undefined && component) {
+        id = `${node.ref}@${made.size + 1}`;
+        made.set(key, id);
+        const variant = bakeVariables({ ...component, id }, variables, here) as PenNode;
+        variants.push(variant);
+        retarget(variant, here);
+      }
+      if (id !== undefined) node.ref = id;
+    }
+    for (const child of node.children ?? []) retarget(child, here);
+  };
+  const frame = findNode(children, frameId);
+  if (frame) retarget(frame, inheritedTheme(copy.children, frameId, base) ?? base);
+  return { ...copy, children: [...children, ...variants] };
+}
+
+const sorted = (theme: Theme): [string, string][] => Object.entries(theme).sort(([a], [b]) => a.localeCompare(b));
+
+/** Theme inherited by the node `id` from its ancestors (excluding its own pin). */
+function inheritedTheme(nodes: PenNode[], id: string, inherited: Theme): Theme | undefined {
+  for (const node of nodes) {
+    if (node.id === id) return inherited;
+    const here = isTheme(node.theme) ? { ...inherited, ...node.theme } : inherited;
+    const found = node.children && inheritedTheme(node.children, id, here);
+    if (found) return found;
+  }
+  return undefined;
 }

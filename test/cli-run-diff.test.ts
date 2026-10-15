@@ -1,8 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { mkdir, mkdtemp, readdir, realpath, rm, symlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { InvalidRefError, type ChangedFile, type GitReader } from "../src/git/reader.js";
-import { runDiff, type DiffDeps, type RunFs } from "../src/cli/run-diff.js";
+import { defaultFs, runDiff, type DiffDeps, type RunFs } from "../src/cli/run-diff.js";
 import { BLACK, WHITE, fakeRenderer, fillRect, makePng, render } from "./helpers/png.js";
 
 const penText = (color: string): string =>
@@ -218,6 +220,31 @@ test("refuses a symlinked --out dir or a symlinked intermediate dir", async () =
   assert.notEqual(await runDiff({ repo: "/repo", out: "out/a/b" }, b.deps), 0);
   assert.match(b.err.join(""), /Refusing to write through a symlink/);
   assert.equal(b.mem.files.size, 0);
+});
+
+test("refuses a symlinked repo component of a relative --out that leaves the cwd", async () => {
+  const s = setup([], { linkFiles: ["/repo/design-diff"] });
+  assert.notEqual(await runDiff({ repo: "/repo", out: "../repo/design-diff" }, s.deps), 0);
+  assert.match(s.err.join(""), /Refusing to write through a symlink: \/repo\/design-diff/);
+  assert.equal(s.mem.files.size, 0);
+});
+
+test("refuses a real symlinked --out and writes nothing to its target", async () => {
+  const root = await realpath(await mkdtemp(path.join(tmpdir(), "dg-symlink-")));
+  try {
+    const cwd = path.join(root, "cwd");
+    const elsewhere = path.join(root, "elsewhere");
+    await mkdir(cwd);
+    await mkdir(elsewhere);
+    await symlink(elsewhere, path.join(cwd, "design-diff"));
+    const s = setup([{ status: "modified", path: "a.pen" }]);
+    const deps: DiffDeps = { ...s.deps, cwd, tmpdir: root, fs: defaultFs };
+    assert.notEqual(await runDiff({ repo: "/repo" }, deps), 0);
+    assert.match(s.err.join(""), /Refusing to write through a symlink/);
+    assert.deepEqual(await readdir(elsewhere), []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("refuses the common git dir of a linked worktree", async () => {
