@@ -1,4 +1,5 @@
 import type { PenDocument, PenNode, PenVariable } from "../pen/types.js";
+import { isVariableRef } from "../render/themes.js";
 import type { DiffDocs, FrameRef, ThemeChange, VariableChange } from "./model.js";
 
 export interface VariablesDiff {
@@ -30,11 +31,10 @@ function findById(nodes: PenNode[], id: string): PenNode | undefined {
 /** Variable names a subtree references: `$name` strings anywhere, plus those of instanced components. */
 function referencedNames(doc: PenDocument, node: PenNode, visiting: Set<string> = new Set()): Set<string> {
   const names = new Set<string>();
-  const walk = (value: unknown): void => {
-    if (typeof value === "string") {
-      if (value.length > 1 && value.startsWith("$")) names.add(value.slice(1));
-    } else if (Array.isArray(value)) value.forEach(walk);
-    else if (typeof value === "object" && value !== null) Object.values(value).forEach(walk);
+  const walk = (value: unknown, key?: string): void => {
+    if (isVariableRef(key, value)) names.add(value.slice(1));
+    else if (Array.isArray(value)) value.forEach((v) => walk(v, key));
+    else if (typeof value === "object" && value !== null) Object.entries(value).forEach(([k, v]) => walk(v, k));
   };
   walk(node);
   const instances: string[] = [];
@@ -52,9 +52,24 @@ function referencedNames(doc: PenDocument, node: PenNode, visiting: Set<string> 
   return names;
 }
 
+/** `name` plus every variable whose value (any theme entry, transitively) is an alias `$name`. */
+function aliasClosure(doc: PenDocument, name: string): Set<string> {
+  const out = new Set([name]);
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const [other, variable] of Object.entries(doc.variables ?? {})) {
+      if (out.has(other)) continue;
+      const values = Array.isArray(variable.value) ? (variable.value as { value: unknown }[]).map((e) => e.value) : [variable.value];
+      if (values.some((v) => isVariableRef(undefined, v) && out.has(v.slice(1)))) grew = out.add(other).size > 0;
+    }
+  }
+  return out;
+}
+
 function framesReferencing(file: string, doc: PenDocument | undefined, name: string): FrameRef[] {
   if (!doc) return [];
-  return doc.children.filter((f) => referencedNames(doc, f).has(name)).map((f) => ({ file, frameId: f.id }));
+  const targets = aliasClosure(doc, name);
+  return doc.children.filter((f) => [...referencedNames(doc, f)].some((n) => targets.has(n))).map((f) => ({ file, frameId: f.id }));
 }
 
 function framesPinningAxis(file: string, doc: PenDocument | undefined, axis: string): FrameRef[] {

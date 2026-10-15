@@ -27,6 +27,11 @@ const VARIABLE_REF = /^\$[^\s$]+$/;
 /** Keys whose string values are data, never variable references. */
 const LITERAL_KEYS = new Set(["id", "name", "content", "type", "ref"]);
 
+/** True when `value` under property `key` is a variable reference (`$name`); the renderer's one definition. */
+export function isVariableRef(key: string | undefined, value: unknown): value is string {
+  return typeof value === "string" && !(key !== undefined && LITERAL_KEYS.has(key)) && VARIABLE_REF.test(value);
+}
+
 type Theme = Record<string, string>;
 
 function isTheme(value: unknown): value is Theme {
@@ -70,7 +75,7 @@ export function bakeVariables(value: unknown, variables: PenVariables, theme: Th
   const out: Record<string, unknown> = {};
   for (const [key, v] of Object.entries(node)) {
     if (typeof v === "string") {
-      out[key] = LITERAL_KEYS.has(key) || !VARIABLE_REF.test(v) ? v : resolveReference(v, variables, here);
+      out[key] = isVariableRef(key, v) ? resolveReference(v, variables, here) : v;
     } else {
       out[key] = key === "theme" ? v : bakeVariables(v, variables, here);
     }

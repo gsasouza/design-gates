@@ -119,3 +119,37 @@ test("added and removed variables and theme axes are reported", async () => {
   assert.deepEqual(added.themes.map((t) => [t.name, t.change]), [["mode", "added"]]);
   assert.equal(added.variables[0]!.frames.length, 3);
 });
+
+function aliasDoc(blue: string, extraFrames: unknown[] = []): PenDocument {
+  return {
+    version: "2.6",
+    variables: {
+      "blue-600": { type: "color", value: blue },
+      primary: { type: "color", value: [{ value: "$blue-600" }] },
+      bg: { type: "color", value: "#ffffff" },
+    },
+    children: [
+      { id: "uses-alias", type: "frame", width: 10, height: 10, fill: "$primary" },
+      { id: "uses-direct", type: "frame", width: 10, height: 10, fill: "$blue-600" },
+      { id: "unrelated", type: "frame", width: 10, height: 10, fill: "$bg" },
+      ...extraFrames,
+    ],
+  } as unknown as PenDocument;
+}
+
+test("a primitive change lists frames that use it through a 2-level alias", () => {
+  const { variables } = diffVariables({ "a.pen": { base: aliasDoc("#0000ff"), head: aliasDoc("#0000aa") } });
+  assert.equal(variables.length, 1);
+  assert.equal(variables[0]!.name, "blue-600");
+  assert.deepEqual(variables[0]!.frames.map((f) => f.frameId), ["uses-alias", "uses-direct"]);
+});
+
+test("text content that looks like a variable is a literal, not a reference", () => {
+  const text = { id: "texty", type: "frame", width: 10, height: 10, children: [{ id: "t", type: "text", content: "$bg" }] };
+  const { variables } = diffVariables({ "a.pen": { base: aliasDoc("#0000ff", [text]), head: aliasDoc("#0000aa", [text]) } });
+  const bg = diffVariables({
+    "a.pen": { base: aliasDoc("#0000ff", [text]), head: { ...aliasDoc("#0000ff", [text]), variables: { ...aliasDoc("#0000ff").variables, bg: { type: "color", value: "#000000" } } } },
+  }).variables;
+  assert.deepEqual(variables[0]!.frames.map((f) => f.frameId), ["uses-alias", "uses-direct"]);
+  assert.deepEqual(bg[0]!.frames.map((f) => f.frameId), ["unrelated"]);
+});
