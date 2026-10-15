@@ -14,15 +14,19 @@ export interface RuleConfig {
 export interface Tok001Config extends RuleConfig {
   /** Properties checked for hard-coded values (dotted paths, e.g. `stroke.fill`). */
   properties: string[];
-  /** Literal values never reported. */
-  ignoreValues: string[];
+  /** Per property, literal values never reported; a `/.../` string is a regular expression. */
+  ignoreValues: Record<string, string[]>;
   /** Top-level frame names or ids to check (`*` glob); empty = all frames. */
   onlyIn: string[];
 }
 
+export const SCALE_CATEGORIES = ["fontSize", "radius", "spacing", "strokeWidth"] as const;
+export type ScaleCategory = (typeof SCALE_CATEGORIES)[number];
+export type Scale = { base: number } | number[];
+
 export interface Tok002Config extends RuleConfig {
-  /** Allowed values per scale name. */
-  scales: Record<string, number[]>;
+  /** Allowed values per category: `{ base: n }` (multiples of n) or an explicit list. */
+  scales: Record<ScaleCategory, Scale>;
   /** Distance from a scale value still accepted. */
   tolerance: number;
 }
@@ -39,14 +43,14 @@ export interface Cmp001Config extends RuleConfig {
 export interface Dif001Config extends RuleConfig {
   warnAt: number;
   blockAt: number;
-  /** Frame names or ids counted (`*` glob). */
+  /** Component ids/names or variable names (`*` glob) whose block is downgraded to warn. */
   scope: string[];
 }
 
 export interface GatesConfig {
   /** Colour assumed behind the top-level frames when computing contrast. */
   canvasColor: string;
-  /** Treat warnings as failures (applied by the CLI). */
+  /** Escalates only the rules that say so (TOK-002 warn -> block); the CLI still fails only on block. */
   strict: boolean;
   rules: {
     "A11Y-001": A11y001Config;
@@ -66,16 +70,17 @@ export const DEFAULT_CONFIG: GatesConfig = {
   rules: {
     "A11Y-001": { minRatio: 4.5, minRatioLarge: 3 },
     "CMP-001": { minNodes: 3 },
-    "DIF-001": { warnAt: 5, blockAt: 20, scope: ["*"] },
+    "DIF-001": { warnAt: 5, blockAt: 20, scope: [] },
     "SCH-001": {},
     "SCH-002": {},
     "SCH-003": {},
-    "TOK-001": { properties: ["fill", "stroke.fill"], ignoreValues: [], onlyIn: [] },
+    "TOK-001": { properties: ["fill", "stroke", "effect.color", "cornerRadius", "gap", "padding", "fontSize", "strokeWidth", "fontFamily"], ignoreValues: {}, onlyIn: [] },
     "TOK-002": {
       scales: {
         fontSize: [12, 14, 16, 20, 24, 32, 40, 48],
-        radius: [0, 2, 4, 8, 12, 16, 24],
-        spacing: [0, 2, 4, 8, 12, 16, 24, 32, 48, 64],
+        radius: { base: 2 },
+        spacing: { base: 4 },
+        strokeWidth: [1, 2, 4],
       },
       tolerance: 0,
     },
@@ -95,17 +100,34 @@ type Check = (value: unknown) => string | undefined;
 const stringList: Check = (v) => (isStringList(v) ? undefined : "must be an array of strings");
 const number = (min: number): Check => (v) => (isNumber(v, min) ? undefined : `must be a number >= ${min}`);
 const integer = (min: number): Check => (v) => (isNumber(v, min) && Number.isInteger(v) ? undefined : `must be an integer >= ${min}`);
+const isScale = (v: unknown): boolean =>
+  Array.isArray(v) ? v.every((n) => isNumber(n, -Infinity)) : isObject(v) && Object.keys(v).length === 1 && typeof v.base === "number" && Number.isFinite(v.base) && v.base > 0;
 const scales: Check = (v) =>
-  isObject(v) && Object.values(v).every((l) => Array.isArray(l) && l.every((n) => isNumber(n, -Infinity)))
+  isObject(v) && Object.entries(v).every(([k, s]) => (SCALE_CATEGORIES as readonly string[]).includes(k) && isScale(s))
     ? undefined
-    : "must be an object of number arrays";
+    : `must be an object with categories ${SCALE_CATEGORIES.join(", ")}, each { "base": n } or an array of numbers`;
+const ignoreValues: Check = (v) => {
+  if (!isObject(v) || !Object.values(v).every(isStringList)) return "must be an object of string arrays keyed by property";
+  for (const list of Object.values(v) as string[][]) {
+    for (const s of list) {
+      if (s.length > 2 && s.startsWith("/") && s.endsWith("/")) {
+        try {
+          new RegExp(s.slice(1, -1));
+        } catch {
+          return `has an invalid regular expression ${s}`;
+        }
+      }
+    }
+  }
+  return undefined;
+};
 
 /** Validators for the option keys each rule knows; other keys are kept untouched. */
 const OPTION_CHECKS: Partial<Record<RuleId, Record<string, Check>>> = {
   "A11Y-001": { minRatio: number(1), minRatioLarge: number(1) },
   "CMP-001": { minNodes: integer(1) },
   "DIF-001": { warnAt: number(0), blockAt: number(0), scope: stringList },
-  "TOK-001": { properties: stringList, ignoreValues: stringList, onlyIn: stringList },
+  "TOK-001": { properties: stringList, ignoreValues, onlyIn: stringList },
   "TOK-002": { scales, tolerance: number(0) },
 };
 

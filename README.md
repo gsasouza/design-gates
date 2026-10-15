@@ -135,7 +135,7 @@ Ordering guarantees: files by path; frames by id; nodes by id then change kind (
 ### Severities
 
 - `block`: fails the run (the only severity that can).
-- `warn`: reported; fails only with `strict: true`.
+- `warn`: reported; never fails the run.
 - `review`: needs a human look; never changed by config.
 - `info`: purely informational; never changed by config.
 
@@ -143,7 +143,7 @@ Ordering guarantees: files by path; frames by id; nodes by id then change kind (
 
 ### Config
 
-`design-gates.config.json` (all keys optional; unknown top-level keys or rule ids are an error). Defaults:
+`design-gates.config.json` (all keys optional; `strict` only escalates the rules that say so (TOK-002 warn -> block), the exit code still fails only on `block`; `DIF-001.scope` lists component ids/names or variable names (`*` glob) whose block is downgraded to warn; `TOK-001.ignoreValues` is per property, a `/.../` string being a regex; `TOK-002.scales` takes `{ "base": n }` or a list per category; unknown top-level keys or rule ids are an error). Defaults:
 
 ```json
 {
@@ -160,9 +160,7 @@ Ordering guarantees: files by path; frames by id; nodes by id then change kind (
     "DIF-001": {
       "warnAt": 5,
       "blockAt": 20,
-      "scope": [
-        "*"
-      ]
+      "scope": []
     },
     "SCH-001": {},
     "SCH-002": {},
@@ -170,9 +168,16 @@ Ordering guarantees: files by path; frames by id; nodes by id then change kind (
     "TOK-001": {
       "properties": [
         "fill",
-        "stroke.fill"
+        "stroke",
+        "effect.color",
+        "cornerRadius",
+        "gap",
+        "padding",
+        "fontSize",
+        "strokeWidth",
+        "fontFamily"
       ],
-      "ignoreValues": [],
+      "ignoreValues": {},
       "onlyIn": []
     },
     "TOK-002": {
@@ -187,26 +192,16 @@ Ordering guarantees: files by path; frames by id; nodes by id then change kind (
           40,
           48
         ],
-        "radius": [
-          0,
+        "radius": {
+          "base": 2
+        },
+        "spacing": {
+          "base": 4
+        },
+        "strokeWidth": [
+          1,
           2,
-          4,
-          8,
-          12,
-          16,
-          24
-        ],
-        "spacing": [
-          0,
-          2,
-          4,
-          8,
-          12,
-          16,
-          24,
-          32,
-          48,
-          64
+          4
         ]
       },
       "tolerance": 0
