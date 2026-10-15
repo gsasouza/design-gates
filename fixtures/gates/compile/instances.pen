@@ -1,0 +1,26 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "badge", "type": "frame", "name": "Badge", "reusable": true, "width": 20, "height": 20, "fill": "#EEEEEE",
+      "children": [{ "id": "dot", "type": "ellipse", "width": 8, "height": 8, "fill": "#0000FF" }]
+    },
+    {
+      "id": "card", "type": "frame", "name": "Card", "reusable": true, "width": 200, "height": 100, "fill": "#FFFFFF", "cornerRadius": 8,
+      "children": [
+        { "id": "title", "type": "text", "content": "Title", "fill": "#111111" },
+        { "id": "bdg", "type": "ref", "ref": "badge", "x": 4, "descendants": { "dot": { "fill": "#00AA00" } } }
+      ]
+    },
+    {
+      "id": "screen", "type": "frame", "name": "Screen", "width": 400, "height": 300,
+      "children": [
+        {
+          "id": "c1", "type": "ref", "ref": "card", "x": 10, "fill": "#F0F0F0",
+          "descendants": { "title": { "fill": "#FF0000", "content": "Hi" }, "bdg/dot": { "fill": "#00FF00" }, "nope/x": { "fill": "#000000" } }
+        },
+        { "id": "c2", "type": "ref", "ref": "card" }
+      ]
+    }
+  ]
+}

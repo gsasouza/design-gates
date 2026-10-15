@@ -1,0 +1,12 @@
+{
+  "version": "2.6",
+  "children": [
+    { "id": "hex", "type": "rectangle", "fill": "#112233" },
+    { "id": "var", "type": "rectangle", "fill": "$brand" },
+    { "id": "obj", "type": "rectangle", "fill": { "type": "color", "color": "#445566" } },
+    { "id": "list", "type": "rectangle", "fill": [{ "type": "color", "color": "#000000" }, { "type": "color", "color": "#778899" }, { "type": "color", "color": "#FFFFFF", "enabled": false }] },
+    { "id": "linear", "type": "rectangle", "fill": { "type": "gradient", "stops": [{ "color": "#000000", "position": 0 }, { "color": "#FFFFFF", "position": 1 }] } },
+    { "id": "radial", "type": "rectangle", "fill": { "type": "radial_gradient", "colors": [{ "color": "#FF0000", "position": 0 }, { "color": "#0000FF", "position": 1 }] } },
+    { "id": "image", "type": "rectangle", "fill": { "type": "image", "url": "a.png" } }
+  ]
+}

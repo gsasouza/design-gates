@@ -22,11 +22,19 @@ export interface FixtureRepo {
   cleanup: () => Promise<void>;
 }
 
+export interface FixtureRepoOptions {
+  /** Directory under `fixtures/` for commit 1 (default `base`). */
+  base?: string;
+  /** Directory under `fixtures/` for commit 2 (default `head`). */
+  head?: string;
+}
+
 /**
  * Creates a throwaway git repo on branch `main`: commit 1 = `fixtures/base`
  * (tag `base`), commit 2 = `fixtures/head` replacing the whole tree (tag `head`).
+ * `opts` picks other fixture directories for either commit.
  */
-export async function createFixtureRepo(): Promise<FixtureRepo> {
+export async function createFixtureRepo(opts: FixtureRepoOptions = {}): Promise<FixtureRepo> {
   const dir = await mkdtemp(path.join(tmpdir(), "design-gates-"));
   const git = async (...args: string[]): Promise<void> => {
     await run(
@@ -59,11 +67,11 @@ export async function createFixtureRepo(): Promise<FixtureRepo> {
   };
   try {
     await git("init", "-b", "main");
-    await replaceTree("base");
+    await replaceTree(opts.base ?? "base");
     await git("add", "-A");
     await git("commit", "-m", "base");
     await git("tag", "base");
-    await replaceTree("head");
+    await replaceTree(opts.head ?? "head");
     await git("add", "-A");
     await git("commit", "-m", "head");
     await git("tag", "head");

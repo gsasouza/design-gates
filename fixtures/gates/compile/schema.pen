@@ -1,0 +1,14 @@
+{
+  "version": "9.9",
+  "children": [
+    {
+      "id": "f", "type": "frame",
+      "children": [
+        { "id": "dup", "type": "rectangle" },
+        { "id": "dup", "type": "rectangle" },
+        { "id": "a/b", "type": "rectangle" },
+        { "id": "weird", "type": "hexagon" }
+      ]
+    }
+  ]
+}
