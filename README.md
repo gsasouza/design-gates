@@ -36,3 +36,16 @@ Theme handling: `renderFrame` accepts `theme` (axis -> value, e.g. `{ mode: "dar
 ## Development notes: dependency pin
 
 `@open-pencil/core` is pinned to `0.16.0` because `0.15.1` depends on `expr-eval@2.0.2` (CVE-2026-12866, CVSS 9.8, unmaintained since 2019, no fixed release) and this library parses untrusted `.pen` input. `0.16.0` has no `expr-eval`; `test/lockfile.test.ts` fails if it reappears in `package-lock.json`. The only catch is age: `0.16.0` and `twirlwind@0.4.1` reach 7 days old on 2026-10-21, after which `npm ci` works behind the operator's registry (cve-policy).
+
+## Computing a semantic diff
+
+```ts
+import { computeSemanticDiff, serializeDiff } from "design-gates";
+
+// base defaults to `git merge-base main HEAD`; head defaults to the working tree
+// (uncommitted edits and untracked .pen files included).
+const result = await computeSemanticDiff({ repo: ".", base: "main", head: "HEAD", paths: ["designs/**/*.pen"] });
+const json: string = serializeDiff(result); // deterministic JSON
+```
+
+`computeSemanticDiffWithDocs` additionally returns the parsed base/head documents (`DiffDocs`, keyed by file path) for the visual diff. Git is only read (`--no-optional-locks`); the repo, index and HEAD are never modified. Pass `git` to inject a custom `GitReader`.
