@@ -1,0 +1,22 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "hero",
+      "type": "frame",
+      "fill": {
+        "type": "image",
+        "url": "hero.png"
+      },
+      "children": [
+        {
+          "id": "label",
+          "type": "text",
+          "content": "Hello",
+          "fill": "#000000",
+          "fontSize": 16
+        }
+      ]
+    }
+  ]
+}

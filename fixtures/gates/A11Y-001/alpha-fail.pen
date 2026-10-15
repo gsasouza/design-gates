@@ -1,0 +1,26 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "page",
+      "type": "frame",
+      "fill": "#FFFFFF",
+      "children": [
+        {
+          "id": "overlay",
+          "type": "frame",
+          "fill": "#00000080",
+          "children": [
+            {
+              "id": "label",
+              "type": "text",
+              "content": "Hello",
+              "fill": "#808080",
+              "fontSize": 16
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

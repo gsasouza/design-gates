@@ -1,0 +1,40 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "chip",
+      "type": "frame",
+      "name": "Chip",
+      "reusable": true,
+      "fill": "#EEEEEE",
+      "children": [
+        {
+          "id": "t",
+          "type": "text",
+          "content": "A"
+        }
+      ]
+    },
+    {
+      "id": "screen",
+      "type": "frame",
+      "name": "Screen",
+      "width": 400,
+      "height": 300,
+      "children": [
+        {
+          "id": "chip2",
+          "type": "frame",
+          "fill": "#EEEEEE",
+          "children": [
+            {
+              "id": "u",
+              "type": "text",
+              "content": "B"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

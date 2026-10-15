@@ -1,0 +1,1 @@
+{ "version": "2.6",  "children": [{ "id": "f", "type": "frame", "children": [{ "id": "A", "type": "frame", "reusable": true }, { "id": "B", "type": "frame", "reusable": true, "children": [{ "id": "b-a", "type": "ref", "ref": "A" }] }] }] }

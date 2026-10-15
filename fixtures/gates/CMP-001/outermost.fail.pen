@@ -1,0 +1,118 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "card",
+      "type": "frame",
+      "name": "Card",
+      "reusable": true,
+      "width": 300,
+      "layout": "vertical",
+      "children": [
+        {
+          "id": "heading",
+          "type": "text",
+          "content": "Title",
+          "fontSize": 20
+        },
+        {
+          "id": "action",
+          "type": "frame",
+          "width": 120,
+          "height": 40,
+          "fill": "#0055FF",
+          "layout": "horizontal",
+          "children": [
+            {
+              "id": "icon",
+              "type": "ellipse",
+              "width": 16,
+              "height": 16,
+              "fill": "#FFFFFF"
+            },
+            {
+              "id": "label",
+              "type": "text",
+              "content": "Save",
+              "fontSize": 14,
+              "fill": "#FFFFFF"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "button",
+      "type": "frame",
+      "name": "Button",
+      "reusable": true,
+      "width": 120,
+      "height": 40,
+      "fill": "#0055FF",
+      "layout": "horizontal",
+      "children": [
+        {
+          "id": "icon",
+          "type": "ellipse",
+          "width": 16,
+          "height": 16,
+          "fill": "#FFFFFF"
+        },
+        {
+          "id": "label",
+          "type": "text",
+          "content": "Save",
+          "fontSize": 14,
+          "fill": "#FFFFFF"
+        }
+      ]
+    },
+    {
+      "id": "screen",
+      "type": "frame",
+      "name": "Screen",
+      "width": 400,
+      "height": 300,
+      "children": [
+        {
+          "id": "c2",
+          "type": "frame",
+          "width": 300,
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "h",
+              "type": "text",
+              "content": "Other",
+              "fontSize": 20
+            },
+            {
+              "id": "act",
+              "type": "frame",
+              "width": 120,
+              "height": 40,
+              "fill": "#0055FF",
+              "layout": "horizontal",
+              "children": [
+                {
+                  "id": "i",
+                  "type": "ellipse",
+                  "width": 16,
+                  "height": 16,
+                  "fill": "#FFFFFF"
+                },
+                {
+                  "id": "l",
+                  "type": "text",
+                  "content": "Save",
+                  "fontSize": 14,
+                  "fill": "#FFFFFF"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

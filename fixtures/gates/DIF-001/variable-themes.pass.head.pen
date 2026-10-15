@@ -1,0 +1,59 @@
+{
+  "version": "2.6",
+  "themes": {
+    "mode": [
+      "light",
+      "dark"
+    ]
+  },
+  "variables": {
+    "bg": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#FFFFFF",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#111111",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    }
+  },
+  "children": [
+    {
+      "id": "p1",
+      "type": "frame",
+      "name": "Page",
+      "fill": "$bg",
+      "children": [
+        {
+          "id": "r1",
+          "type": "rectangle",
+          "fill": "$bg"
+        }
+      ]
+    },
+    {
+      "id": "p2",
+      "type": "frame",
+      "name": "Dark page",
+      "theme": {
+        "mode": "dark"
+      },
+      "fill": "$bg",
+      "children": [
+        {
+          "id": "r2",
+          "type": "rectangle",
+          "fill": "$bg"
+        }
+      ]
+    }
+  ]
+}

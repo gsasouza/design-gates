@@ -25,6 +25,7 @@ export type { DiffContext, Fix, Rule, Severity, Violation } from "./gates/types.
 export { DEFAULT_CONFIG, RULE_IDS, resolveConfig } from "./gates/config.js";
 export type { ConfigResult, GatesConfig, RuleConfig, RuleId, SeverityOverride } from "./gates/config.js";
 export { registry, runRules } from "./rules/index.js";
+export { parseFailureViolation } from "./rules/parse-failure.js";
 export type { RuleEntry, RuleInput } from "./rules/index.js";
 export { loadPenFile, parsePen } from "./pen/load.js";
 export type { Renderer } from "./render/renderer.js";

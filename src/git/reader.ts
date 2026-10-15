@@ -25,6 +25,8 @@ export interface GitReader {
   listChangedPenFiles(base: string, head: string | Worktree, globs: string[]): Promise<ChangedFile[]>;
   readBlob(ref: string, path: string): Promise<string>;
   readWorktree(path: string): Promise<string>;
+  /** Sorted repo-relative paths of tracked and untracked (not ignored) .pen files matching `globs` (default: all). */
+  listPenFiles?(globs: string[]): Promise<string[]>;
 }
 
 /** Default diff base: the merge base of `main` and HEAD. */

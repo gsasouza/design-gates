@@ -65,13 +65,13 @@ function fixture(name = "Login"): DiffResult {
   };
   const added: FrameDiff = {
     id: "f2", name: "Signup", headId: "f2", status: "added", matchedBy: null,
-    counts: counts({ added: 1 }), nodes: [{ id: "n3", name: "Root", type: "frame", change: "added" }],
+    counts: counts(), nodes: [{ id: "n3", name: "Root", type: "frame", change: "added" }],
     changeBoxes: [{ x: 0, y: 0, w: 10, h: 10, kind: "added", side: "head", nodeId: "n3" }],
     missingBoxes: [], pixelDiffRatio: null, images: { default: { head: "images/f2-head.png" } },
   };
   const removed: FrameDiff = {
     id: "f5", name: "Old", baseId: "f5", status: "removed", matchedBy: null,
-    counts: counts({ removed: 1 }), nodes: [], changeBoxes: [], missingBoxes: [],
+    counts: counts(), nodes: [], changeBoxes: [], missingBoxes: [],
     pixelDiffRatio: null, images: { default: { base: "images/f5-base.png" } },
   };
   const themed: FrameDiff = {
@@ -427,6 +427,13 @@ test("legend swatches are filled translucent tiles", () => {
   assert.match(r.body, /border:0/);
 });
 
+test("the pixel legend swatch is hatched like the pixel marker", () => {
+  const { html } = load();
+  const r = cssRules(html).find((x) => x.sel === ".legend i.k-pixel")!;
+  assert.ok(r);
+  assert.match(r.body, /repeating-linear-gradient/);
+});
+
 test("m and the Markers button toggle all markers; j ignores hidden markers", () => {
   const { doc, win } = load();
   const btn = doc.getElementById("markers-toggle") as HTMLElement;
@@ -530,7 +537,7 @@ test("summary: totals, per-kind links to the first frame with that kind, variabl
   const s = doc.getElementById("summary")!;
   assert.equal(
     s.textContent,
-    "9 changes in 4 frames: 3 added, 2 removed, 3 modified, 1 variable changed",
+    "7 changes in 4 frames: 2 added, 1 removed, 3 modified, 1 variable changed",
   );
   const href = (k: string) => s.querySelector(`a[data-kind="${k}"]`)?.getAttribute("href");
   assert.equal(href("added"), "#frame-0");
@@ -651,6 +658,15 @@ test("clicking a line while markers are hidden turns them back on, then selects"
   assert.equal(doc.body.classList.contains("markers-off"), false);
   assert.equal(btn.getAttribute("aria-pressed"), "true");
   assert.equal(doc.querySelector(".box.selected")!.getAttribute("data-node-id"), "n1");
+});
+
+test("clicking a marker-less line while markers are hidden still turns them back on", () => {
+  const { doc, win } = load();
+  key(win, "m");
+  (doc.querySelector('#frame-0 .change-list li[data-kind="variable"] button') as HTMLElement).click();
+  assert.equal(doc.body.classList.contains("markers-off"), false);
+  assert.equal(doc.getElementById("markers-toggle")!.getAttribute("aria-pressed"), "true");
+  assert.equal(doc.querySelectorAll(".box.selected").length, 0);
 });
 
 test("a status-unchanged frame affected by a variable is labelled as changed, not unchanged", () => {
