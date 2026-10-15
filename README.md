@@ -45,7 +45,7 @@ import { computeSemanticDiff, serializeDiff } from "design-gates";
 // base defaults to `git merge-base main HEAD`; head defaults to the working tree
 // (uncommitted edits and untracked .pen files included).
 const result = await computeSemanticDiff({ repo: ".", base: "main", head: "HEAD", paths: ["designs/**/*.pen"] });
-console.log(serializeDiff(result)); // deterministic JSON
+const json: string = serializeDiff(result); // deterministic JSON
 ```
 
 `computeSemanticDiffWithDocs` additionally returns the parsed base/head documents (`DiffDocs`, keyed by file path) for the visual diff. Git is only read (`--no-optional-locks`); the repo, index and HEAD are never modified. Pass `git` to inject a custom `GitReader`.
