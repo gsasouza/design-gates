@@ -1,0 +1,49 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "button",
+      "type": "frame",
+      "name": "Button",
+      "reusable": true,
+      "fill": "#0055FF",
+      "children": [
+        {
+          "id": "label",
+          "type": "text",
+          "content": "Go",
+          "fill": "#000000"
+        }
+      ]
+    },
+    {
+      "id": "s1",
+      "type": "frame",
+      "name": "Home",
+      "children": [
+        {
+          "id": "a1",
+          "type": "ref",
+          "ref": "button"
+        },
+        {
+          "id": "a2",
+          "type": "ref",
+          "ref": "button"
+        }
+      ]
+    },
+    {
+      "id": "s2",
+      "type": "frame",
+      "name": "Settings",
+      "children": [
+        {
+          "id": "b1",
+          "type": "ref",
+          "ref": "button"
+        }
+      ]
+    }
+  ]
+}

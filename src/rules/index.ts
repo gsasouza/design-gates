@@ -1,5 +1,7 @@
 import type { CompiledDocument } from "../compile/types.js";
 import type { GatesConfig, RuleId } from "../gates/config.js";
+import { cmp001 } from "./CMP-001.js";
+import { dif001 } from "./DIF-001.js";
 import { sch001 } from "./SCH-001.js";
 import { sch002 } from "./SCH-002.js";
 import { sch003 } from "./SCH-003.js";
@@ -15,6 +17,20 @@ export interface RuleEntry {
 
 /** One entry per rule; each rule card adds its own line here. */
 const ENTRIES: RuleEntry[] = [
+  {
+    id: "CMP-001",
+    title: "Detached instance",
+    description: "A subtree that exactly repeats a reusable component's structure instead of being an instance of it.",
+    defaultSeverity: "warn",
+    run: cmp001,
+  },
+  {
+    id: "DIF-001",
+    title: "Blast radius",
+    description: "A changed component or variable and the instances, nodes and screens it affects.",
+    defaultSeverity: "warn",
+    run: dif001,
+  },
   {
     id: "SCH-001",
     title: "Invalid document",

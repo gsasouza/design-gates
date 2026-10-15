@@ -1,0 +1,67 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "button",
+      "type": "frame",
+      "name": "Button",
+      "reusable": true,
+      "width": 120,
+      "height": 40,
+      "fill": "#0055FF",
+      "layout": "horizontal",
+      "children": [
+        {
+          "id": "icon",
+          "type": "ellipse",
+          "width": 16,
+          "height": 16,
+          "fill": "#FFFFFF"
+        },
+        {
+          "id": "label",
+          "type": "text",
+          "content": "Save",
+          "fontSize": 14,
+          "fill": "#FFFFFF"
+        }
+      ]
+    },
+    {
+      "id": "screen",
+      "type": "frame",
+      "name": "Screen",
+      "width": 400,
+      "height": 300,
+      "children": [
+        {
+          "id": "save2",
+          "type": "frame",
+          "name": "Copy",
+          "x": 10,
+          "y": 10,
+          "width": 120,
+          "height": 40,
+          "fill": "#0055FF",
+          "layout": "horizontal",
+          "children": [
+            {
+              "id": "glyph",
+              "type": "ellipse",
+              "width": 16,
+              "height": 16,
+              "fill": "#FFFFFF"
+            },
+            {
+              "id": "caption",
+              "type": "text",
+              "content": "Cancel",
+              "fontSize": 14,
+              "fill": "#FFFFFF"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
