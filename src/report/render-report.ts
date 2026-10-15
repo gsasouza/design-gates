@@ -135,7 +135,7 @@ class Renderer {
     this.reader = reader ?? (opts.inline ? defaultReader : undefined);
     for (const file of result.files) {
       for (const frame of file.frames) {
-        if (frame.status === "unchanged") continue;
+        if (frame.status === "unchanged" && frame.images === null) continue;
         const index = this.changed.length;
         this.changed.push({ file, frame, index });
         for (const id of [frame.id, frame.baseId, frame.headId]) {
@@ -302,7 +302,7 @@ class Renderer {
       h += `<h2>${esc(file.path)}</h2><ul data-file="${fi}">`;
       const unchanged: FrameDiff[] = [];
       for (const frame of file.frames) {
-        if (frame.status === "unchanged") {
+        if (frame.status === "unchanged" && frame.images === null) {
           unchanged.push(frame);
           continue;
         }
