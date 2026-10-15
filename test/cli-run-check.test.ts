@@ -298,3 +298,15 @@ test("text output has one line per violation plus a summary", async () => {
     assert.equal((await check(repo, { format: "text" })).out, "No violations.\n");
   });
 });
+
+test("run from a subdirectory, paths resolve against it and `.` means all files", async () => {
+  await withRepo("check/fail", async (repo) => {
+    const whole = await check(repo);
+    const sub = path.join(repo, "nested");
+    const dot = await check(repo, { paths: ["."] }, { invokedFrom: repo });
+    assert.equal(dot.code, whole.code);
+    assert.equal(dot.out, whole.out);
+    const outside = await check(repo, { paths: ["../.."] }, { invokedFrom: sub });
+    assert.equal(outside.code, 2);
+  });
+});

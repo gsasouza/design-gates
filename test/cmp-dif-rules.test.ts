@@ -139,3 +139,21 @@ test("check --base exits 1 when a component change reaches blockAt", async () =>
     await repo.cleanup();
   }
 });
+
+test("DIF-001: a theme axis change is reported with the nodes pinning it", async () => {
+  const mk = (themes: Record<string, string[]>) =>
+    parsePen(JSON.stringify({ version: "2.6", themes, children: [{ id: "s", type: "frame", children: [{ id: "p", type: "frame", theme: { mode: "dark" } }] }] }));
+  const baseDoc = mk({});
+  const headDoc = mk({ mode: ["light", "dark"] });
+  const resolved = resolveConfig({ rules: { "DIF-001": { warnAt: 1 } } });
+  assert.ok("config" in resolved);
+  const head = compile(headDoc, { file: "t.pen" });
+  const v = rule("DIF-001").run(head, resolved.config, {
+    base: compile(baseDoc, { file: "t.pen" }),
+    head,
+    variables: diffVariables({ "t.pen": { base: baseDoc, head: headDoc } }),
+  });
+  assert.equal(v.length, 1);
+  assert.equal(v[0]!.nodeId, "theme:mode");
+  assert.equal(v[0]!.message, "Theme mode added: mode=dark: 1 nodes; 1 nodes in 1 screens (s)");
+});

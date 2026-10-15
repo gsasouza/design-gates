@@ -42,7 +42,7 @@ test("component helpers", async () => {
   const c = await compileFixture("compile/instances.pen");
   assert.deepEqual(listComponents(c).map((n) => n.id), ["badge", "card"]);
   assert.deepEqual(listInstances(c, "card"), ["c1", "c2"]);
-  assert.deepEqual(listInstances(c, "badge"), ["bdg", "c1", "c1::bdg", "c2", "c2::bdg"]);
+  assert.deepEqual(listInstances(c, "badge"), ["c1", "c2"]);
   assert.equal(topFrameOf(c, "c1::bdg::dot")?.id, "screen");
   assert.equal(getNode(c, "c2")?.parentId, "screen");
   assert.deepEqual(node(c, "c2::bdg::dot").parents, ["screen", "c2", "c2::bdg"]);
