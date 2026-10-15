@@ -1,0 +1,50 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "button",
+      "type": "frame",
+      "name": "Button",
+      "reusable": true,
+      "width": 120,
+      "height": 40,
+      "fill": "#0055FF",
+      "layout": "horizontal",
+      "children": [
+        {
+          "id": "icon",
+          "type": "ellipse",
+          "width": 16,
+          "height": 16,
+          "fill": "#FFFFFF"
+        },
+        {
+          "id": "label",
+          "type": "text",
+          "content": "Save",
+          "fontSize": 14,
+          "fill": "#FFFFFF"
+        }
+      ]
+    },
+    {
+      "id": "screen",
+      "type": "frame",
+      "name": "Screen",
+      "width": 400,
+      "height": 300,
+      "children": [
+        {
+          "id": "b1",
+          "type": "ref",
+          "ref": "button",
+          "descendants": {
+            "label": {
+              "content": "Go"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

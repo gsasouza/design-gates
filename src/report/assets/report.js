@@ -108,8 +108,8 @@
     var cands = id === null ? [] : all('.box', frame).filter(function (b) {
       return b.getAttribute('data-node-id') === id && !b.closest('[hidden]');
     });
-    if (!cands.length) { select(null); setCurrent(frame); return; }
     if (body.classList.contains('markers-off')) toggleMarkers();
+    if (!cands.length) { select(null); setCurrent(frame); return; }
     select(cands[0]);
   }
   function boxes() { return all('.box').filter(shown); }

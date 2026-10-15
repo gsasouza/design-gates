@@ -1,0 +1,1 @@
+{ "version": "2.6", "children": [{ "id": "f", "type": "frame", "children": [{ "id": "use", "type": "ref", "ref": "ghost", "metadata": { "type": "design-gates", "ignore": ["SCH-002"], "reason": "legacy library, migrated in Q4" } }] }] }

@@ -1,0 +1,1 @@
+{ "rules": { "DIF-001": { "warnAt": 1, "blockAt": 3 } } }
