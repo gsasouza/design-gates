@@ -26,6 +26,9 @@ test("wrapper rejects forbidden subcommands and flags before executing", async (
     ["switch", "-cC", "x"],
     ["branch", "-M", "x"], ["branch", "-C", "a", "b"], ["branch", "--move", "a", "b"], ["branch", "--copy", "a", "b"],
     ["branch", "-m", "a", "b"], ["branch", "-c", "a", "b"], ["branch", "-vM", "a", "b"],
+    ["switch", "--orph", "x"], ["switch", "--discard", "x"], ["switch", "--orphan=x"], ["switch", "--force-create=x"],
+    ["branch", "--mov", "a", "b"], ["branch", "--del", "x"], ["config", "--glob", "user.name"],
+    ["commit", "--amend", "--message=x"], ["diff", "--output=/tmp/x"],
     [],
   ];
   for (const args of bad) await assert.rejects(git(args), Error, args.join(" "));
@@ -40,7 +43,9 @@ test("wrapper allows forbidden words and flags after the end of options", async 
   await git(["commit", "--message=-f", "--", "clean.pen"]);
   await git(["config", "--local", "user.name", "reset"]);
   await git(["config", "--get", "user.name"]);
-  assert.equal(rec.calls.length, 5);
+  await git(["log", "--max-count=1"]);
+  await git(["commit", "--message=x", "--", "a.pen"]);
+  assert.equal(rec.calls.length, 7);
 });
 
 test("every vcs method issues only allowed subcommands, never --global/--system", async () => {

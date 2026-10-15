@@ -24,9 +24,10 @@ export type AllowedGitSubcommand = (typeof ALLOWED_GIT_SUBCOMMANDS)[number];
 
 export const FORBIDDEN_GIT_SUBCOMMANDS = ["push", "clean", "reset", "rebase", "checkout"] as const;
 
-const FORBIDDEN_FLAGS = ["--global", "--system", "--force", "-f", "-D", "--hard"];
+const FORBIDDEN_FLAGS = ["--global", "--system", "--force", "-f", "-D", "--hard", "--output"];
 const FORBIDDEN_BRANCH_FLAGS = ["--delete", "-d", "-M", "-C", "-m", "-c", "--move", "--copy"];
 const FORBIDDEN_SWITCH_FLAGS = ["-C", "--force-create", "--discard-changes", "--orphan"];
+const FORBIDDEN_COMMIT_FLAGS = ["--amend"];
 const FORBIDDEN_CONFIG_FLAGS = ["--file", "--blob", "--worktree", "--edit", "-e"];
 
 /** Runs a vcs git call; args start with the subcommand. */
@@ -72,10 +73,14 @@ export function assertSafeGitArgs(args: string[]): void {
     ...FORBIDDEN_FLAGS,
     ...(sub === "branch" ? FORBIDDEN_BRANCH_FLAGS : []),
     ...(sub === "switch" ? FORBIDDEN_SWITCH_FLAGS : []),
+    ...(sub === "commit" ? FORBIDDEN_COMMIT_FLAGS : []),
     ...(sub === "config" ? FORBIDDEN_CONFIG_FLAGS : []),
   ];
   for (const arg of options) {
-    if (forbidden.includes(arg) || arg.startsWith("--file=")) {
+    // git accepts unambiguous prefixes of long options and `--opt=value`, so match by prefix.
+    const name = arg.split("=")[0];
+    const longHit = name.startsWith("--") && name.length > 2 && forbidden.some((f) => f.startsWith("--") && f.startsWith(name));
+    if (forbidden.includes(arg) || longHit) {
       throw new Error(`git call refused: '${arg}' is never allowed`);
     }
     // Clustered short flags such as -fd or -Df.
