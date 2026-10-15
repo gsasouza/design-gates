@@ -1,0 +1,113 @@
+import type { PenDocument, PenNode, PenVariable } from "../pen/types.js";
+import type { DiffDocs, FrameRef, ThemeChange, VariableChange } from "./model.js";
+
+export interface VariablesDiff {
+  variables: VariableChange[];
+  themes: ThemeChange[];
+}
+
+function themeKey(theme: Record<string, string> | undefined): string {
+  const pairs = Object.entries(theme ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  return pairs.length ? pairs.map(([k, v]) => `${k}=${v}`).join(",") : "default";
+}
+
+/** Value per theme key: themed entries by their theme, a plain value as "default". */
+function valuesByTheme(variable: PenVariable): Map<string, unknown> {
+  const out = new Map<string, unknown>();
+  if (!Array.isArray(variable.value)) return out.set("default", variable.value);
+  for (const e of variable.value as { value: unknown; theme?: Record<string, string> }[]) out.set(themeKey(e.theme), e.value);
+  return out;
+}
+
+function findById(nodes: PenNode[], id: string): PenNode | undefined {
+  for (const n of nodes) {
+    const found = n.id === id ? n : n.children && findById(n.children, id);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+/** Variable names a subtree references: `$name` strings anywhere, plus those of instanced components. */
+function referencedNames(doc: PenDocument, node: PenNode, visiting: Set<string> = new Set()): Set<string> {
+  const names = new Set<string>();
+  const walk = (value: unknown): void => {
+    if (typeof value === "string") {
+      if (value.length > 1 && value.startsWith("$")) names.add(value.slice(1));
+    } else if (Array.isArray(value)) value.forEach(walk);
+    else if (typeof value === "object" && value !== null) Object.values(value).forEach(walk);
+  };
+  walk(node);
+  const instances: string[] = [];
+  const findRefs = (n: PenNode): void => {
+    if (typeof n.ref === "string") instances.push(n.ref);
+    n.children?.forEach(findRefs);
+  };
+  findRefs(node);
+  for (const ref of instances) {
+    const comp = findById(doc.children, ref);
+    if (!comp || visiting.has(comp.id)) continue;
+    visiting.add(comp.id);
+    for (const n of referencedNames(doc, comp, visiting)) names.add(n);
+  }
+  return names;
+}
+
+function framesReferencing(file: string, doc: PenDocument | undefined, name: string): FrameRef[] {
+  if (!doc) return [];
+  return doc.children.filter((f) => referencedNames(doc, f).has(name)).map((f) => ({ file, frameId: f.id }));
+}
+
+function framesPinningAxis(file: string, doc: PenDocument | undefined, axis: string): FrameRef[] {
+  if (!doc) return [];
+  const pins = (n: PenNode): boolean => (n.theme !== undefined && axis in n.theme) || (n.children ?? []).some(pins);
+  return doc.children.filter(pins).map((f) => ({ file, frameId: f.id }));
+}
+
+function mergeFrames(...lists: FrameRef[][]): FrameRef[] {
+  const map = new Map<string, FrameRef>();
+  for (const r of lists.flat()) map.set(`${r.file}\0${r.frameId}`, r);
+  return [...map.values()].sort((a, b) => (a.file !== b.file ? (a.file < b.file ? -1 : 1) : a.frameId < b.frameId ? -1 : a.frameId > b.frameId ? 1 : 0));
+}
+
+const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+const themeOrder = (t: string | undefined): string => (t === undefined || t === "default" ? "" : t);
+
+/** Variable and theme-axis changes between the base and head document of every file. */
+export function diffVariables(docs: DiffDocs): VariablesDiff {
+  const variables: VariableChange[] = [];
+  const themes: ThemeChange[] = [];
+  for (const file of Object.keys(docs).sort(cmp)) {
+    const { base, head } = docs[file]!;
+    const baseVars = base?.variables ?? {};
+    const headVars = head?.variables ?? {};
+    for (const name of new Set([...Object.keys(baseVars), ...Object.keys(headVars)])) {
+      const b = baseVars[name] && valuesByTheme(baseVars[name]!);
+      const h = headVars[name] && valuesByTheme(headVars[name]!);
+      const change = !b ? "added" : !h ? "removed" : "modified";
+      const frames = mergeFrames(
+        change !== "added" ? framesReferencing(file, base, name) : [],
+        change !== "removed" ? framesReferencing(file, head, name) : [],
+      );
+      for (const theme of new Set([...(b?.keys() ?? []), ...(h?.keys() ?? [])])) {
+        const old = b?.get(theme);
+        const next = h?.get(theme);
+        if (change === "modified" && JSON.stringify(old) === JSON.stringify(next)) continue;
+        const c: VariableChange = { file, name, change, theme, frames };
+        if (b?.has(theme)) c.old = old;
+        if (h?.has(theme)) c.new = next;
+        variables.push(c);
+      }
+    }
+    const baseAxes = Object.keys(base?.themes ?? {});
+    const headAxes = Object.keys(head?.themes ?? {});
+    for (const axis of baseAxes.filter((a) => !headAxes.includes(a))) {
+      themes.push({ file, name: axis, change: "removed", frames: mergeFrames(framesPinningAxis(file, base, axis)) });
+    }
+    for (const axis of headAxes.filter((a) => !baseAxes.includes(a))) {
+      themes.push({ file, name: axis, change: "added", frames: mergeFrames(framesPinningAxis(file, head, axis)) });
+    }
+  }
+  variables.sort((a, b) => cmp(a.file, b.file) || cmp(a.name, b.name) || cmp(themeOrder(a.theme), themeOrder(b.theme)));
+  themes.sort((a, b) => cmp(a.file, b.file) || cmp(a.name, b.name));
+  return { variables, themes };
+}
