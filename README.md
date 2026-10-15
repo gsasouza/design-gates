@@ -214,6 +214,18 @@ Ordering guarantees: files by path; frames by id; nodes by id then change kind (
 
 `rules.<ID>` also accepts `severity`. Unknown option keys under a known rule are kept for later rules to read; known keys of the wrong type are an error.
 
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `canvasColor` | `"#FFFFFF"` | Colour assumed behind top-level frames for contrast. |
+| `strict` | `false` | Escalates the rules that say so (TOK-002 warn -> block). |
+| `rules.<ID>.severity` | the rule's default severity (see Rules) | `block`, `warn`, `review`, `info` or `off`; `off` disables the rule (for SCH-001 it also silences the "suppression without reason" report). |
+| `rules.A11Y-001.minRatio` / `minRatioLarge` | `4.5` / `3` | Minimum contrast ratio for normal / large text. |
+| `rules.CMP-001.minNodes` | `3` | Minimum subtree size for a repeated structure to be reported. |
+| `rules.DIF-001.warnAt` / `blockAt` | `5` / `20` | Change thresholds for warn / block. |
+| `rules.DIF-001.scope` | `[]` | Scope ids; `--scope` appends to it. |
+| `rules.TOK-001.properties` / `ignoreValues` / `onlyIn` | see JSON above | Checked properties, per-property ignored literals, frames to check. |
+| `rules.TOK-002.scales` / `tolerance` | see JSON above / `0` | Allowed values per category; accepted distance from a scale value. |
+
 ### CLI: `design-gates check`
 
 ```
