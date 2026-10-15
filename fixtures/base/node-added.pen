@@ -1,0 +1,22 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "added-frame",
+      "type": "frame",
+      "name": "Added",
+      "layout": "none",
+      "width": 200,
+      "height": 100,
+      "children": [
+        {
+          "id": "keep-a",
+          "type": "rectangle",
+          "name": "keep-a",
+          "width": 40,
+          "height": 20
+        }
+      ]
+    }
+  ]
+}

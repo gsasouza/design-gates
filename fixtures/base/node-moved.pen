@@ -1,0 +1,41 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "moved-frame",
+      "type": "frame",
+      "name": "Moved",
+      "layout": "none",
+      "width": 200,
+      "height": 100,
+      "children": [
+        {
+          "id": "group-a",
+          "type": "frame",
+          "name": "group-a",
+          "layout": "none",
+          "width": 90,
+          "height": 60,
+          "children": [
+            {
+              "id": "mover",
+              "type": "rectangle",
+              "name": "mover",
+              "width": 40,
+              "height": 20
+            }
+          ]
+        },
+        {
+          "id": "group-b",
+          "type": "frame",
+          "name": "group-b",
+          "layout": "none",
+          "width": 90,
+          "height": 60,
+          "children": []
+        }
+      ]
+    }
+  ]
+}

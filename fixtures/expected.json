@@ -1,0 +1,122 @@
+[
+  {
+    "file": "fill.pen",
+    "fileStatus": "modified",
+    "frameId": "fill-frame",
+    "nodeId": "fill-rect",
+    "change": "modified",
+    "path": "fill",
+    "matchedBy": "id"
+  },
+  {
+    "file": "text.pen",
+    "fileStatus": "modified",
+    "frameId": "text-frame",
+    "nodeId": "text-title",
+    "change": "modified",
+    "path": "content",
+    "matchedBy": "id"
+  },
+  {
+    "file": "node-added.pen",
+    "fileStatus": "modified",
+    "frameId": "added-frame",
+    "nodeId": "new-rect",
+    "change": "added",
+    "matchedBy": "id"
+  },
+  {
+    "file": "node-removed.pen",
+    "fileStatus": "modified",
+    "frameId": "removed-frame",
+    "nodeId": "gone-rect",
+    "change": "removed",
+    "matchedBy": "id"
+  },
+  {
+    "file": "node-moved.pen",
+    "fileStatus": "modified",
+    "frameId": "moved-frame",
+    "nodeId": "mover",
+    "change": "moved",
+    "matchedBy": "id"
+  },
+  {
+    "file": "node-reordered.pen",
+    "fileStatus": "modified",
+    "frameId": "reorder-frame",
+    "nodeId": "sib-a",
+    "change": "reordered",
+    "matchedBy": "id"
+  },
+  {
+    "file": "instance-override.pen",
+    "fileStatus": "modified",
+    "frameId": "override-frame",
+    "nodeId": "btn-inst",
+    "change": "modified",
+    "path": "descendants.label.fill",
+    "matchedBy": "id"
+  },
+  {
+    "file": "id-recreated.pen",
+    "fileStatus": "modified",
+    "frameId": "recreated-new",
+    "change": "none",
+    "matchedBy": "name"
+  },
+  {
+    "file": "variable.pen",
+    "fileStatus": "modified",
+    "frameId": "var-comp-frame",
+    "change": "modified",
+    "matchedBy": "id",
+    "variable": "bg",
+    "theme": "mode=dark"
+  },
+  {
+    "file": "variable.pen",
+    "fileStatus": "modified",
+    "frameId": "var-frame",
+    "change": "modified",
+    "matchedBy": "id",
+    "variable": "bg",
+    "theme": "mode=dark"
+  },
+  {
+    "file": "variable.pen",
+    "fileStatus": "modified",
+    "frameId": "var-ref-frame",
+    "change": "modified",
+    "matchedBy": "id",
+    "variable": "bg",
+    "theme": "mode=dark"
+  },
+  {
+    "file": "unchanged.pen",
+    "fileStatus": "unchanged",
+    "frameId": "same-frame",
+    "change": "none",
+    "matchedBy": "id"
+  },
+  {
+    "file": "new/renamed.pen",
+    "oldPath": "old/renamed.pen",
+    "fileStatus": "renamed",
+    "frameId": "renamed-frame",
+    "change": "none",
+    "matchedBy": "id"
+  },
+  {
+    "file": "added.pen",
+    "fileStatus": "added",
+    "frameId": "file-added-frame",
+    "change": "added"
+  },
+  {
+    "file": "removed.pen",
+    "fileStatus": "removed",
+    "frameId": "file-removed-frame",
+    "change": "removed"
+  }
+]
