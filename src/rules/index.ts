@@ -1,5 +1,8 @@
 import type { CompiledDocument } from "../compile/types.js";
 import type { GatesConfig, RuleId } from "../gates/config.js";
+import { sch001 } from "./SCH-001.js";
+import { sch002 } from "./SCH-002.js";
+import { sch003 } from "./SCH-003.js";
 import type { DiffContext, Rule, Severity, Violation } from "../gates/types.js";
 
 export interface RuleEntry {
@@ -11,7 +14,29 @@ export interface RuleEntry {
 }
 
 /** One entry per rule; each rule card adds its own line here. */
-const ENTRIES: RuleEntry[] = [];
+const ENTRIES: RuleEntry[] = [
+  {
+    id: "SCH-001",
+    title: "Invalid document",
+    description: "Duplicate node id, id containing `/`, unknown node type or unknown document version.",
+    defaultSeverity: "block",
+    run: sch001,
+  },
+  {
+    id: "SCH-002",
+    title: "Broken reference",
+    description: "Instance of a missing or non-reusable node, missing descendants path or reference cycle.",
+    defaultSeverity: "block",
+    run: sch002,
+  },
+  {
+    id: "SCH-003",
+    title: "Broken variable",
+    description: "Undefined variable, variable alias cycle or escaped variable string.",
+    defaultSeverity: "block",
+    run: sch003,
+  },
+];
 
 /** All registered rules, sorted by id. */
 export const registry: readonly RuleEntry[] = [...ENTRIES].sort((a, b) => cmp(a.id, b.id));
