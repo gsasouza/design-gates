@@ -43,7 +43,28 @@ describe("git reader (fake exec)", () => {
   });
 
   it("builds glob pathspecs", () => {
-    assert.deepEqual(buildPathspecs(["a/**"]), [":(glob)**/*.pen", ":(glob)a/**"]);
+    assert.deepEqual(buildPathspecs(["a/**"]), [":(glob)a/**"]);
+  });
+
+  it("builds the default .pen pathspec only when no globs are given", () => {
+    assert.deepEqual(buildPathspecs([]), [":(glob)**/*.pen"]);
+  });
+
+  it("only returns .pen paths even when git lists other files for user globs", async () => {
+    const { exec } = fakeExec((args) =>
+      args.includes("ls-files")
+        ? "screens/u.pen\0screens/u.txt\0"
+        : "M\0screens/a.pen\0M\0screens/notes.txt\0R100\0screens/o.pen\0screens/o.txt\0R100\0screens/p.txt\0screens/p.pen\0",
+    );
+    const reader = createGitReader("/repo", exec);
+    for (const head of ["head", WORKTREE] as const) {
+      const files = await reader.listChangedPenFiles("base", head, ["screens/**"]);
+      assert.ok(files.length > 0);
+      for (const f of files) {
+        assert.ok(f.path.endsWith(".pen"), f.path);
+        if (f.oldPath) assert.ok(f.oldPath.endsWith(".pen"), f.oldPath);
+      }
+    }
   });
 
   it("builds ref-to-ref diff arguments", async () => {
@@ -55,7 +76,7 @@ describe("git reader (fake exec)", () => {
     ]);
     assert.deepEqual(calls[2], [
       "--no-optional-locks", "diff", "--name-status", "-M", "-z", SHA, SHA,
-      "--", ":(glob)**/*.pen", ":(glob)x/*.pen",
+      "--", ":(glob)x/*.pen",
     ]);
   });
 
@@ -103,6 +124,41 @@ describe("git reader (fake exec)", () => {
     assert.equal(opts.env.GIT_OPTIONAL_LOCKS, "0");
     assert.ok(opts.maxBuffer >= 256 * 1024 * 1024);
     assert.equal(MAX_BUFFER, opts.maxBuffer);
+  });
+});
+
+describe("git reader (real git, globs)", () => {
+  let repo: FixtureRepo;
+  before(async () => {
+    repo = await createFixtureRepo();
+  });
+  after(async () => {
+    await repo.cleanup();
+  });
+
+  it("returns only screens/a.pen for a screens/** glob (committed and worktree)", async () => {
+    const env = {
+      ...process.env,
+      GIT_AUTHOR_NAME: "a", GIT_AUTHOR_EMAIL: "a@example.com",
+      GIT_COMMITTER_NAME: "a", GIT_COMMITTER_EMAIL: "a@example.com",
+    };
+    const g = (...args: string[]) =>
+      run("git", ["-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", ...args], { cwd: repo.path, env });
+    await mkdir(path.join(repo.path, "screens"), { recursive: true });
+    await writeFile(path.join(repo.path, "screens", "a.pen"), "{}\n");
+    await writeFile(path.join(repo.path, "screens", "notes.txt"), "n\n");
+    await g("add", "-A");
+    await g("commit", "-m", "screens");
+    const reader = createGitReader(repo.path);
+    assert.deepEqual(await reader.listChangedPenFiles("head", "HEAD", ["screens/**"]), [
+      { path: "screens/a.pen", status: "added" },
+    ]);
+    await writeFile(path.join(repo.path, "screens", "a.pen"), '{"x":1}\n');
+    await writeFile(path.join(repo.path, "screens", "notes.txt"), "changed\n");
+    await writeFile(path.join(repo.path, "screens", "new.txt"), "u\n");
+    assert.deepEqual(await reader.listChangedPenFiles("head", WORKTREE, ["screens/**"]), [
+      { path: "screens/a.pen", status: "added" },
+    ]);
   });
 });
 
@@ -165,15 +221,13 @@ describe("git reader (real git)", () => {
       ]);
     });
 
-    it("adds user globs to the .pen pathspec", async () => {
+    it("narrows to user globs without returning non-.pen files", async () => {
       await mkdir(path.join(repo.path, "docs"), { recursive: true });
       await writeFile(path.join(repo.path, "docs", "spec.md"), "# x\n");
+      await writeFile(path.join(repo.path, "docs", "n.pen"), "{}\n");
       const reader = createGitReader(repo.path);
-      const without = await reader.listChangedPenFiles("head", WORKTREE, []);
-      assert.ok(!without.some((f) => f.path === "docs/spec.md"));
-      const withGlob = await reader.listChangedPenFiles("head", WORKTREE, ["docs/*.md"]);
-      assert.deepEqual(withGlob.find((f) => f.path === "docs/spec.md"), { path: "docs/spec.md", status: "added" });
-      assert.ok(withGlob.some((f) => f.path === "untracked.pen"));
+      const withGlob = await reader.listChangedPenFiles("head", WORKTREE, ["docs/**"]);
+      assert.deepEqual(withGlob, [{ path: "docs/n.pen", status: "added" }]);
     });
 
     it("leaves status, HEAD and .git/index untouched", async () => {

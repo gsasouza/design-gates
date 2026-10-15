@@ -36,7 +36,13 @@ export function createExecFileGit(repo: string): GitExec {
 }
 
 export function buildPathspecs(globs: string[]): string[] {
-  return [":(glob)**/*.pen", ...globs.map((g) => `:(glob)${g}`)];
+  if (globs.length === 0) return [":(glob)**/*.pen"];
+  return globs.map((g) => `:(glob)${g}`);
+}
+
+/** User globs narrow the result, so non-.pen matches are dropped (path and oldPath). */
+function onlyPen(files: ChangedFile[]): ChangedFile[] {
+  return files.filter((f) => f.path.endsWith(".pen") && (f.oldPath === undefined || f.oldPath.endsWith(".pen")));
 }
 
 /** Parses `git diff --name-status -z` output, including two-path renames/copies. */
@@ -88,15 +94,15 @@ export function createGitReader(repo: string, exec: GitExec = createExecFileGit(
       const rb = await resolve(base);
       if (head !== WORKTREE) {
         const rh = await resolve(head);
-        return parseNameStatus(await git("diff", "--name-status", "-M", "-z", rb, rh, "--", ...specs));
+        return onlyPen(parseNameStatus(await git("diff", "--name-status", "-M", "-z", rb, rh, "--", ...specs)));
       }
-      const tracked = parseNameStatus(await git("diff", "--name-status", "-M", "-z", rb, "--", ...specs));
+      const tracked = onlyPen(parseNameStatus(await git("diff", "--name-status", "-M", "-z", rb, "--", ...specs)));
       const seen = new Set(tracked.map((f) => f.path));
       const untracked = parseNul(
         await git("ls-files", "--others", "--exclude-standard", "-z", "--", ...specs),
       );
       for (const p of untracked) {
-        if (!seen.has(p)) tracked.push({ path: p, status: "added" });
+        if (p.endsWith(".pen") && !seen.has(p)) tracked.push({ path: p, status: "added" });
       }
       return tracked;
     },
