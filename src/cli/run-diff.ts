@@ -154,7 +154,7 @@ function validate(o: DiffOptions): void {
   }
 }
 
-async function build(o: DiffOptions, deps: DiffDeps): Promise<{ result: DiffResult; out: string }> {
+export async function buildDiffReport(o: DiffOptions, deps: DiffDeps): Promise<{ result: DiffResult; out: string }> {
   const { fs } = deps;
   const repo = path.resolve(deps.cwd, o.repo ?? ".");
   const out = path.resolve(deps.cwd, o.out ?? "design-diff");
@@ -224,7 +224,7 @@ async function build(o: DiffOptions, deps: DiffDeps): Promise<{ result: DiffResu
 export async function runDiff(options: DiffOptions, deps: DiffDeps = defaultDeps()): Promise<number> {
   try {
     validate(options);
-    const { result, out } = await build(options, deps);
+    const { result, out } = await buildDiffReport(options, deps);
     const frames = result.files.flatMap((f) => f.frames);
     const changes = frames.reduce((n, f) => n + f.nodes.length, 0);
     deps.stdout(
