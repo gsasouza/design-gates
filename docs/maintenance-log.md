@@ -1,0 +1,1 @@
+- card-505: sarif 2.1.0 test confirmed green after 3a79390 (npm test: 282 pass, 0 fail).
