@@ -112,13 +112,16 @@ Ordering guarantees: files by path; frames by id; nodes by id then change kind (
 
 `report.html` is a single self-contained file: inline CSS and JS, no external URLs, works offline. With `--inline` the images are embedded too; otherwise it references `images/...` next to it, so keep the folder together.
 
-- Views (buttons or keys `1`-`5`): **side by side** (base and head panes with synced zoom and pan), **swipe** (a slider reveals head over base), **onion skin** (opacity slider), **diff** (the pixelmatch mask) and **head only**. Added/removed frames show only the side that exists.
-- Emphasis boxes outline every change, coloured by kind: added green, removed red, modified amber, moved blue, reordered purple, pixel-only difference grey (legend in the top bar). **Pulse** toggles a short pulse animation on the boxes (disabled under `prefers-reduced-motion`).
-- Hover (or focus) a box for details: node name, type, change and the old/new property values.
-- Zoom with the wheel or the `+`/`-` buttons, pan by dragging, `Reset` re-fits. Zoom and pan are shared between the base and head panes of a frame.
+- **Summary** (below the top bar): "N changes in M frames: x added, y removed, ..." with the non-zero kinds in a fixed order, plus changed variables and themes. Each kind links to the first frame that has it. A frame added or removed as a whole counts as one added/removed change; with nothing changed it says "No changes".
+- **Change list** (under every frame header, always visible): one plain-language line per change, e.g. `Button / fill: #FF0000 -> #00FF00`, `Title / text: 'Hello' -> 'Olá'`, `Card moved 24px right, 8px down` (x/y changes are combined), `Card moved from Header to Footer`, `Card added`, `Card reordered`, and `variable color.bg (dark): #000000 -> #444444` or `theme dark added` for variable-driven changes. Nodes without a name show their id. Clicking a line (or Enter on it) selects the matching marker and turns markers back on if they were hidden. Known limitation: a moved node's parent is shown by name only when that name is in the diff (a changed node, or a frame); otherwise the raw id is shown.
+- A frame that is only here because a variable or theme changed reads "changed via variable ..." instead of "unchanged". The pixel ratio is a secondary detail ("pixels changed: 1.23%"); when it is zero the report says "no visible pixel change" with a short reason, never a bare 0.00%.
+- Panes are labelled **Before** and **After**. Views (buttons with tooltips, or keys `1`-`5`): **side by side**, **swipe** (a slider wipes between Before and After), **onion skin** (opacity slider), **diff** (the pixelmatch mask) and **After only**. Added/removed frames show only the side that exists.
+- Markers are borderless highlighter tints over each change, coloured by kind, and the legend spells them out: green added, red removed, amber modified, blue moved, purple reordered, hatched grey for pixels changed with no matching node. Press `m` (or the **Markers** button) to hide or show them. **Pulse** toggles a short pulse animation (disabled under `prefers-reduced-motion`).
+- Hover (or focus) a marker for details: node name, type, change and the old/new property values.
+- Each frame is zoomed to fit on load; zoom with the wheel or the `+`/`-` buttons, pan by dragging, `Reset` re-fits. Zoom and pan are shared between the Before and After panes of a frame.
 - Frames with themed renders get a theme switcher with each theme's pixel ratio; the sidebar badges the themes that changed. Frames with `missingBoxes` show a "no layout box" note.
-- Sidebar: changed frames per file with change-count badges and pixel ratio, unchanged frames collapsed, and a Variables & themes section linking to affected frames.
-- Keyboard: `j`/`k` (or arrows) next/previous change box, `n`/`p` next/previous frame, `1`-`5` views, `?` help, `Esc` closes help. A button toggles light/dark; the default follows `prefers-color-scheme`.
+- Sidebar: changed frames per file with change-count badges and pixel ratio, truly unchanged frames collapsed, and a Variables & themes section linking to affected frames.
+- Keyboard: `j`/`k` (or arrows) next/previous marker, `n`/`p` next/previous frame, `m` markers, `1`-`5` views, `?` help, `Esc` closes help. A button toggles light/dark; the default follows `prefers-color-scheme`.
 
 ![Report screenshot](docs/report.png)
 
@@ -131,6 +134,9 @@ Ordering guarantees: files by path; frames by id; nodes by id then change kind (
 | Rule | What it checks | Severity | Config | Fix |
 | --- | --- | --- | --- | --- |
 | `A11Y-001` | Text contrast against the effective background (ancestor fills alpha-composited down to an opaque one, else `canvasColor`), per theme combination; a gradient is checked at every stop. 4.5:1, or 3:1 for large text (>= 24px, or >= 18.66px bold). One `block` violation per failing combination, with a `theme`. An image or shader background yields `review`. A result fully inside a component is reported once on it with `affectedInstances`. At most 16 combinations are evaluated per text node; beyond that exactly one `info` violation lists the evaluated and skipped combinations. | `block` | `minRatio` (4.5), `minRatioLarge` (3) | none |
+| SCH-001 | Invalid document: duplicate node id, id containing `/`, unknown node `type`; an unknown document `version` is a `warn` (the check ran in degraded mode; severity cannot be overridden). A file that cannot be parsed is a file-level block with empty `nodeId` and `path`. | block (`warn` for version) | `severity` | none |
+| SCH-002 | Broken reference: `ref` to a missing or non-reusable node, `descendants` path missing in the expanded component, reference cycle. | block | `severity` | none |
+| SCH-003 | Broken variable: undefined `$name`, alias cycle (message lists the chain), escaped variable string `"\\$name"`. | block | `severity` | escaped variable: `replace` with `$name` |
 
 ### Severities
 

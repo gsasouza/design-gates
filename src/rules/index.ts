@@ -1,6 +1,9 @@
 import type { CompiledDocument } from "../compile/types.js";
 import type { GatesConfig, RuleId } from "../gates/config.js";
 import { runA11y001 } from "./A11Y-001.js";
+import { sch001 } from "./SCH-001.js";
+import { sch002 } from "./SCH-002.js";
+import { sch003 } from "./SCH-003.js";
 import type { DiffContext, Rule, Severity, Violation } from "../gates/types.js";
 
 export interface RuleEntry {
@@ -19,6 +22,27 @@ const ENTRIES: RuleEntry[] = [
     description: "Text color against its effective background meets WCAG contrast in every theme combination.",
     defaultSeverity: "block",
     run: runA11y001,
+  },
+  {
+    id: "SCH-001",
+    title: "Invalid document",
+    description: "Duplicate node id, id containing `/`, unknown node type or unknown document version.",
+    defaultSeverity: "block",
+    run: sch001,
+  },
+  {
+    id: "SCH-002",
+    title: "Broken reference",
+    description: "Instance of a missing or non-reusable node, missing descendants path or reference cycle.",
+    defaultSeverity: "block",
+    run: sch002,
+  },
+  {
+    id: "SCH-003",
+    title: "Broken variable",
+    description: "Undefined variable, variable alias cycle or escaped variable string.",
+    defaultSeverity: "block",
+    run: sch003,
   },
 ];
 
