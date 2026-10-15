@@ -63,7 +63,12 @@ test("every changed frame of the fixture repo has boxes and a pixel ratio", asyn
   assert.ok(changed.length > 0);
   for (const f of changed) {
     assert.ok(f.pixelDiffRatio && typeof f.pixelDiffRatio.default === "number", `${f.id} ratio`);
-    assert.ok(f.changeBoxes.length > 0, `${f.id} boxes`);
+    if (f.id === "missing-frame") {
+      assert.deepEqual(f.changeBoxes, [], "no invented boxes");
+      assert.deepEqual(f.missingBoxes, ["ai-prompt"]);
+    } else {
+      assert.ok(f.changeBoxes.length > 0, `${f.id} boxes`);
+    }
   }
 });
 

@@ -118,21 +118,28 @@ function union(a: Region, b: Region): Region {
   };
 }
 
-/** Merge regions whose boxes overlap, repeating until none do. */
+/** Merge regions whose boxes overlap, transitively (union-find, re-checking the grown boxes until stable). */
 function mergeOverlapping(regions: Region[]): Region[] {
-  const list = [...regions];
-  for (let merged = true; merged; ) {
-    merged = false;
-    for (let i = 0; i < list.length && !merged; i++) {
-      for (let j = i + 1; j < list.length && !merged; j++) {
-        if (!overlaps(list[i]!, list[j]!)) continue;
-        list[i] = union(list[i]!, list[j]!);
-        list.splice(j, 1);
-        merged = true;
+  const parent = regions.map((_, i) => i);
+  const find = (i: number): number => {
+    while (parent[i] !== i) i = parent[i] = parent[parent[i]!]!;
+    return i;
+  };
+  const grown = [...regions];
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (let i = 0; i < regions.length; i++) {
+      for (let j = i + 1; j < regions.length; j++) {
+        const a = find(i);
+        const b = find(j);
+        if (a === b || !overlaps(grown[a]!, grown[b]!)) continue;
+        parent[b] = a;
+        grown[a] = union(grown[a]!, grown[b]!);
+        changed = true;
       }
     }
   }
-  return list;
+  return regions.flatMap((_, i) => (find(i) === i ? [grown[i]!] : []));
 }
 
 function coveredShare(region: Rect, box: Rect): number {

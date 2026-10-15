@@ -33,7 +33,7 @@ function fakeGit(changed: ChangedFile[], calls: string[] = []): GitReader {
   };
 }
 
-function memoryFs(opts: { symlinks?: Record<string, string>; failWritesTo?: string } = {}) {
+function memoryFs(opts: { symlinks?: Record<string, string>; failWritesTo?: string; linkFiles?: string[] } = {}) {
   const files = new Map<string, string | Uint8Array>();
   const dirs = new Set<string>();
   const removed: string[] = [];
@@ -73,6 +73,9 @@ function memoryFs(opts: { symlinks?: Record<string, string>; failWritesTo?: stri
     },
     async exists(target) {
       return files.has(target) || [...files.keys(), ...dirs].some((k) => k === target || k.startsWith(target + path.sep));
+    },
+    async isSymlink(target) {
+      return (opts.linkFiles ?? []).includes(target);
     },
     async listFiles(dir) {
       return [...files.keys()].filter((k) => k.startsWith(dir + path.sep)).map((k) => k.slice(dir.length + 1).split(path.sep).join("/"));
@@ -194,6 +197,27 @@ test("refuses to write into the repo's .git dir, including via a symlink and a m
   assert.notEqual(await runDiff({ repo: "/repo", out: "link/sub" }, s.deps), 0);
   assert.match(s.err.join(""), /Refusing to write into the git directory/);
   assert.equal(s.mem.files.size, 0);
+});
+
+test("refuses to write through a symlinked report.html, diff.json or images dir under --out", async () => {
+  for (const name of ["report.html", "diff.json", "images"]) {
+    const s = setup([{ status: "modified", path: "a.pen" }], { linkFiles: [`/work/design-diff/${name}`] });
+    assert.notEqual(await runDiff({ repo: "/repo" }, s.deps), 0, name);
+    assert.match(s.err.join(""), /Refusing to write through a symlink/);
+    assert.equal(s.mem.files.size, 0, name);
+  }
+});
+
+test("refuses a symlinked --out dir or a symlinked intermediate dir", async () => {
+  const a = setup([], { linkFiles: ["/work/design-diff"] });
+  assert.notEqual(await runDiff({ repo: "/repo" }, a.deps), 0);
+  assert.match(a.err.join(""), /Refusing to write through a symlink/);
+  assert.equal(a.mem.files.size, 0);
+  assert.deepEqual(a.mem.temps, []);
+  const b = setup([], { linkFiles: ["/work/out/a"] });
+  assert.notEqual(await runDiff({ repo: "/repo", out: "out/a/b" }, b.deps), 0);
+  assert.match(b.err.join(""), /Refusing to write through a symlink/);
+  assert.equal(b.mem.files.size, 0);
 });
 
 test("refuses the common git dir of a linked worktree", async () => {

@@ -86,25 +86,26 @@ test("diff.json contains every edit in fixtures/expected.json with the right cha
   }
 });
 
-test("the per-theme variable edit has pixels changed under its theme key and the report offers the theme switcher", () => {
-  const frames = json.files.find((f) => f.path === "variable.pen")!.frames;
-  for (const id of ["var-frame", "var-comp-frame"]) {
-    const frame = frames.find((f) => f.id === id);
-    assert.ok(frame.pixelDiffRatio["mode=dark"] > 0, `${id}: mode=dark ratio`);
-    assert.equal(frame.pixelDiffRatio.default, 0, `${id}: default theme unchanged`);
-    assert.ok(frame.images["mode=dark"].diff, `${id}: dark diff image`);
-  }
+test("every themed fixture edit has pixels changed under its theme key and the report offers the theme switcher", () => {
+  const themed = loadExpected().filter((e) => e.variable !== undefined && e.theme !== undefined);
+  assert.ok(themed.some((e) => e.frameId === "var-ref-frame"));
   const doc = new JSDOM(html).window.document;
-  for (const id of ["var-frame", "var-comp-frame"]) {
-    const index = [...doc.querySelectorAll("section.frame")].findIndex((s) => s.querySelector("h3")!.textContent === frames.find((f) => f.id === id).name);
-    assert.notEqual(index, -1, `${id}: has a section`);
-    const select = doc.querySelectorAll("section.frame")[index]!.querySelector("select.theme-select")!;
-    assert.deepEqual([...select.querySelectorAll("option")].map((o) => o.getAttribute("value")), ["default", "mode=dark"]);
+  for (const e of themed) {
+    const id = e.frameId;
+    const frame = json.files.find((f) => f.path === e.file)!.frames.find((f) => f.id === id);
+    assert.ok(frame.pixelDiffRatio[e.theme!] > 0, `${id}: ${e.theme} ratio`);
+    assert.equal(frame.pixelDiffRatio.default, 0, `${id}: default theme unchanged`);
+    assert.ok(frame.images[e.theme!].diff, `${id}: themed diff image`);
+    const section = [...doc.querySelectorAll("section.frame")].find((s) => s.querySelector("h3")!.textContent === frame.name);
+    assert.ok(section, `${id}: has a section`);
+    const select = section.querySelector("select.theme-select")!;
+    assert.deepEqual([...select.querySelectorAll("option")].map((o) => o.getAttribute("value")), ["default", e.theme]);
   }
 });
 
 test("frames with missingBoxes show the note", () => {
   const missing = json.files.flatMap((f) => f.frames).filter((fr) => fr.missingBoxes.length > 0);
+  assert.ok(missing.length > 0, "the fixtures produce at least one frame with missing boxes");
   const doc = new JSDOM(html).window.document;
   assert.equal(doc.querySelectorAll("p.missing-note").length, missing.length);
   for (const fr of missing) {

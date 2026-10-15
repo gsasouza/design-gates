@@ -153,3 +153,9 @@ test("text content that looks like a variable is a literal, not a reference", ()
   assert.deepEqual(variables[0]!.frames.map((f) => f.frameId), ["uses-alias", "uses-direct"]);
   assert.deepEqual(bg[0]!.frames.map((f) => f.frameId), ["unrelated"]);
 });
+
+test("a $name string inside an array counts as a reference, matching the renderer", () => {
+  const arr = { id: "arrf", type: "frame", width: 10, height: 10, stops: ["$blue-600"] };
+  const { variables } = diffVariables({ "a.pen": { base: aliasDoc("#0000ff", [arr]), head: aliasDoc("#0000aa", [arr]) } });
+  assert.ok(variables[0]!.frames.some((f) => f.frameId === "arrf"));
+});

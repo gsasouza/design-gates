@@ -66,10 +66,21 @@ function aliasClosure(doc: PenDocument, name: string): Set<string> {
   return out;
 }
 
+const frameNames = new WeakMap<PenDocument, [PenNode, Set<string>][]>();
+
+/** Each top-level frame with the variable names it references, computed once per document. */
+function framesWithNames(doc: PenDocument): [PenNode, Set<string>][] {
+  let cached = frameNames.get(doc);
+  if (!cached) frameNames.set(doc, (cached = doc.children.map((f) => [f, referencedNames(doc, f)])));
+  return cached;
+}
+
 function framesReferencing(file: string, doc: PenDocument | undefined, name: string): FrameRef[] {
   if (!doc) return [];
   const targets = aliasClosure(doc, name);
-  return doc.children.filter((f) => [...referencedNames(doc, f)].some((n) => targets.has(n))).map((f) => ({ file, frameId: f.id }));
+  return framesWithNames(doc)
+    .filter(([, names]) => [...names].some((n) => targets.has(n)))
+    .map(([f]) => ({ file, frameId: f.id }));
 }
 
 function framesPinningAxis(file: string, doc: PenDocument | undefined, axis: string): FrameRef[] {
