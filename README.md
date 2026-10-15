@@ -133,6 +133,9 @@ Ordering guarantees: files by path; frames by id; nodes by id then change kind (
 
 | Rule | What it checks | Severity | Config | Fix |
 | --- | --- | --- | --- | --- |
+| SCH-001 | Invalid document: duplicate node id, id containing `/`, unknown node `type`; an unknown document `version` is a `warn` (the check ran in degraded mode; severity cannot be overridden). A file that cannot be parsed is a file-level block with empty `nodeId` and `path`. | block (`warn` for version) | `severity` | none |
+| SCH-002 | Broken reference: `ref` to a missing or non-reusable node, `descendants` path missing in the expanded component, reference cycle. | block | `severity` | none |
+| SCH-003 | Broken variable: undefined `$name`, alias cycle (message lists the chain), escaped variable string `"\\$name"`. | block | `severity` | escaped variable: `replace` with `$name` |
 
 ### Severities
 

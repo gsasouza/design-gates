@@ -1,0 +1,1 @@
+{ "version": "2.6", "variables": { "brand": { "type": "color", "value": "#111111" }, "loop-a": { "type": "color", "value": "$loop-b" }, "loop-b": { "type": "color", "value": "$loop-a" } }, "children": [{ "id": "f", "type": "frame", "children": [{ "id": "a", "type": "rectangle", "fill": "$brand" }] }] }
