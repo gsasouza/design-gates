@@ -361,6 +361,7 @@ class Renderer {
       h += `<button type="button" data-view="${k}" aria-pressed="${i === 0}">${i + 1} ${VIEW_LABELS[i]}</button>`;
     });
     h += `</div><div class="group"><button type="button" id="pulse-toggle" aria-pressed="false">Pulse</button>` +
+      `<button type="button" id="markers-toggle" aria-pressed="true">Markers</button>` +
       `<button type="button" id="theme-toggle">Theme</button><button type="button" id="help-toggle">?</button></div>`;
     h += `<div class="legend">`;
     for (const k of [...KINDS, "pixel"]) h += `<span><i class="k-${k}"></i> ${KIND_LABEL[k]}</span>`;
@@ -370,6 +371,7 @@ class Renderer {
     h += `</main></div>`;
     h += `<div id="help" hidden><div><h2>Keyboard</h2><p><kbd>j</kbd>/<kbd>k</kbd> or arrows: next/previous change<br>` +
       `<kbd>n</kbd>/<kbd>p</kbd>: next/previous frame<br><kbd>1</kbd>-<kbd>5</kbd>: view mode<br>` +
+      `<kbd>m</kbd>: show/hide markers<br>` +
       `<kbd>?</kbd>: toggle this help, <kbd>Esc</kbd>: close</p></div></div>`;
     h += `<script>${loadAsset("report.js")}</script></body></html>\n`;
     return h;

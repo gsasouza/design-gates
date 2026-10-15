@@ -12,7 +12,7 @@ code{font-family:ui-monospace,monospace;font-size:12px}
 #topbar h1{font-size:15px;margin:0}
 .group{display:flex;gap:4px;align-items:center}
 .legend{display:flex;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:12px}
-.legend i,.swatch{display:inline-block;width:12px;height:12px;border:2px solid var(--c,var(--pixel));border-radius:2px;vertical-align:-2px}
+.legend i,.swatch{display:inline-block;width:12px;height:12px;border:0;border-radius:2px;background:color-mix(in srgb,var(--c,var(--pixel)) 30%,transparent);vertical-align:-2px}
 .swatch{border:1px solid var(--border);margin-right:4px}
 #layout{display:grid;grid-template-columns:280px minmax(0,1fr);align-items:start}
 #sidebar{position:sticky;top:46px;max-height:calc(100vh - 46px);overflow:auto;padding:12px;border-right:1px solid var(--border);background:var(--panel)}
@@ -42,15 +42,19 @@ main{padding:12px;min-width:0}
 .control{margin:4px 0;display:flex;gap:8px;align-items:center}
 .control input{flex:1}
 .empty{padding:24px;color:var(--muted);line-height:1.4}
-.box{position:absolute;border:2px solid var(--c);background:transparent;outline:none;line-height:1.3}
-.box.k-pixel{border-style:dashed}
-.box.selected,.box:focus{box-shadow:0 0 0 3px var(--c),0 0 0 5px var(--bg);z-index:5}
+.box{position:absolute;border:0;outline:none;box-shadow:none;background:none;line-height:1.3}
+.box::before{content:"";position:absolute;inset:0;pointer-events:none;background:color-mix(in srgb,var(--c) 30%,transparent)}
+.box.k-pixel::before{background:repeating-linear-gradient(45deg,color-mix(in srgb,var(--c) 30%,transparent) 0 3px,color-mix(in srgb,var(--c) 8%,transparent) 3px 6px)}
+.box.selected,.box:focus{z-index:5}
+.box.selected::before,.box:focus::before{background:color-mix(in srgb,var(--c) 50%,transparent)}
+.box.k-pixel.selected::before,.box.k-pixel:focus::before{background:repeating-linear-gradient(45deg,color-mix(in srgb,var(--c) 50%,transparent) 0 3px,color-mix(in srgb,var(--c) 16%,transparent) 3px 6px)}
+body.markers-off .box{display:none}
 .tip{display:none;position:absolute;left:0;top:100%;z-index:30;min-width:200px;max-width:320px;padding:6px 8px;margin-top:4px;background:var(--panel);color:var(--fg);border:1px solid var(--border);border-radius:4px;font-size:12px;line-height:1.35;text-align:left;box-shadow:0 2px 8px rgba(0,0,0,.25);pointer-events:none}
 .box.tip-open .tip{display:block}
 .tip ul{margin:4px 0 0;padding-left:16px}
-.pulse .box{animation:pulse .7s ease-in-out 3}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.15}}
-@media (prefers-reduced-motion:reduce){.pulse .box{animation:none}}
+.pulse .box::before{animation:pulse .7s ease-in-out 3}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.pulse .box::before{animation:none}}
 #help{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5)}
 #help div{background:var(--panel);padding:16px 24px;border-radius:8px;max-width:420px}
 #help kbd{border:1px solid var(--border);border-radius:3px;padding:0 4px;font-family:ui-monospace,monospace}

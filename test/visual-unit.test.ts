@@ -166,6 +166,25 @@ test("a pixel region mostly covered by a node box is dropped", () => {
   assert.equal(pixelChangeBoxes(mask, 10, 10, [far]).length, 1);
 });
 
+// Frame-root and whole-image node boxes used to swallow every pixel region inside them; they no
+// longer count, so those regions stay as pixel markers (only the box list gains entries).
+test("a pixel region inside the frame-root box or a whole-image box is kept", () => {
+  const mask = new Uint8Array(100);
+  for (let y = 2; y < 6; y++) for (let x = 2; x < 6; x++) mask[y * 10 + x] = 1;
+  const root: ChangeBox = { x: 0, y: 0, w: 8, h: 8, kind: "modified", side: "head", nodeId: "frame" };
+  assert.equal(pixelChangeBoxes(mask, 10, 10, [root]).length, 0);
+  assert.equal(pixelChangeBoxes(mask, 10, 10, [root], { rootIds: ["frame"] }).length, 1);
+  const whole: ChangeBox = { x: 0, y: 0, w: 10, h: 10, kind: "modified", side: "head", nodeId: "other" };
+  assert.equal(pixelChangeBoxes(mask, 10, 10, [whole]).length, 1);
+});
+
+test("a pixel region under half covered by a node box is kept", () => {
+  const mask = new Uint8Array(100);
+  for (let y = 2; y < 6; y++) for (let x = 2; x < 6; x++) mask[y * 10 + x] = 1;
+  const part: ChangeBox = { x: 0, y: 0, w: 3, h: 6, kind: "modified", side: "head", nodeId: "a" };
+  assert.equal(pixelChangeBoxes(mask, 10, 10, [part]).length, 1);
+});
+
 test("node boxes: removed and moved-from use base, added/modified/moved-to/reordered use head", () => {
   const baseBoxes = { r: { x: 1, y: 1, w: 5, h: 5 }, mv: { x: 0, y: 0, w: 2, h: 2 }, a: { x: 99, y: 99, w: 1, h: 1 } };
   const headBoxes = { a: { x: 10, y: 10, w: 4, h: 4 }, m: { x: 20, y: 20, w: 3, h: 3 }, mv: { x: 30, y: 30, w: 2, h: 2 }, o: { x: 40, y: 40, w: 1.2, h: 1.2 }, r: { x: 77, y: 77, w: 1, h: 1 } };

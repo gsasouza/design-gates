@@ -151,11 +151,15 @@ function coveredShare(region: Rect, box: Rect): number {
 export interface PixelBoxOptions {
   /** Components with fewer changed pixels than this are dropped. */
   minArea?: number;
+  /** Node ids of the frame root (frame id, baseId, headId): their boxes never absorb a pixel region. */
+  rootIds?: string[];
 }
 
 /**
  * Boxes (kind "pixel", side "head") of the connected regions of changed pixels: tiny components
  * dropped, overlapping ones merged, and regions mostly covered by a node box left to that box.
+ * The frame-root box and any box covering the whole image do not count: they would swallow every
+ * pixel marker of the frame, so the regions inside them stay.
  */
 export function pixelChangeBoxes(
   mask: Uint8Array,
@@ -166,7 +170,13 @@ export function pixelChangeBoxes(
 ): ChangeBox[] {
   const minArea = opts.minArea ?? DEFAULT_MIN_AREA;
   const regions = mergeOverlapping(components(mask, width, height).filter((r) => r.area >= minArea));
+  const rootIds = opts.rootIds ?? [];
+  const absorbing = nodeBoxes.filter(
+    (b) =>
+      !(b.nodeId !== undefined && rootIds.includes(b.nodeId)) &&
+      !(b.x <= 0 && b.y <= 0 && b.x + b.w >= width && b.y + b.h >= height),
+  );
   return regions
-    .filter((r) => !nodeBoxes.some((b) => coveredShare(r, b) >= COVERED_SHARE))
+    .filter((r) => !absorbing.some((b) => coveredShare(r, b) >= COVERED_SHARE))
     .map((r) => ({ x: r.x, y: r.y, w: r.w, h: r.h, kind: "pixel" as const, side: "head" as const }));
 }
