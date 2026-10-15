@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { type SceneGraph, fontManager, headlessRenderNodes, parsePenFile } from "@open-pencil/core";
 import { estimateTextSize } from "@open-pencil/core/layout";
 import type { PenDocument, PenNode, PenThemes, PenVariable, PenVariables } from "../pen/types.js";
+import { withFrameTheme } from "./themes.js";
 import type { NodeBox, RenderOptions, RenderResult, Renderer } from "./renderer.js";
 
 export interface OpenPencilRendererOptions {
@@ -120,9 +121,7 @@ function defaultTheme(themes: PenThemes | undefined): Theme {
  * resolved for the theme in effect. The caller's document is never mutated.
  */
 export function prepareDocument(doc: PenDocument, frameId: string, theme?: Theme): PenDocument {
-  const copy = structuredClone(doc);
-  const frame = findNode(copy.children, frameId);
-  if (frame && theme) frame.theme = { ...frame.theme, ...theme };
+  const copy = withFrameTheme(doc, frameId, theme);
   const variables = copy.variables ?? {};
   const children = bakeVariables(copy.children, variables, defaultTheme(copy.themes)) as PenNode[];
   return { ...copy, children };
