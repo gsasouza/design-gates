@@ -1,0 +1,19 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "card",
+      "type": "frame",
+      "fill": "#FFFFFF",
+      "children": [
+        {
+          "id": "label",
+          "type": "text",
+          "content": "Hello",
+          "fill": "#9CA3AF",
+          "fontSize": 16
+        }
+      ]
+    }
+  ]
+}

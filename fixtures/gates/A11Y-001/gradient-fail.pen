@@ -1,0 +1,31 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "banner",
+      "type": "frame",
+      "fill": {
+        "type": "gradient",
+        "stops": [
+          {
+            "color": "#FFFFFF",
+            "position": 0
+          },
+          {
+            "color": "#555555",
+            "position": 1
+          }
+        ]
+      },
+      "children": [
+        {
+          "id": "label",
+          "type": "text",
+          "content": "Hello",
+          "fill": "#777777",
+          "fontSize": 16
+        }
+      ]
+    }
+  ]
+}

@@ -14,7 +14,7 @@ const entry = (id: RuleEntry["id"], violations: Violation[], defaultSeverity: Se
 });
 
 test("the registry holds the registered rules sorted by id", () => {
-  assert.deepEqual(registry.map((r) => r.id), ["SCH-001", "SCH-002", "SCH-003"]);
+  assert.deepEqual(registry.map((r) => r.id), ["A11Y-001", "SCH-001", "SCH-002", "SCH-003"]);
   assert.deepEqual(runRules([{ file: "a.pen", compiled }], DEFAULT_CONFIG), []);
 });
 
