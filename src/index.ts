@@ -32,3 +32,5 @@ export { diffFrame } from "./diff/semantic.js";
 export type { FrameDiffResult } from "./diff/semantic.js";
 export { diffVariables } from "./diff/variables.js";
 export type { VariablesDiff } from "./diff/variables.js";
+export { computeSemanticDiff, computeSemanticDiffWithDocs } from "./diff/compute.js";
+export type { ComputeOptions } from "./diff/compute.js";
