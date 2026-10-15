@@ -22,6 +22,10 @@ test("wrapper rejects forbidden subcommands and flags before executing", async (
     ["config", "--file=x", "--get", "a"], ["config", "user.name", "x"],
     ["add", "--force", "a.pen"], ["add", "-f", "a.pen"], ["add", "-fv", "a.pen"], ["branch", "-D", "x"], ["branch", "-Df", "x"],
     ["restore", "--hard"], ["branch", "--delete", "x"], ["branch", "-d", "x"], ["switch", "--force", "x"], ["status", "--global"],
+    ["switch", "-C", "x"], ["switch", "--force-create", "x"], ["switch", "--discard-changes", "x"], ["switch", "--orphan", "x"],
+    ["switch", "-cC", "x"],
+    ["branch", "-M", "x"], ["branch", "-C", "a", "b"], ["branch", "--move", "a", "b"], ["branch", "--copy", "a", "b"],
+    ["branch", "-m", "a", "b"], ["branch", "-c", "a", "b"], ["branch", "-vM", "a", "b"],
     [],
   ];
   for (const args of bad) await assert.rejects(git(args), Error, args.join(" "));
