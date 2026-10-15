@@ -1,0 +1,16 @@
+{
+  "version": "2.6",
+  "children": [
+    { "id": "A", "type": "frame", "reusable": true, "children": [{ "id": "a-b", "type": "ref", "ref": "B" }] },
+    { "id": "B", "type": "frame", "reusable": true, "children": [{ "id": "b-a", "type": "ref", "ref": "A" }] },
+    { "id": "self", "type": "frame", "reusable": true, "children": [{ "id": "self-ref", "type": "ref", "ref": "self" }] },
+    {
+      "id": "use", "type": "frame",
+      "children": [
+        { "id": "use-a", "type": "ref", "ref": "A" },
+        { "id": "use-missing", "type": "ref", "ref": "ghost" },
+        { "id": "use-plain", "type": "ref", "ref": "use" }
+      ]
+    }
+  ]
+}

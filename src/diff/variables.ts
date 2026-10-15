@@ -7,7 +7,7 @@ export interface VariablesDiff {
   themes: ThemeChange[];
 }
 
-function themeKey(theme: Record<string, string> | undefined): string {
+export function themeKey(theme: Record<string, string> | undefined): string {
   const pairs = Object.entries(theme ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
   return pairs.length ? pairs.map(([k, v]) => `${k}=${v}`).join(",") : "default";
 }

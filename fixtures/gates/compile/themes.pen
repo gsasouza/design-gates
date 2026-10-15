@@ -1,0 +1,34 @@
+{
+  "version": "2.6",
+  "themes": { "mode": ["light", "dark"], "density": ["cozy", "compact"] },
+  "variables": {
+    "primary": { "type": "color", "value": [{ "value": "#111111", "theme": { "mode": "light" } }, { "value": "#EEEEEE", "theme": { "mode": "dark" } }] },
+    "accent": { "type": "color", "value": "$primary" },
+    "brand": { "type": "color", "value": "$accent" },
+    "loop-a": { "type": "color", "value": "$loop-b" },
+    "loop-b": { "type": "color", "value": "$loop-a" },
+    "dark-only": { "type": "color", "value": [{ "value": "#000000", "theme": { "mode": "dark" } }] }
+  },
+  "children": [
+    { "id": "btn", "type": "frame", "reusable": true, "fill": "$brand", "children": [{ "id": "btn-label", "type": "text", "content": "Go", "fill": "$brand" }] },
+    {
+      "id": "plain", "type": "frame", "fill": "$brand",
+      "children": [
+        { "id": "plain-btn", "type": "ref", "ref": "btn" },
+        { "id": "plain-pinned-btn", "type": "ref", "ref": "btn", "theme": { "mode": "dark" } },
+        { "id": "missing", "type": "rectangle", "fill": "$nope" },
+        { "id": "cycle", "type": "rectangle", "fill": "$loop-a", "stroke": { "fill": "$brand", "thickness": 1 } },
+        { "id": "partial", "type": "rectangle", "fill": "$dark-only" },
+        { "id": "escaped", "type": "text", "content": "\\$brand", "fill": "#000000" }
+      ]
+    },
+    {
+      "id": "dark", "type": "frame", "theme": { "mode": "dark" }, "fill": "$brand",
+      "children": [
+        { "id": "dark-btn", "type": "ref", "ref": "btn" },
+        { "id": "inner", "type": "frame", "theme": { "density": "compact" }, "children": [{ "id": "inner-leaf", "type": "rectangle" }] },
+        { "id": "light-again", "type": "frame", "theme": { "mode": "light" }, "fill": "$brand" }
+      ]
+    }
+  ]
+}

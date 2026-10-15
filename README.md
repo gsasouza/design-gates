@@ -122,6 +122,108 @@ Ordering guarantees: files by path; frames by id; nodes by id then change kind (
 
 ![Report screenshot](docs/report.png)
 
+## Gates
+
+`design-gates check` runs a deterministic rule engine over `.pen` documents (phase 1: SCH-001/002/003, TOK-001, TOK-002, A11Y-001, CMP-001, DIF-001). This section is the foundation: the compiler, the config model and the rule registry. Rules are pure functions of the compiled document, the config and an optional diff; they never read the clock or the network.
+
+### Rules
+
+| Rule | What it checks | Severity | Config | Fix |
+| --- | --- | --- | --- | --- |
+
+### Severities
+
+- `block`: fails the run (the only severity that can).
+- `warn`: reported; fails only with `strict: true`.
+- `review`: needs a human look; never changed by config.
+- `info`: purely informational; never changed by config.
+
+`rules.<ID>.severity` sets `block`, `warn`, `review`, `info` or `off` (rule skipped). An override only changes violations a rule emits at `block` or `warn` and does not pin (`fixedSeverity`); `review` and `info` violations are never escalated or demoted.
+
+### Config
+
+`design-gates.config.json` (all keys optional; unknown top-level keys or rule ids are an error). Defaults:
+
+```json
+{
+  "canvasColor": "#FFFFFF",
+  "strict": false,
+  "rules": {
+    "A11Y-001": {
+      "minRatio": 4.5,
+      "minRatioLarge": 3
+    },
+    "CMP-001": {
+      "minNodes": 3
+    },
+    "DIF-001": {
+      "warnAt": 5,
+      "blockAt": 20,
+      "scope": [
+        "*"
+      ]
+    },
+    "SCH-001": {},
+    "SCH-002": {},
+    "SCH-003": {},
+    "TOK-001": {
+      "properties": [
+        "fill",
+        "stroke.fill"
+      ],
+      "ignoreValues": [],
+      "onlyIn": []
+    },
+    "TOK-002": {
+      "scales": {
+        "fontSize": [
+          12,
+          14,
+          16,
+          20,
+          24,
+          32,
+          40,
+          48
+        ],
+        "radius": [
+          0,
+          2,
+          4,
+          8,
+          12,
+          16,
+          24
+        ],
+        "spacing": [
+          0,
+          2,
+          4,
+          8,
+          12,
+          16,
+          24,
+          32,
+          48,
+          64
+        ]
+      },
+      "tolerance": 0
+    }
+  }
+}
+```
+
+`rules.<ID>` also accepts `severity`. Unknown option keys under a known rule are kept for later rules to read; known keys of the wrong type are an error.
+
+### Compiler
+
+`compile(doc, { file })` indexes every node (compiled id, parent chain, `/`-joined path), expands `ref` instances (component props, then the instance's own props, then `descendants` overrides), computes each node's effective theme, resolves `$variables` per theme with the same resolver the renderer uses (`resolveAlias` in `src/render/themes.ts`) and records per-prop provenance (`component` or `instance`). Problems become diagnostics (SCH-001 schema, SCH-002 refs, SCH-003 variables) instead of exceptions. Nodes expanded from a component get the id `<instance id>::<source id>`; expansion is bounded (nesting depth 128, 100 000 compiled nodes). Known versions: `2.6`.
+
+### Paints
+
+Fill, stroke and effect shapes follow the OpenPencil 0.16.0 importer (`@open-pencil/pen` `convert.ts`). The importer only handles solid paints (a `#hex`/`$var` string, or an object with `color`, alone or in a list); gradient and image fills are not imported. `solidColor(fill)` returns the top visible solid colour and `gradientStops(fill)` the stops of a gradient; any other paint is `unknown` (A11Y-001 reports `review` for it).
+
 ## Determinism
 
 Running the same command twice on the same refs gives byte-identical `diff.json` and `report.html`: no timestamps or absolute paths are embedded, all collections are sorted (see above), fonts are pinned (`fixtures/fonts/`, never system fonts) and rendering uses the pinned OpenPencil 0.16.0 on CanvasKit WASM. This holds on the same OpenPencil version and platform; the working-tree head records the sentinel `WORKTREE` rather than a hash, so edits to the tree change the output as expected.
