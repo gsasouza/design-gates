@@ -12,6 +12,8 @@ Scripts:
 - `npm run build` — clean `dist/` and compile with `tsc` (output in `dist/src`, `dist/test`).
 - `npm test` — build, then run `dist/test/**/*.test.js`.
 
+CI: `.github/workflows/ci.yml` runs `npm ci` and `npm test` on Node 22 and 24 for every pull request and push to `main`.
+
 Dev dependencies (`typescript`, `@types/node`) are pinned to exact versions; the lockfile is `package-lock.json`.
 
 ## Fixtures and the pen loader
