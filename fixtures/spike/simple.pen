@@ -1,0 +1,30 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "frame",
+      "type": "frame",
+      "name": "Spike",
+      "layout": "none",
+      "x": 0,
+      "y": 0,
+      "width": 200,
+      "height": 100,
+      "fill": "#ffffff",
+      "children": [
+        { "id": "rect", "type": "rectangle", "x": 10, "y": 10, "width": 80, "height": 40, "fill": "#3366ff" },
+        {
+          "id": "label",
+          "type": "text",
+          "x": 20,
+          "y": 60,
+          "content": "Hello",
+          "fontFamily": "Inter",
+          "fontSize": 16,
+          "fontWeight": "600",
+          "fill": "#111111"
+        }
+      ]
+    }
+  ]
+}

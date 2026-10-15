@@ -1,0 +1,16 @@
+{
+  "version": "2.6",
+  "themes": { "mode": ["light", "dark"] },
+  "variables": {
+    "bg": {
+      "type": "color",
+      "value": [
+        { "value": "#ffffff", "theme": { "mode": "light" } },
+        { "value": "#000000", "theme": { "mode": "dark" } }
+      ]
+    }
+  },
+  "children": [
+    { "id": "frame", "type": "frame", "layout": "none", "width": 40, "height": 40, "fill": "$bg" }
+  ]
+}
