@@ -42,6 +42,16 @@ function useCategory(prop: string): string | undefined {
   return CATEGORY[root as ControlledProp];
 }
 
+/** Category hint from a variable name; undefined when the name says nothing. */
+function nameCategory(name: string): string | undefined {
+  const n = name.toLowerCase();
+  if (/stroke|border-?width|thickness/.test(n)) return "strokeWidth";
+  if (/radius|radii|corner/.test(n)) return "radius";
+  if (/font-?size|text-?size|fontsize/.test(n)) return "fontSize";
+  if (/spacing|space|gap|padding|margin/.test(n)) return "spacing";
+  return undefined;
+}
+
 /** TOK-002: numeric values off the configured scales. */
 export function run(compiled: CompiledDocument, config: GatesConfig): Violation[] {
   const cfg = config.rules["TOK-002"];
@@ -77,6 +87,12 @@ export function run(compiled: CompiledDocument, config: GatesConfig): Violation[
       const category = useCategory(use.prop);
       if (category && use.chain[0] !== undefined) used.set(`${use.chain[0]}\0${category}`, { ref: `$${use.chain[0]}`, category });
     }
+  }
+  // Numeric variables no checked property uses: category from the variable's name (e.g. `spacing-md`, `radius.lg`).
+  for (const [name, variable] of Object.entries(compiled.variables)) {
+    if (variable.type !== "number" || [...used.values()].some((u) => u.ref === `$${name}`)) continue;
+    const category = nameCategory(name);
+    if (category) used.set(`${name}\0${category}`, { ref: `$${name}`, category });
   }
   const combos = themeCombinations(compiled.themes);
   const seen = new Map<string, Violation>();

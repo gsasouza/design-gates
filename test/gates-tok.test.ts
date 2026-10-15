@@ -131,6 +131,12 @@ test("TOK-002 reports an off-scale variable definition once, not per use", async
   assert.deepEqual(await check("TOK-002", "variable-definition-pass"), []);
 });
 
+test("TOK-002 checks numeric variable definitions no property uses, categorised by name", async () => {
+  const out = await check("TOK-002", "unused-variable-fail");
+  assert.deepEqual(out.map((v) => [v.nodeId, v.path, v.fix]), [["$spacing-odd", "variables/spacing-odd", { type: "candidates", prop: "value", candidates: [16, 20] }]]);
+  assert.deepEqual(await check("TOK-002", "unused-variable-pass"), []);
+});
+
 test("TOK-002 checks values resolved through a variable chain on the defining variable", async () => {
   const out = await check("TOK-002", "resolved-through-variable-fail");
   assert.deepEqual(out.map((v) => `${v.nodeId}:${v.message}`), [

@@ -1,0 +1,9 @@
+{
+  "version": "2.6",
+  "variables": {
+    "spacing-md": { "type": "number", "value": 16 }
+  },
+  "children": [
+    { "id": "screen", "type": "frame", "width": 100, "height": 100 }
+  ]
+}
