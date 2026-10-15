@@ -82,7 +82,7 @@ test("init, idempotent re-run, status, save, history with renames and gaps", asy
 
   const h = await repo.history();
   assert.deepEqual(h.versions.map((v) => [v.number, v.message]), [[1, "Fifth"], [2, "Fourth"], [3, "Third"], [4, "Saved 2026-01-02 03:04"], [5, "First version"]]);
-  assert.match(h.versions[0].date, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d[+-]\d\d:\d\d$/);
+  assert.match(h.versions[0].date, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:Z|[+-]\d\d:\d\d)$/);
   assert.deepEqual(h.versions[2].files.sort(), ["assets/p.png", "b.pen", "c.pen"]);
 
   const limited = await repo.history({ limit: 2 });
@@ -145,7 +145,8 @@ test("real git: failing gpg signing is classified from verbatim stderr", async (
   await writeFile(path.join(dir, "a.pen"), "1");
   await assert.rejects(repo.save({ message: "m" }), (e) => {
     assert.ok(e instanceof VcsCommitFailedError);
-    assert.equal(e.message, "Saving failed because your git setup signs versions and signing failed: error: gpg failed to sign the data");
+    const prefix = "Saving failed because your git setup signs versions and signing failed: error: gpg failed to sign the data";
+    assert.ok([prefix, prefix + ":"].includes(e.message), e.message); // newer git appends a colon
     return true;
   });
   // Nothing extra was done to the index: git left the file staged by `add`.
