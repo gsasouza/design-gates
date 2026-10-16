@@ -9,6 +9,8 @@ export interface DesignSource {
   format: DesignFormat;
   /** Normalized document the diff and the rules work on. */
   doc: PenDocument;
+  /** Version of the fig-kiwi format of a `.fig` file; `doc.version` is the `.pen` version it was normalized to. */
+  figVersion?: number;
   /**
    * A scene graph ready to render `frameId` with `theme` applied. Every call hands out a graph no
    * earlier render has mutated (measuring, layout, mode selection), so renders are independent.

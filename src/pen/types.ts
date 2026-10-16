@@ -69,9 +69,11 @@ export type PenFill = PenColor | PenFillObject | PenFillObject[];
 export interface PenStroke {
   align?: "inside" | "center" | "outside";
   thickness?: number | { top?: number; right?: number; bottom?: number; left?: number };
-  fill?: PenColor;
+  /** A colour, or the object form of a paint that is not a plain colour (gradient, image, unknown). */
+  fill?: PenColor | PenFillObject;
   join?: string;
   cap?: string;
+  [key: string]: unknown;
 }
 
 export interface PenEffect {
@@ -81,4 +83,5 @@ export interface PenEffect {
   offset?: { x: number; y: number };
   blur?: number;
   spread?: number;
+  [key: string]: unknown;
 }
