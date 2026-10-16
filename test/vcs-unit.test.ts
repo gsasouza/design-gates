@@ -14,7 +14,7 @@ import {
 import { gitError, porcelain, recordingGit } from "./vcs-helpers.js";
 
 const NO_LOCKS = "--no-optional-locks";
-const SPECS = [":(glob)**/*.pen", ":(glob)assets/**"];
+const SPECS = [":(glob)**/*.pen", ":(glob)**/*.fig", ":(glob)assets/**"];
 const STATUS = [NO_LOCKS, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", ...SPECS];
 const LOG_LINE = (sha: string, short: string, msg: string) => `${sha}\x1f${short}\x1f${msg}\n`;
 const SHA1 = "a".repeat(40);
