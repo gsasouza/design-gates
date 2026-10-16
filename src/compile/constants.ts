@@ -1,6 +1,9 @@
 /** `.pen` document versions this tool understands. */
 export const KNOWN_VERSIONS: readonly string[] = ["2.6"];
 
+/** Fig-kiwi versions of `.fig` files this tool understands (`DesignSource.figVersion`). */
+export const KNOWN_FIG_VERSIONS: readonly number[] = [101];
+
 /** Node `type`s of the `.pen` format; anything else is an SCH-001 diagnostic. */
 export const KNOWN_TYPES: readonly string[] = [
   "context",

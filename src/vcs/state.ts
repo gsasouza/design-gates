@@ -1,10 +1,10 @@
 import type { SafeGit } from "./git.js";
 
-/** Only .pen files and files under a top-level `assets/` directory are versioned. */
-export const DESIGN_PATHSPECS = [":(glob)**/*.pen", ":(glob)assets/**"];
+/** Only .pen and .fig files and files under a top-level `assets/` directory are versioned. */
+export const DESIGN_PATHSPECS = [":(glob)**/*.pen", ":(glob)**/*.fig", ":(glob)assets/**"];
 
 export function isDesignPath(p: string): boolean {
-  return p.endsWith(".pen") || p.startsWith("assets/");
+  return p.endsWith(".pen") || p.endsWith(".fig") || p.startsWith("assets/");
 }
 
 export type FileState = "new" | "changed" | "deleted";
@@ -49,8 +49,8 @@ export interface UnsavedChanges {
 }
 
 /**
- * The working folder has unsaved changes when a tracked .pen or assets/ file is modified, staged or
- * deleted, or when an untracked (not ignored) .pen file or file under assets/ exists.
+ * The working folder has unsaved changes when a tracked .pen, .fig or assets/ file is modified, staged or
+ * deleted, or when an untracked (not ignored) .pen or .fig file or file under assets/ exists.
  */
 export async function getUnsavedChanges(git: SafeGit): Promise<UnsavedChanges> {
   const out = await git(["status", "--porcelain=v1", "-z", "--untracked-files=all", "--", ...DESIGN_PATHSPECS]);

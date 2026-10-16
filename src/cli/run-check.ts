@@ -4,13 +4,15 @@ import { BASELINE_FILE, entryOf, fingerprint, parseBaseline, serializeBaseline }
 import { FORMATS, formatAgent, formatSarif, formatText, type Format, type Reported } from "../check/format.js";
 import { applySuppressions, collectSuppressions } from "../check/suppress.js";
 import { compile } from "../compile/compile.js";
+import type { CompileOptions } from "../compile/types.js";
 import { diffVariables } from "../diff/variables.js";
 import { resolveConfig, type GatesConfig } from "../gates/config.js";
 import type { DiffContext, Violation } from "../gates/types.js";
 import { createGitReader } from "../git/exec.js";
 import { InvalidRefError, type GitReader } from "../git/reader.js";
-import { parsePen } from "../pen/load.js";
-import type { PenDocument } from "../pen/types.js";
+import { readDesignSource } from "../source/read.js";
+import type { DesignSource } from "../source/types.js";
+import { WORKTREE } from "../git/reader.js";
 import { parseFailureViolation } from "../rules/parse-failure.js";
 import { registry, runRules, type RuleEntry, type RuleInput } from "../rules/index.js";
 import { defaultFs, UsageError, type RunFs } from "./run-diff.js";
@@ -103,19 +105,19 @@ async function loadConfig(git: GitReader, root: string, from: string, o: CheckOp
 }
 
 /** Head and (with --base) base documents of one file; `error` is set when the head cannot be parsed, undefined when it is gone. */
-type Loaded = { error: Violation } | { head: PenDocument; baseDoc: PenDocument | undefined };
+type Loaded = { error: Violation } | { head: DesignSource; baseDoc: DesignSource | undefined };
 
 async function loadFile(git: GitReader, file: string, base: string | undefined): Promise<Loaded | undefined> {
-  let head: PenDocument;
+  let head: DesignSource;
   try {
-    head = parsePen(await git.readWorktree(file));
+    head = await readDesignSource(git, WORKTREE, file);
   } catch (err) {
     return isMissing(err) ? undefined : { error: parseFailureViolation(file, err) };
   }
-  let baseDoc: PenDocument | undefined;
+  let baseDoc: DesignSource | undefined;
   if (base !== undefined) {
     try {
-      baseDoc = parsePen(await git.readBlob(base, file));
+      baseDoc = await readDesignSource(git, base, file);
     } catch {
       baseDoc = undefined; // added since base, or unreadable there
     }
@@ -127,6 +129,11 @@ async function loadFile(git: GitReader, file: string, base: string | undefined):
 function withSchSeverity(v: Violation, config: GatesConfig): Violation {
   const override = config.rules["SCH-001"].severity;
   return override === "block" || override === "warn" ? { ...v, severity: override } : v;
+}
+
+/** Compile options for a source: a `.fig` is checked against its own version, not the `.pen` one. */
+function compileOptions(file: string, source: DesignSource): CompileOptions {
+  return source.format === "fig" ? { file, format: "fig", ...(source.figVersion !== undefined && { figVersion: source.figVersion }) } : { file };
 }
 
 async function build(o: CheckOptions, deps: CheckDeps): Promise<number> {
@@ -147,8 +154,8 @@ async function build(o: CheckOptions, deps: CheckDeps): Promise<number> {
       throw err;
     }
   }
-  if (!git.listPenFiles) throw new Error("git reader cannot list .pen files");
-  const files = await git.listPenFiles(globs);
+  if (!git.listDesignFiles) throw new Error("git reader cannot list design files");
+  const files = await git.listDesignFiles(globs);
 
   // `off` on SCH-001 also silences the file-level parse failures and suppression problems the CLI raises for it.
   const sch001Off = config.rules["SCH-001"].severity === "off";
@@ -162,12 +169,12 @@ async function build(o: CheckOptions, deps: CheckDeps): Promise<number> {
       if (!sch001Off) cliViolations.push(withSchSeverity(loaded.error, config));
       continue;
     }
-    const compiled = compile(loaded.head, { file });
+    const compiled = compile(loaded.head.doc, compileOptions(file, loaded.head));
     const input: RuleInput = { file, compiled };
     if (o.base !== undefined) {
       let variables: DiffContext["variables"];
       try {
-        variables = diffVariables({ [file]: { head: loaded.head, ...(loaded.baseDoc && { base: loaded.baseDoc }) } });
+        variables = diffVariables({ [file]: { head: loaded.head.doc, ...(loaded.baseDoc && { base: loaded.baseDoc.doc }) } });
       } catch (err) {
         // an untrusted document can be too deep to walk; report it instead of failing the run
         if (!sch001Off) cliViolations.push(withSchSeverity(parseFailureViolation(file, err), config));
@@ -176,7 +183,7 @@ async function build(o: CheckOptions, deps: CheckDeps): Promise<number> {
       const diff: DiffContext = {
         head: compiled,
         variables,
-        ...(loaded.baseDoc && { base: compile(loaded.baseDoc, { file }) }),
+        ...(loaded.baseDoc && { base: compile(loaded.baseDoc.doc, compileOptions(file, loaded.baseDoc)) }),
       };
       input.diff = diff;
     }

@@ -153,6 +153,11 @@ export function createGitReader(
       return tracked;
     },
 
+    async listDesignFiles(globs) {
+      const out = parseNul(await git("ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", ...buildPathspecs(globs)));
+      return [...new Set(out.filter((p) => designFormatOf(p)))].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    },
+
     async listPenFiles(globs) {
       const out = parseNul(await git("ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", ...buildPathspecs(globs)));
       return [...new Set(out.filter((p) => p.endsWith(".pen")))].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));

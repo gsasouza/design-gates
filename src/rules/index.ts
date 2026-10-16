@@ -3,6 +3,7 @@ import type { GatesConfig, RuleId } from "../gates/config.js";
 import { runA11y001 } from "./A11Y-001.js";
 import { cmp001 } from "./CMP-001.js";
 import { dif001 } from "./DIF-001.js";
+import { downgradeFigBlocks } from "./fig-review.js";
 import { sch001 } from "./SCH-001.js";
 import { sch002 } from "./SCH-002.js";
 import { sch003 } from "./SCH-003.js";
@@ -106,7 +107,7 @@ export function runRules(files: readonly RuleInput[], config: GatesConfig, entri
     for (const entry of entries) {
       const override = config.rules[entry.id]?.severity;
       if (override === "off") continue;
-      for (const v of entry.run(input.compiled, config, input.diff)) out.push(adjust({ ...v, file: input.file }, override));
+      for (const v of downgradeFigBlocks(entry.run(input.compiled, config, input.diff), input.compiled)) out.push(adjust({ ...v, file: input.file }, override));
     }
   }
   return out.sort(
