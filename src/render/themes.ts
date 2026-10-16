@@ -82,11 +82,10 @@ export function resolveAlias(ref: string, variables: PenVariables, theme: Theme)
   return { value: current, chain, status: "ok" };
 }
 
-/** Renderer wrapper over resolveAlias: unresolvable references stay as `$name`; a cycle throws. */
+/** Renderer wrapper over resolveAlias: unresolvable references (including chains deeper than the bound) stay as `$name`; a cycle throws. */
 function resolveReference(ref: string, variables: PenVariables, theme: Theme): unknown {
   const result = resolveAlias(ref, variables, theme);
   if (result.status === "cycle") throw new Error(`Variable alias cycle: ${result.chain.map((n) => `$${n}`).join(" -> ")}`);
-  if (result.status === "too-deep") throw new Error(`Variable alias chain too deep: ${ref}`);
   return result.value;
 }
 

@@ -55,3 +55,10 @@ test("the renderer wrapper keeps its behaviour", () => {
   assert.deepEqual(bakeVariables({ fill: "$dangling" }, variables, {}), { fill: "$missing" });
   assert.throws(() => bakeVariables({ fill: "$a" }, variables, {}), { message: "Variable alias cycle: $a -> $b -> $a" });
 });
+
+test("bakeVariables leaves a reference chain deeper than the bound unresolved instead of throwing", () => {
+  const long: PenVariables = { v0: { type: "color", value: "#123456" } };
+  for (let i = 1; i < 300; i++) long[`v${i}`] = { type: "color", value: `$v${i - 1}` };
+  assert.equal(resolveAlias("$v299", long, {}).status, "too-deep");
+  assert.doesNotThrow(() => bakeVariables({ fill: "$v299" }, long, {}));
+});
