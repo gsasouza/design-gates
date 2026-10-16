@@ -1,3 +1,4 @@
+import { designFormatOf } from "../source/format.js";
 import type { SafeGit } from "./git.js";
 
 /** Only .pen and .fig files and files under a top-level `assets/` directory are versioned. */
@@ -16,6 +17,8 @@ export interface ChangedFile {
   oldPath?: string;
   /** Staged as new and then deleted from the folder: nothing to commit for it. */
   addedThenDeleted?: true;
+  /** The deletion half of a staged cross-format rename: already removed from the index, so it needs no `git add`. */
+  alreadyStaged?: true;
 }
 
 /** Parses `git status --porcelain=v1 -z` output. */
@@ -36,6 +39,12 @@ export function parseStatus(out: string): ChangedFile[] {
     else if (x === "A") state = y === "D" ? "deleted" : "new";
     else if (x === "D" || y === "D") state = "deleted";
     if (!isDesignPath(file)) continue;
+    // A rename across formats (pen <-> fig) is a removal plus an addition, like in compare.
+    if (oldPath !== undefined && designFormatOf(oldPath) !== designFormatOf(file)) {
+      if (x === "R" && isDesignPath(oldPath)) files.push({ path: oldPath, state: "deleted", alreadyStaged: true });
+      files.push({ path: file, state: "new" });
+      continue;
+    }
     const entryOut: ChangedFile = oldPath === undefined ? { path: file, state } : { path: file, state, oldPath };
     if (x === "A" && y === "D") entryOut.addedThenDeleted = true;
     files.push(entryOut);

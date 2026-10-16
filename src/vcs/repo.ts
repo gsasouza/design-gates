@@ -93,7 +93,7 @@ function describeFiles(files: ChangedFile[]): string {
 
 /** Paths to stage: only files git reported, so no pathspec ever fails to match. */
 function addSpecsOf(files: ChangedFile[]): string[] {
-  return [...new Set(files.map((f) => `:(literal)${f.path}`))];
+  return [...new Set(files.filter((f) => f.alreadyStaged !== true).map((f) => `:(literal)${f.path}`))];
 }
 
 /** Paths to commit: the staged files plus the old name of renames. */

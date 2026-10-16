@@ -2,9 +2,9 @@ import { execFile } from "node:child_process";
 import path from "node:path";
 import { buildDiffReport, defaultDeps, UsageError, type DiffDeps, type DiffOptions } from "../cli/run-diff.js";
 import type { DiffResult } from "../diff/model.js";
-import { createGitReader, type GitExec } from "../git/exec.js";
+import { createGitReader, type GitExec, type GitExecBytes } from "../git/exec.js";
 import { VcsRefusedError, VcsUsageError } from "./errors.js";
-import { createSafeGit, createVcsExecFileGit, type SafeGit } from "./git.js";
+import { createSafeGit, createSafeGitBytes, createVcsExecFileGit, createVcsExecFileGitBytes, type SafeGit } from "./git.js";
 import { guardNotRepo } from "./guard.js";
 import { resolveRepoPath } from "./paths.js";
 import { resolveVersion, type ResolvedVersion } from "./resolve.js";
@@ -33,6 +33,8 @@ export interface CompareResult {
 export interface CompareDeps {
   repo: string;
   exec?: GitExec;
+  /** Byte-returning git for binary `.fig` blobs; defaults to a real git. */
+  execBytes?: GitExecBytes;
   /** Renderer and file system seams; `git` and `gitDirs` are always supplied by compare itself. */
   diff?: DiffDeps;
   buildDiffReport?: (options: DiffOptions, deps: DiffDeps) => Promise<{ result: DiffResult; out: string }>;
@@ -73,6 +75,7 @@ export async function compare(options: CompareOptions, deps: CompareDeps): Promi
   const repo = path.resolve(deps.repo);
   const raw: SafeGit = createSafeGit(deps.exec ?? createVcsExecFileGit(repo));
   const git = guardNotRepo(raw);
+  const safeBytes = createSafeGitBytes(deps.execBytes ?? createVcsExecFileGitBytes(repo));
   const base = deps.diff ?? defaultDeps();
 
   const from = await resolveVersion(git, options.from ?? "#1");
@@ -85,7 +88,7 @@ export async function compare(options: CompareOptions, deps: CompareDeps): Promi
   const abs = async (args: string[]) => path.resolve(repo, (await git(args)).trim());
   const diffDeps: DiffDeps = {
     ...base,
-    git: createGitReader(repo, readerExec),
+    git: createGitReader(repo, readerExec, (args) => safeBytes(args[0] === "--no-optional-locks" ? args.slice(1) : args)),
     gitDirs: async () => [await abs(["rev-parse", "--absolute-git-dir"]), await abs(["rev-parse", "--path-format=absolute", "--git-common-dir"])],
   };
   const out = options.out === undefined ? path.join(repo, "design-diff") : path.resolve(base.cwd, options.out);

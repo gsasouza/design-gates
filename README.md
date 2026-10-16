@@ -72,7 +72,7 @@ A `.fig` file is parsed with OpenPencil's reader and normalized to the same docu
 | Constraints, layout grids, guides, masks, export settings, plugin data, prototype links, comments | not mapped | Left out of both sides, so they never change a diff |
 | Library (published) components and variables | not mapped | Only what is in the file is read |
 
-Component, instance-subtree and some other nodes come back from OpenPencil's reader without a Figma GUID. For those the id is the reader's own (file-order) id, which can differ between two versions of a file, so the diff may report such a node as removed and added.
+OpenPencil's reader gives components and instances no Figma GUID, so the loader pairs the graph with the file's node changes (in sibling order) to recover them. Only a subtree whose shape does not pair up keeps the reader's own (file-order) id, which can differ between two versions of a file; the diff may then report such a node as removed and added. Two nodes that end up with the same id make the file fail to load.
 
 Regenerate the fixtures in `fixtures/fig/` (written by OpenPencil's own `.fig` writer from scenes built in `test/helpers/fig-fixtures.ts`; deterministic, no network) with `npm run fixtures:fig`. The test suite regenerates them in memory and compares the parsed scenes with the committed files. The script needs no new dependency; it uses the already-installed `@open-pencil/core`, and `npm run fixtures:fig` builds first.
 

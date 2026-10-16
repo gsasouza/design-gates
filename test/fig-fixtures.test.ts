@@ -103,7 +103,7 @@ describe("committed .fig fixtures", () => {
     const [base, head] = [await load("instance-override", "base"), await load("instance-override", "head")];
     const component = base.doc.children.find((n) => n.name === "Button")!;
     assert.equal(component.reusable, true);
-    const [b, h] = [find(base.doc.children, "0:7"), find(head.doc.children, "0:7")];
+    const [b, h] = [find(base.doc.children, "1:1000"), find(head.doc.children, "1:1000")];
     assert.equal(h.type, "ref");
     assert.equal(h.ref, component.id);
     assert.equal(h.children, undefined);
