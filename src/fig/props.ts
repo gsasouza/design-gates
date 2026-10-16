@@ -7,11 +7,13 @@ export interface FigContext {
   graph: SceneGraph;
   names: VariableNames;
   pin: FigVariables["pin"];
+  /** Figma GUIDs by graph node id, for nodes whose own `source.id` is missing. */
+  guids: ReadonlyMap<string, string>;
 }
 
 /** Stable id of a scene node: its Figma GUID, which survives sibling reordering (graph ids are assigned by file order). */
-export function figNodeId(node: SceneNode): string {
-  return node.source.id ?? node.id;
+export function figNodeId(node: SceneNode, guids?: ReadonlyMap<string, string>): string {
+  return node.source.id ?? guids?.get(node.id) ?? node.id;
 }
 
 /** The `.pen` type of every Figma node type, and whether the node is only an approximation of it (then it carries `figType`). */

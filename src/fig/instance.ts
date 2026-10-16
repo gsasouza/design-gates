@@ -80,7 +80,7 @@ function descendantOverrides(ctx: FigContext, instance: SceneNode, component: Sc
     instKids.forEach((kid, i) => {
       const counterpart = compKids[i];
       if (!counterpart) return;
-      const at = [...path, figNodeId(counterpart)];
+      const at = [...path, figNodeId(counterpart, ctx.guids)];
       const fields = instance.instanceOverrides.descendants.get(kid.id);
       if (fields) {
         const props = pick(penProps(ctx, kid), overriddenProps(fields.keys()));
@@ -108,7 +108,7 @@ export function penInstance(ctx: FigContext, instance: SceneNode): Partial<PenNo
   if (instance.height !== component.height) keys.add("height");
   const { descendants, unmapped } = descendantOverrides(ctx, instance, component);
   return {
-    ref: figNodeId(component),
+    ref: figNodeId(component, ctx.guids),
     ...pick(own, keys),
     ...(Object.keys(descendants).length > 0 ? { descendants } : {}),
     ...(unmapped > 0 ? { figUnmappedOverrides: unmapped } : {}),

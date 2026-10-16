@@ -103,6 +103,18 @@ test("a mixed .pen and .fig folder is handled together, and a pen<->fig rename i
   assert.equal(byPath["extra.pen"].state, "deleted");
 });
 
+test("a staged pen->fig git mv is add plus delete, not a rename", async () => {
+  const repo = ["--repo", fx.path];
+  await writeFile(path.join(fx.path, "moved.pen"), '{"version":"2.6","children":[]}');
+  assert.equal((await design(["save", "-m", "Add moved", ...repo])).code, 0);
+  await git(fx.path, "mv", "moved.pen", "moved.fig");
+  const status = JSON.parse((await design(["status", ...repo, "--json"])).stdout);
+  const byPath = Object.fromEntries(status.files.map((f: { path: string; state: string }) => [f.path, f]));
+  assert.equal(byPath["moved.fig"].state, "new");
+  assert.equal(byPath["moved.fig"].oldPath, undefined);
+  assert.equal(byPath["moved.pen"].state, "deleted");
+});
+
 test("compare across a pen->fig rename lists an add and a delete, and restore of a mixed version brings both back", async () => {
   const repo = ["--repo", fx.path];
   const before = (await git(fx.path, "rev-parse", "HEAD")).trim();

@@ -19,7 +19,7 @@ const BLUE = solid(0, 0, 1);
 const WHITE: Fill["color"] = { r: 1, g: 1, b: 1, a: 1 };
 const NEAR_BLACK: Fill["color"] = { r: 0.07, g: 0.07, b: 0.07, a: 1 };
 
-/** A graph with one page whose layers get fixed ids `1:<n>`, so regenerating never changes an id. */
+/** A graph with one page whose layers get fixed ids `1:<n>`, so regenerating never changes an id; generated ids start above them. */
 class Builder {
   readonly graph: SceneGraph;
   readonly page: SceneNode;
@@ -28,7 +28,7 @@ class Builder {
   constructor() {
     this.graph = new SceneGraph(() => `1:${++this.counter}`);
     this.page = this.graph.getPages()[0]!;
-    this.counter = 99;
+    this.counter = 999;
   }
 
   /** Fixed id for layer number `n` (always `1:<100 + n>`). */

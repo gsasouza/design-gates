@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { gitExecOptions, type GitExec } from "../git/exec.js";
+import { gitExecOptions, type GitExec, type GitExecBytes } from "../git/exec.js";
 import { VcsUsageError } from "./errors.js";
 
 /** Every git subcommand src/vcs may issue. Adding one is a deliberate act (a test pins this list). */
@@ -39,6 +39,19 @@ export type SafeGit = (args: string[]) => Promise<string>;
 export function createVcsExecFileGit(repo: string, env: NodeJS.ProcessEnv = {}): GitExec {
   const base = gitExecOptions(repo);
   const options = { ...base, env: { ...base.env, LC_ALL: "C", ...env } };
+  return (args) =>
+    new Promise((resolve, reject) => {
+      execFile("git", args, options, (err, stdout, stderr) => {
+        if (err) reject(Object.assign(err, { stderr }));
+        else resolve(stdout);
+      });
+    });
+}
+
+/** Like createVcsExecFileGit, but returns stdout undecoded, for binary blobs. */
+export function createVcsExecFileGitBytes(repo: string, env: NodeJS.ProcessEnv = {}): GitExecBytes {
+  const base = gitExecOptions(repo);
+  const options = { ...base, encoding: "buffer" as const, env: { ...base.env, LC_ALL: "C", ...env } };
   return (args) =>
     new Promise((resolve, reject) => {
       execFile("git", args, options, (err, stdout, stderr) => {
@@ -96,6 +109,14 @@ export function assertSafeGitArgs(args: string[]): void {
 }
 
 export function createSafeGit(exec: GitExec): SafeGit {
+  return async (args) => {
+    assertSafeGitArgs(args);
+    return exec(["--no-optional-locks", ...args]);
+  };
+}
+
+/** The byte-returning counterpart of createSafeGit: the same argument checks run before anything executes. */
+export function createSafeGitBytes(exec: GitExecBytes): (args: string[]) => Promise<Buffer> {
   return async (args) => {
     assertSafeGitArgs(args);
     return exec(["--no-optional-locks", ...args]);

@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { readFileSync } from "node:fs";
+import { figFixturePath } from "./helpers/fig-fixtures.js";
 import { designFormatOf } from "../src/source/format.js";
 import { loadDesignSource, penSource } from "../src/source/load.js";
 import { parseFailureViolation } from "../src/rules/parse-failure.js";
@@ -89,6 +91,7 @@ describe("design source loader", () => {
     ]);
     await assert.rejects(loadDesignSource("bomb.fig", bomb, { maxFigInflatedBytes: 1000 }), /Invalid \.fig document: .*MAX_FIG_INFLATED_BYTES/);
     assert.equal((await loadDesignSource("ok.fig", bomb, { maxFigInflatedBytes: 1200 })).format, "fig");
+    await assert.rejects(loadDesignSource("chunks.fig", fig, { maxFigChunkBytes: 100 }), /Invalid \.fig document: .*MAX_FIG_CHUNK_BYTES/);
     await assert.rejects(loadDesignSource("many.fig", fig, { maxNodes: 2 }), /Invalid \.fig document: .*MAX_COMPILED_NODES/);
   });
 
@@ -132,5 +135,17 @@ describe("rendering from a source", () => {
       assert.ok(again.png.equals(expected.png), used.format);
       assert.deepEqual(again.nodeBoxes, expected.nodeBoxes, used.format);
     }
+  });
+
+  it("a fig render in another variable mode does not leak into the next render", async () => {
+    const renderer = createOpenPencilRenderer();
+    const bytes = readFileSync(new URL(`../../${figFixturePath("variable-mode", "base")}`, import.meta.url));
+    const [used, fresh] = [await loadDesignSource("d.fig", bytes), await loadDesignSource("d.fig", bytes)];
+    const id = used.doc.children[0]!.id;
+    const dark = await renderer.renderSource!(used, id, { scale: 1, theme: { Theme: "Dark" } });
+    const again = await renderer.renderSource!(used, id, { scale: 1 });
+    const expected = await renderer.renderSource!(fresh, id, { scale: 1 });
+    assert.ok(!dark.png.equals(expected.png));
+    assert.ok(again.png.equals(expected.png));
   });
 });

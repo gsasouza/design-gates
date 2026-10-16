@@ -33,11 +33,9 @@ function penValue(value: VariableValue, names: VariableNames): unknown {
   return value;
 }
 
-/**
- * Figma variables as `.pen` variables and their collections as theme axes: the axis is the
- * collection name and its values are the mode names; a variable is named `<collection>/<name>`.
- */
-export function figVariables(graph: SceneGraph): FigVariables {
+/** Each collection's theme axis name and its modes' names (by mode id), deduplicated the way the normalizer names them. */
+/** Each collection's theme axis and its modes' names (by mode id), deduplicated the way the normalizer names them. */
+export function figAxes(graph: SceneGraph): { axes: Map<string, { axis: string; modes: Map<string, string> }>; themes: PenThemes } {
   const axisTaken = new Set<string>();
   const axes = new Map<string, { axis: string; modes: Map<string, string> }>();
   const themes: PenThemes = {};
@@ -48,6 +46,15 @@ export function figVariables(graph: SceneGraph): FigVariables {
     axes.set(collection.id, { axis, modes });
     themes[axis] = [...modes.values()];
   }
+  return { axes, themes };
+}
+
+/**
+ * Figma variables as `.pen` variables and their collections as theme axes: the axis is the
+ * collection name and its values are the mode names; a variable is named `<collection>/<name>`.
+ */
+export function figVariables(graph: SceneGraph): FigVariables {
+  const { axes, themes } = figAxes(graph);
 
   const taken = new Set<string>();
   const names = new Map<string, string>();

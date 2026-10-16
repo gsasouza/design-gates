@@ -11,7 +11,7 @@ export const FIG_PEN_VERSION = "2.6";
 
 function toPenNode(ctx: FigContext, node: SceneNode): PenNode {
   const { type, exact } = PEN_TYPES[node.type];
-  const base: PenNode = { id: figNodeId(node), type, name: node.name, ...(exact ? {} : { figType: node.type }) };
+  const base: PenNode = { id: figNodeId(node, ctx.guids), type, name: node.name, ...(exact ? {} : { figType: node.type }) };
   const instance = node.type === "INSTANCE" ? penInstance(ctx, node) : undefined;
   if (instance) return { ...base, ...instance };
 
@@ -34,9 +34,9 @@ function toPenNode(ctx: FigContext, node: SceneNode): PenNode {
  * every page, in page order (pages themselves are not nodes); node ids are the Figma GUIDs.
  * Figma variables become `variables`, their collections and modes `themes`.
  */
-export function figSceneToPen(graph: SceneGraph): PenDocument {
+export function figSceneToPen(graph: SceneGraph, guids: ReadonlyMap<string, string> = new Map()): PenDocument {
   const { names, variables, themes, pin } = figVariables(graph);
-  const ctx: FigContext = { graph, names, pin };
+  const ctx: FigContext = { graph, names, pin, guids };
   const children = graph
     .getPages()
     .flatMap((page) => graph.getChildren(page.id))

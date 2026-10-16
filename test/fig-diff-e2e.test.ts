@@ -84,10 +84,10 @@ describe("design-gates diff on .fig fixture pairs", () => {
   it("variable mode change: theme prop on the frame, whole-frame pixel change", async () => {
     const frame = frameOf(await diffFixture("variable-mode"), "Screen");
     assert.deepEqual(frame.nodes.map((n) => ({ id: n.id, props: n.props })), [
-      { id: "1:105", props: [{ path: "theme.Theme", old: "Light", new: "Dark" }] },
+      { id: "1:101", props: [{ path: "theme.Theme", old: "Light", new: "Dark" }] },
     ]);
     assert.deepEqual(frame.changeBoxes.map(box), [
-      { x: 0, y: 0, w: 120, h: 80, kind: "modified", nodeId: "1:105" },
+      { x: 0, y: 0, w: 120, h: 80, kind: "modified", nodeId: "1:101" },
       { x: 0, y: 0, w: 120, h: 80, kind: "pixel", nodeId: undefined },
     ]);
     assert.equal(frame.pixelDiffRatio!.default, 1);
@@ -103,9 +103,9 @@ describe("design-gates diff on .fig fixture pairs", () => {
   it("instance override: the ref node carries the override and its own box", async () => {
     const frame = frameOf(await diffFixture("instance-override"), "Screen");
     assert.deepEqual(frame.nodes.map((n) => ({ id: n.id, type: n.type, change: n.change, props: n.props })), [
-      { id: "0:7", type: "ref", change: "modified", props: [{ path: "descendants", new: { "0:5": { content: "Pay now" } } }] },
+      { id: "1:1000", type: "ref", change: "modified", props: [{ path: "descendants", new: { "1:102": { content: "Pay now" } } }] },
     ]);
-    assert.deepEqual(frame.changeBoxes.map(box), [{ x: 20, y: 20, w: 100, h: 32, kind: "modified", nodeId: "0:7" }]);
+    assert.deepEqual(frame.changeBoxes.map(box), [{ x: 20, y: 20, w: 100, h: 32, kind: "modified", nodeId: "1:1000" }]);
     assert.deepEqual(frame.missingBoxes, []);
   });
 
@@ -139,7 +139,7 @@ describe("theme selection when rendering a .fig", () => {
   it("light and dark modes render differently; repeated renders are independent", async () => {
     const renderer = createOpenPencilRenderer();
     const source = await load();
-    const r = (theme?: Record<string, string>) => renderer.renderSource!(source, "1:105", { scale: 1, ...(theme && { theme }) });
+    const r = (theme?: Record<string, string>) => renderer.renderSource!(source, "1:101", { scale: 1, ...(theme && { theme }) });
     const dark = await r({ Theme: "Dark" });
     const light = await r({ Theme: "Light" });
     const lightAgain = await r({ Theme: "Light" });

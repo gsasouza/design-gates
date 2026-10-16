@@ -1,9 +1,12 @@
 import { type SceneGraph, parsePenFile } from "@open-pencil/core";
 import { parseFigFile } from "@open-pencil/core/io/formats/fig";
 import { MAX_COMPILED_NODES } from "../compile/constants.js";
+import { figGuids } from "../fig/guids.js";
 import { figNodeId, figSceneToPen } from "../fig/normalize.js";
+import { figAxes } from "../fig/variables.js";
 import { parsePen } from "../pen/load.js";
 import { prepareDocument } from "../render/themes.js";
+import { checkKiwiInflation } from "./inflate-cap.js";
 import { designFormatOf } from "./format.js";
 import type { DesignSource } from "./types.js";
 
@@ -12,7 +15,11 @@ export const MAX_FIG_BYTES = 256 * 1024 * 1024;
 /** Most bytes the entries of a zipped `.fig` may inflate to, in total. */
 export const MAX_FIG_INFLATED_BYTES = 512 * 1024 * 1024;
 
+/** Most bytes the fig-kiwi chunks of a `.fig` may inflate to, per chunk and per archive entry. */
+export const MAX_FIG_CHUNK_BYTES = 512 * 1024 * 1024;
+
 export interface LoadLimits {
+  maxFigChunkBytes?: number;
   maxFigBytes?: number;
   maxFigInflatedBytes?: number;
   maxNodes?: number;
@@ -55,17 +62,37 @@ function checkInflatedSize(bytes: Buffer, cap: number): void {
   }
 }
 
+/** The theme state a render may change on a graph, so the next render starts from the file's own. */
+interface ThemeState {
+  activeMode: Map<string, string>;
+  frameModes: Map<string, Record<string, string>>;
+}
+
+function snapshotThemeState(graph: SceneGraph): ThemeState {
+  return {
+    activeMode: new Map(graph.activeMode),
+    frameModes: new Map([...graph.getAllNodes()].filter((n) => Object.keys(n.variableModes).length > 0).map((n) => [n.id, { ...n.variableModes }])),
+  };
+}
+
+function restoreThemeState(graph: SceneGraph, state: ThemeState): void {
+  graph.activeMode.clear();
+  for (const [collection, mode] of state.activeMode) graph.activeMode.set(collection, mode);
+  for (const [id, modes] of state.frameModes) graph.updateNode(id, { variableModes: { ...modes } });
+}
+
 function applyFigTheme(graph: SceneGraph, frameId: string, theme: Record<string, string> | undefined): void {
   if (!theme) return;
   const frame = graph.getNode(frameId);
-  for (const collection of graph.variableCollections.values()) {
-    const wanted = theme[collection.name];
-    const mode = wanted === undefined ? undefined : collection.modes.find((m) => m.name === wanted);
-    if (!mode) continue;
-    graph.activeMode.set(collection.id, mode.modeId);
+  // The theme is keyed by the normalizer's (deduplicated) axis and mode names.
+  for (const [collectionId, { axis, modes }] of figAxes(graph).axes) {
+    const wanted = theme[axis];
+    const modeId = wanted === undefined ? undefined : [...modes].find(([, name]) => name === wanted)?.[0];
+    if (modeId === undefined) continue;
+    graph.activeMode.set(collectionId, modeId);
     // Like `.pen`, the requested mode is set on the rendered frame only; nested nodes keep their own pins.
-    if (frame && frame.variableModes[collection.id] !== undefined) {
-      graph.updateNode(frame.id, { variableModes: { ...frame.variableModes, [collection.id]: mode.modeId } });
+    if (frame && frame.variableModes[collectionId] !== undefined) {
+      graph.updateNode(frame.id, { variableModes: { ...frame.variableModes, [collectionId]: modeId } });
     }
   }
 }
@@ -86,33 +113,39 @@ async function loadFig(file: string, bytes: Buffer, limits: LoadLimits): Promise
   const maxBytes = limits.maxFigBytes ?? MAX_FIG_BYTES;
   if (bytes.length > maxBytes) failFig(`${file} is ${bytes.length} bytes, over the ${maxBytes} byte cap (MAX_FIG_BYTES)`);
   checkInflatedSize(bytes, limits.maxFigInflatedBytes ?? MAX_FIG_INFLATED_BYTES);
+  const chunkCap = limits.maxFigChunkBytes ?? MAX_FIG_CHUNK_BYTES;
+  checkKiwiInflation(bytes, chunkCap, () => failFig(`decompressed data passes the ${chunkCap} byte cap (MAX_FIG_CHUNK_BYTES)`));
 
-  const parse = async (): Promise<SceneGraph> => {
-    const copy = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
-    try {
-      return await parseFigFile(copy);
-    } catch (err) {
-      return failFig(err instanceof Error ? err.message : String(err));
-    }
-  };
-
-  const graph = await parse();
+  const copy = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+  let graph: SceneGraph;
+  let guids: Map<string, string>;
+  try {
+    graph = await parseFigFile(copy);
+    guids = await figGuids(bytes, graph);
+  } catch (err) {
+    return failFig(err instanceof Error ? err.message : String(err));
+  }
   const maxNodes = limits.maxNodes ?? MAX_COMPILED_NODES;
   const nodes = [...graph.getAllNodes()];
   if (nodes.length > maxNodes) failFig(`${file} has more than ${maxNodes} nodes (MAX_COMPILED_NODES)`);
-  const ids = new Map(nodes.map((node) => [figNodeId(node), node.id]));
+  const ids = new Map<string, string>();
+  for (const node of nodes) {
+    const id = figNodeId(node, guids);
+    const other = ids.get(id);
+    if (other !== undefined) failFig(`${file} has two nodes with the id ${id} (${other} and ${node.id})`);
+    ids.set(id, node.id);
+  }
 
-  // The first render takes the graph parsed for the normalizer; later ones parse afresh because rendering mutates the graph.
-  let spare: SceneGraph | undefined = graph;
+  // One parse serves every render: each starts from the theme state the file came with.
+  const pristine = snapshotThemeState(graph);
   return {
     format: "fig",
-    doc: figSceneToPen(graph),
+    doc: figSceneToPen(graph, guids),
     ...(graph.figKiwiVersion !== null && { figVersion: graph.figKiwiVersion }),
     async sceneFor(frameId, theme) {
-      const scene = spare ?? (await parse());
-      spare = undefined;
-      applyFigTheme(scene, ids.get(frameId) ?? frameId, theme);
-      return scene;
+      restoreThemeState(graph, pristine);
+      applyFigTheme(graph, ids.get(frameId) ?? frameId, theme);
+      return graph;
     },
     graphIdOf: (nodeId) => ids.get(nodeId),
   };
