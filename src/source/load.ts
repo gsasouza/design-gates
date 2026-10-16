@@ -2,12 +2,13 @@ import { type SceneGraph, parsePenFile } from "@open-pencil/core";
 import { parseFigFile } from "@open-pencil/core/io/formats/fig";
 import { MAX_COMPILED_NODES } from "../compile/constants.js";
 import { figGuids } from "../fig/guids.js";
-import { figNodeId, figSceneToPen } from "../fig/normalize.js";
+import { figSceneToPen } from "../fig/normalize.js";
 import { figAxes } from "../fig/variables.js";
 import { parsePen } from "../pen/load.js";
 import { prepareDocument } from "../render/themes.js";
-import { checkKiwiInflation } from "./inflate-cap.js";
+import { checkKiwiInflation, decompressChunkCapped } from "./inflate-cap.js";
 import { designFormatOf } from "./format.js";
+import { emittedIdMap } from "./ids.js";
 import type { DesignSource } from "./types.js";
 
 /** Largest `.fig` input accepted. */
@@ -114,33 +115,34 @@ async function loadFig(file: string, bytes: Buffer, limits: LoadLimits): Promise
   if (bytes.length > maxBytes) failFig(`${file} is ${bytes.length} bytes, over the ${maxBytes} byte cap (MAX_FIG_BYTES)`);
   checkInflatedSize(bytes, limits.maxFigInflatedBytes ?? MAX_FIG_INFLATED_BYTES);
   const chunkCap = limits.maxFigChunkBytes ?? MAX_FIG_CHUNK_BYTES;
-  checkKiwiInflation(bytes, chunkCap, () => failFig(`decompressed data passes the ${chunkCap} byte cap (MAX_FIG_CHUNK_BYTES)`));
+  const overCap = (): never => failFig(`decompressed data passes the ${chunkCap} byte cap (MAX_FIG_CHUNK_BYTES)`);
+  checkKiwiInflation(bytes, chunkCap, overCap);
 
   const copy = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
   let graph: SceneGraph;
   let guids: Map<string, string>;
   try {
     graph = await parseFigFile(copy);
-    guids = await figGuids(bytes, graph);
+    guids = await figGuids(bytes, graph, (chunk) => decompressChunkCapped(chunk, chunkCap, overCap));
   } catch (err) {
     return failFig(err instanceof Error ? err.message : String(err));
   }
   const maxNodes = limits.maxNodes ?? MAX_COMPILED_NODES;
   const nodes = [...graph.getAllNodes()];
   if (nodes.length > maxNodes) failFig(`${file} has more than ${maxNodes} nodes (MAX_COMPILED_NODES)`);
-  const ids = new Map<string, string>();
-  for (const node of nodes) {
-    const id = figNodeId(node, guids);
-    const other = ids.get(id);
-    if (other !== undefined) failFig(`${file} has two nodes with the id ${id} (${other} and ${node.id})`);
-    ids.set(id, node.id);
+  const doc = figSceneToPen(graph, guids);
+  let ids: Map<string, string>;
+  try {
+    ids = emittedIdMap(doc, nodes, guids);
+  } catch (err) {
+    return failFig(`${file} has ${err instanceof Error ? err.message : String(err)}`);
   }
 
   // One parse serves every render: each starts from the theme state the file came with.
   const pristine = snapshotThemeState(graph);
   return {
     format: "fig",
-    doc: figSceneToPen(graph, guids),
+    doc,
     ...(graph.figKiwiVersion !== null && { figVersion: graph.figKiwiVersion }),
     async sceneFor(frameId, theme) {
       restoreThemeState(graph, pristine);

@@ -107,7 +107,8 @@ export function runRules(files: readonly RuleInput[], config: GatesConfig, entri
     for (const entry of entries) {
       const override = config.rules[entry.id]?.severity;
       if (override === "off") continue;
-      for (const v of entry.run(input.compiled, config, input.diff)) out.push(...downgradeFigBlocks([adjust({ ...v, file: input.file }, override)], input.compiled));
+      const adjusted = entry.run(input.compiled, config, input.diff).map((v) => adjust({ ...v, file: input.file }, override));
+      out.push(...downgradeFigBlocks(adjusted, input.compiled));
     }
   }
   return out.sort(

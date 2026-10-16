@@ -41,13 +41,17 @@ function kiwiBlob(bytes: Buffer): Buffer | undefined {
  * under them), found by pairing the graph's tree with the file's node changes in sibling order.
  * Keyed by graph node id; a subtree whose shape does not pair up is left out (the caller falls back).
  */
-export async function figGuids(bytes: Buffer, graph: SceneGraph): Promise<Map<string, string>> {
+export async function figGuids(
+  bytes: Buffer,
+  graph: SceneGraph,
+  decompress: (chunk: Uint8Array) => Promise<Uint8Array> = decompressFigKiwiDataAsync,
+): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   const blob = kiwiBlob(bytes);
   const chunks = blob && parseFigKiwiChunks(blob);
   if (!chunks) return out;
   await initCodec();
-  const changes = (decodeMessage(await decompressFigKiwiDataAsync(chunks[1]!)) as { nodeChanges?: Change[] }).nodeChanges ?? [];
+  const changes = (decodeMessage(await decompress(chunks[1]!)) as { nodeChanges?: Change[] }).nodeChanges ?? [];
 
   const byParent = new Map<string, Change[]>();
   for (const change of changes) {
@@ -63,6 +67,8 @@ export async function figGuids(bytes: Buffer, graph: SceneGraph): Promise<Map<st
     const kids = graph.getChildren(node.id).filter((c) => !c.internalOnly);
     const pairs = byParent.get(guid) ?? [];
     if (kids.length !== pairs.length) return;
+    // A reader-given id that disagrees with the paired change means the shapes do not pair: skip the subtree.
+    if (kids.some((kid, i) => kid.source.id && kid.source.id !== guidKey(pairs[i]!.guid!))) return;
     kids.forEach((kid, i) => walk(kid, kid.source.id ?? guidKey(pairs[i]!.guid!)));
   };
   for (const page of graph.getPages()) if (page.source.id) walk(page, page.source.id);

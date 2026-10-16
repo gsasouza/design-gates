@@ -33,7 +33,6 @@ function penValue(value: VariableValue, names: VariableNames): unknown {
   return value;
 }
 
-/** Each collection's theme axis name and its modes' names (by mode id), deduplicated the way the normalizer names them. */
 /** Each collection's theme axis and its modes' names (by mode id), deduplicated the way the normalizer names them. */
 export function figAxes(graph: SceneGraph): { axes: Map<string, { axis: string; modes: Map<string, string> }>; themes: PenThemes } {
   const axisTaken = new Set<string>();
