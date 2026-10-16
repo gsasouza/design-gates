@@ -74,7 +74,7 @@ A `.fig` file is parsed with OpenPencil's reader and normalized to the same docu
 
 Component, instance-subtree and some other nodes come back from OpenPencil's reader without a Figma GUID. For those the id is the reader's own (file-order) id, which can differ between two versions of a file, so the diff may report such a node as removed and added.
 
-Regenerate the fixtures in `fixtures/fig/` (written by OpenPencil's own `.fig` writer from scenes built in `test/helpers/fig-fixtures.ts`; deterministic, no network) with `npm run fixtures:fig`. The test suite regenerates them in memory and compares the parsed scenes with the committed files.
+Regenerate the fixtures in `fixtures/fig/` (written by OpenPencil's own `.fig` writer from scenes built in `test/helpers/fig-fixtures.ts`; deterministic, no network) with `npm run fixtures:fig`. The test suite regenerates them in memory and compares the parsed scenes with the committed files. The script needs no new dependency; it uses the already-installed `@open-pencil/core`, and `npm run fixtures:fig` builds first.
 
 ## Computing a semantic diff
 
