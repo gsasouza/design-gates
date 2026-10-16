@@ -101,6 +101,7 @@ async function loadFig(file: string, bytes: Buffer, limits: LoadLimits): Promise
   return {
     format: "fig",
     doc: figSceneToPen(graph),
+    ...(graph.figKiwiVersion !== null && { figVersion: graph.figKiwiVersion }),
     async sceneFor(_frameId, theme) {
       const scene = spare ?? (await parse());
       spare = undefined;

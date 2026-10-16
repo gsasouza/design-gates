@@ -1,32 +1,51 @@
 import type { SceneGraph, SceneNode } from "@open-pencil/core";
 import type { PenDocument, PenNode } from "../pen/types.js";
+import { penInstance } from "./instance.js";
+import { type FigContext, PEN_TYPES, figNodeId, penProps } from "./props.js";
+import { figVariables } from "./variables.js";
 
-/** Stable id of a scene node: its Figma GUID, which survives sibling reordering (graph ids are assigned by file order). */
-export function figNodeId(node: SceneNode): string {
-  return node.source.id ?? node.id;
-}
+export { figNodeId } from "./props.js";
 
-function toPenNode(graph: SceneGraph, node: SceneNode): PenNode {
-  const children = node.childIds.flatMap((id) => {
-    const child = graph.getNode(id);
-    return child ? [toPenNode(graph, child)] : [];
-  });
+/** The `.pen` version the normalized document claims; the Figma file version is `DesignSource.figVersion`. */
+export const FIG_PEN_VERSION = "2.6";
+
+function toPenNode(ctx: FigContext, node: SceneNode): PenNode {
+  const { type, exact } = PEN_TYPES[node.type];
+  const base: PenNode = { id: figNodeId(node), type, name: node.name, ...(exact ? {} : { figType: node.type }) };
+  const instance = node.type === "INSTANCE" ? penInstance(ctx, node) : undefined;
+  if (instance) return { ...base, ...instance };
+
+  const children = ctx.graph
+    .getChildren(node.id)
+    .filter((child) => !child.internalOnly)
+    .map((child) => toPenNode(ctx, child));
   return {
-    id: figNodeId(node),
-    type: node.type.toLowerCase(),
-    name: node.name,
+    ...base,
+    // An instance whose component is not in the file keeps its own copy of the layers.
+    ...(node.type === "INSTANCE" ? { type: "frame", figType: node.type } : {}),
+    ...(node.type === "COMPONENT" ? { reusable: true } : {}),
+    ...penProps(ctx, node),
     ...(children.length > 0 && { children }),
   };
 }
 
 /**
- * Normalizes a parsed `.fig` scene into a PenDocument: pages as top-level children, node ids being
- * the Figma GUIDs.
- * TODO(follow-up card): map geometry, fills, text, auto layout, components and variables so the diff and rules see real properties.
+ * Normalizes a parsed `.fig` scene into a PenDocument. The top-level children are the layers of
+ * every page, in page order (pages themselves are not nodes); node ids are the Figma GUIDs.
+ * Figma variables become `variables`, their collections and modes `themes`.
  */
 export function figSceneToPen(graph: SceneGraph): PenDocument {
+  const { names, variables, themes, pin } = figVariables(graph);
+  const ctx: FigContext = { graph, names, pin };
+  const children = graph
+    .getPages()
+    .flatMap((page) => graph.getChildren(page.id))
+    .filter((node) => !node.internalOnly && node.sharedStyleType === null)
+    .map((node) => toPenNode(ctx, node));
   return {
-    version: "2.6",
-    children: graph.getPages(true).map((page) => toPenNode(graph, page)),
+    version: FIG_PEN_VERSION,
+    children,
+    ...(Object.keys(variables).length > 0 && { variables }),
+    ...(Object.keys(themes).length > 0 && { themes }),
   };
 }

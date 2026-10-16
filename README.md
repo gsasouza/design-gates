@@ -37,6 +37,45 @@ Theme handling: `renderFrame` accepts `theme` (axis -> value, e.g. `{ mode: "dar
 
 `@open-pencil/core` is pinned to `0.16.0` because `0.15.1` depends on `expr-eval@2.0.2` (CVE-2026-12866, CVSS 9.8, unmaintained since 2019, no fixed release) and this library parses untrusted `.pen` input. `0.16.0` has no `expr-eval`; `test/lockfile.test.ts` fails if it reappears in `package-lock.json`. The only catch is age: `0.16.0` and `twirlwind@0.4.1` reach 7 days old on 2026-10-21, after which `npm ci` works behind the operator's registry (cve-policy).
 
+## Figma support
+
+A `.fig` file is parsed with OpenPencil's reader and normalized to the same document the `.pen` format gives (`src/fig/`), so the diff, the compiler and the rules need no Figma code. Node ids are the Figma GUIDs. The top-level `children` are the layers of every page in page order (pages are not nodes). The document `version` is the `.pen` version the compiler accepts (`2.6`); the fig-kiwi version of the file is `DesignSource.figVersion`.
+
+| Figma construct | Support | What the normalizer does |
+| --- | --- | --- |
+| File form: Save local copy (zip) / bare fig-kiwi | mapped | Both are read. The committed fixtures are the zip form, which is what OpenPencil's writer produces |
+| Real Figma files | verified manually | Verified manually by the operator, not in CI; CI only sees the generated fixtures |
+| FRAME, GROUP, RECTANGLE, ELLIPSE, TEXT | mapped | `frame`, `group`, `rectangle`, `ellipse`, `text` |
+| COMPONENT | mapped | `frame` with `reusable: true` |
+| INSTANCE | mapped | `ref` to the component id, no `children` |
+| Instance overrides | partial | `descendants`, keyed by "/"-joined ids of the component's own nodes, for text, paints, strokes, effects, visibility, opacity, corner radius, text style, layout and geometry. Highlight boxes for an overridden sublayer fall back to the instance box. Sublayers added or removed in an instance are only counted (`figUnmappedOverrides`). Swapped nested components, component properties and variants are not mapped. An instance whose component is not in the file is kept as a `frame` with `figType: "INSTANCE"` and its own layers |
+| VECTOR, BOOLEAN_OPERATION, STAR | partial | `path`, `figType` set; geometry is not mapped, so only position, size, paints and the common properties are seen |
+| POLYGON, LINE, CONNECTOR | partial | `polygon` / `line`, `figType` set; geometry not mapped |
+| ROUNDED_RECTANGLE | partial | `rectangle`, `figType` set |
+| SECTION, COMPONENT_SET, SHAPE_WITH_TEXT | partial | `frame`, `figType` set (SHAPE_WITH_TEXT text is not mapped) |
+| Solid fills and strokes | mapped | `"#rrggbb"`, or `"#rrggbbaa"` when not opaque (paint opacity included); a hidden paint is an object with `enabled: false`; several paints are a list, bottom to top |
+| Gradient fills | partial | `{ type: "gradient", gradientType, stops, transform }`; rules treat it as `unknown` (not solid) |
+| Image fills | partial | `{ type: "image", imageHash, scaleMode }`; a changed image is a changed hash, so a semantic `modified` fill. The image itself is not read |
+| Video, pattern, noise fills | partial | `{ type: "unsupported", paintType }` |
+| Paint blend modes | partial | Non-normal blend modes are kept as `blendMode` |
+| Strokes | partial | Weight (per side when independent), alignment, colour/paint, join, cap, dash pattern. Miter limit is not mapped |
+| Effects | partial | Shadows (`type: "shadow"`, inner or outer) and blurs (`type: "blur"`, layer, background or foreground). Blend modes and "show behind" are not mapped |
+| Auto layout | partial | Direction, gap, padding, primary and counter alignment, wrap. Hug/fill sizing, counter-axis gap, min/max size, absolute positioning and constraints are not mapped. Grid layout is only `layout: "grid"` |
+| Size, position, rotation, opacity, visibility, clip, corner radius | mapped | `width`/`height`/`x`/`y` (parent-relative), `rotation`, `opacity`, `enabled: false`, `clip`, `cornerRadius` (a number or four corners) |
+| Text content and style | partial | `content`, family, size, weight, italic, line height, letter spacing, alignment, growth, decoration, case, and mixed-style runs as `styleRuns`. Fonts' variations/features, lists, hyperlinks and truncation are not mapped |
+| Variables | mapped | `variables`, named `<collection>/<variable name>` with whitespace and `$` as `-` and later duplicates suffixed `-2`, `-3` (in file order). Value is one `{ value, theme: { <collection>: <mode> } }` per mode, in mode order; aliases are `$name`. Types `color`, `number`, `string`, `boolean` |
+| Variable collections and modes | mapped | `themes`: axis is the collection name, values are the mode names |
+| Explicit variable mode on a node | mapped | The node's `theme` pin |
+| Variables bound to fields | partial | Fill and stroke colours, gap, padding, corner radius, font size and family, opacity (as `$name`). Other bound fields (width, height, effects, text fields of single runs) are not mapped |
+| Styles (shared fill/text/effect styles) | not mapped | Their resolved values are on the nodes; the style link is not kept |
+| Moving a frame between pages | not mapped | Pages are not nodes, so only the frame's own properties are compared |
+| Constraints, layout grids, guides, masks, export settings, plugin data, prototype links, comments | not mapped | Left out of both sides, so they never change a diff |
+| Library (published) components and variables | not mapped | Only what is in the file is read |
+
+Component, instance-subtree and some other nodes come back from OpenPencil's reader without a Figma GUID. For those the id is the reader's own (file-order) id, which can differ between two versions of a file, so the diff may report such a node as removed and added.
+
+Regenerate the fixtures in `fixtures/fig/` (written by OpenPencil's own `.fig` writer from scenes built in `test/helpers/fig-fixtures.ts`; deterministic, no network) with `npm run fixtures:fig`. The test suite regenerates them in memory and compares the parsed scenes with the committed files. The script needs no new dependency; it uses the already-installed `@open-pencil/core`, and `npm run fixtures:fig` builds first.
+
 ## Computing a semantic diff
 
 ```ts
