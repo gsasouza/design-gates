@@ -1,1 +1,1 @@
-{ "rules": { "DIF-001": { "warnAt": 1, "blockAt": 3 }, "TOK-001": { "severity": "off" }, "TOK-002": { "severity": "off" } } }
+{ "rules": { "DIF-001": { "warnAt": 1, "blockAt": 3 }, "TOK-001": { "severity": "off" } } }

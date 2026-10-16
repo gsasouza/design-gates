@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { resolveConfig, runRules, type GatesConfig, type Violation } from "../src/index.js";
 import { compileFixture } from "./helpers/gates.js";
+import { entryOf, fingerprint } from "../src/check/baseline.js";
 
 const config = (raw?: unknown): GatesConfig => {
   const r = resolveConfig(raw);
@@ -52,7 +53,8 @@ test("TOK-001 rejects bad ignoreValues regexes as config errors", () => {
   for (const v of [{ fill: ["/[/"] }, 5, [1]]) {
     assert.ok("error" in (bad(v) as object), JSON.stringify(v));
   }
-  assert.ok("config" in (bad({ fill: ["/^#[0-9a-f]+$/i"] }) as object));
+  assert.ok("config" in (bad({ fill: ["/^#[0-9a-f]+$/"] }) as object));
+  assert.ok("error" in (bad({ fill: ["/^(a+)+$/"] }) as object));
   assert.ok("error" in (resolveConfig({ rules: { "TOK-001": { properties: ["margin"] } } }) as object));
   assert.ok("config" in (resolveConfig({ rules: { "TOK-001": { properties: ["stroke", "gap"] } } }) as object));
 });
@@ -130,7 +132,7 @@ test("TOK-002 gap 18 on base 4 suggests 16 and 20", async () => {
 
 test("TOK-002 reports an off-scale variable definition once, not per use", async () => {
   const out = await check("TOK-002", "variable-definition.fail");
-  assert.deepEqual(out.map((v) => [v.nodeId, v.path, v.prop]), [["$space", "variables/space", "value"]]);
+  assert.deepEqual(out.map((v) => [v.nodeId, v.path, v.prop]), [["$space", "variables/space", "value.spacing"]]);
   assert.match(out[0]?.message ?? "", /spacing/);
   assert.deepEqual(await check("TOK-002", "variable-definition.pass"), []);
 });
@@ -142,6 +144,9 @@ test("TOK-002 checks values resolved through a variable chain on the defining va
     "$odd:Variable $odd = 3 is off the strokeWidth scale; nearest: 2, 4",
     "$space:Variable $space = 18 is off the spacing scale; nearest: 16, 20",
   ]);
+  const odd = out.filter((v) => v.nodeId === "$odd");
+  assert.deepEqual(odd.map((v) => v.prop), ["value.radius", "value.strokeWidth"]);
+  assert.equal(new Set(odd.map((v) => fingerprint(entryOf(v)))).size, 2);
   assert.deepEqual(await check("TOK-002", "resolved-through-variable.pass"), []);
 });
 
