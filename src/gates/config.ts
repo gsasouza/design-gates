@@ -1,4 +1,4 @@
-import { CONTROLLED_PROPS, isControlledProp, MAX_IGNORE_LENGTH } from "./tok.js";
+import { CONTROLLED_PROPS, hasNestedQuantifier, isControlledProp, MAX_IGNORE_LENGTH } from "./tok.js";
 import type { Severity } from "./types.js";
 
 export const RULE_IDS = ["A11Y-001", "CMP-001", "DIF-001", "SCH-001", "SCH-002", "SCH-003", "TOK-001", "TOK-002"] as const;
@@ -117,6 +117,7 @@ const ignoreValues: Check = (v) => {
         } catch {
           return `has an invalid regular expression ${s}`;
         }
+        if (hasNestedQuantifier(s.slice(1, -1))) return `has a regular expression with nested quantifiers ${s}`;
         if (s.length > MAX_IGNORE_LENGTH) return `has a regular expression longer than ${MAX_IGNORE_LENGTH} characters`;
       }
     }

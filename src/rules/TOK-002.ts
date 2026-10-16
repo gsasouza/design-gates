@@ -118,9 +118,9 @@ export function run(compiled: CompiledDocument, config: GatesConfig): Violation[
           file: compiled.file,
           nodeId: `$${name}`,
           path: `variables/${name}`,
-          prop: "value",
+          prop: `value.${category}`,
           message: `Variable $${name} = ${value} is off the ${category} scale; nearest: ${near.join(", ")}`,
-          fix: { type: "candidates", prop: "value", candidates: near },
+          fix: { type: "candidates", prop: `value.${category}`, candidates: near },
           ...(theme ? { theme } : {}),
         });
       }
