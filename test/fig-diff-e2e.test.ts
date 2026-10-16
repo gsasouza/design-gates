@@ -10,6 +10,8 @@ import { gradientStops, solidColor } from "../src/pen/paint.js";
 import { createOpenPencilRenderer } from "../src/render/openpencil.js";
 import { loadDesignSource } from "../src/source/load.js";
 import { readFileSync } from "node:fs";
+import { SceneGraph } from "@open-pencil/core";
+import { writeFig } from "./helpers/fig-fixtures.js";
 import { createFixtureRepo } from "./helpers/fixture-repo.js";
 import { figFixturePath } from "./helpers/fig-fixtures.js";
 
@@ -144,5 +146,33 @@ describe("theme selection when rendering a .fig", () => {
     assert.ok(!dark.png.equals(light.png));
     assert.ok(light.png.equals(lightAgain.png));
     assert.deepEqual(light.nodeBoxes, dark.nodeBoxes);
+  });
+
+  it("a nested node that pins its own mode keeps it when the frame is rendered in another mode", async () => {
+    const build = async (childMode: "Light" | "Dark") => {
+      let n = 99;
+      const g = new SceneGraph(() => `1:${++n}`);
+      const collection = g.createCollection("Theme");
+      const light = collection.defaultModeId;
+      g.renameMode(collection.id, light, "Light");
+      const dark = g.createMode(collection.id, "Dark")!;
+      const bg = g.createVariable("bg", "COLOR", collection.id, { r: 1, g: 1, b: 1, a: 1 });
+      bg.valuesByMode = { [light]: { r: 1, g: 1, b: 1, a: 1 }, [dark]: { r: 0.07, g: 0.07, b: 0.07, a: 1 } };
+      const fill = { type: "SOLID" as const, color: { r: 1, g: 1, b: 1, a: 1 }, opacity: 1, visible: true };
+      const page = g.getPages()[0]!;
+      const frame = g.createNodeWithId("1:110", "FRAME", page.id, { name: "Screen", width: 120, height: 80, fills: [fill], variableModes: { [collection.id]: light } });
+      const card = g.createNodeWithId("1:111", "RECTANGLE", frame.id, {
+        name: "Card", x: 10, y: 10, width: 60, height: 40, fills: [fill],
+        variableModes: { [collection.id]: childMode === "Dark" ? dark : light },
+      });
+      g.bindVariable(card.id, "fills/0/color", bg.id);
+      return loadDesignSource("d.fig", Buffer.from(await writeFig(g)));
+    };
+    const renderer = createOpenPencilRenderer();
+    const render = async (childMode: "Light" | "Dark") =>
+      renderer.renderSource!(await build(childMode), "1:110", { scale: 1, theme: { Theme: "Light" } });
+    const pinnedDark = await render("Dark");
+    const pinnedLight = await render("Light");
+    assert.ok(!pinnedDark.png.equals(pinnedLight.png));
   });
 });

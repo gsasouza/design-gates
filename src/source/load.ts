@@ -55,18 +55,17 @@ function checkInflatedSize(bytes: Buffer, cap: number): void {
   }
 }
 
-function applyFigTheme(graph: SceneGraph, theme: Record<string, string> | undefined): void {
+function applyFigTheme(graph: SceneGraph, frameId: string, theme: Record<string, string> | undefined): void {
   if (!theme) return;
+  const frame = graph.getNode(frameId);
   for (const collection of graph.variableCollections.values()) {
     const wanted = theme[collection.name];
     const mode = wanted === undefined ? undefined : collection.modes.find((m) => m.name === wanted);
     if (!mode) continue;
     graph.activeMode.set(collection.id, mode.modeId);
-    // A node that pins its own mode for the collection (as Figma frames do) would otherwise ignore the requested one.
-    for (const node of graph.getAllNodes()) {
-      if (node.variableModes[collection.id] !== undefined) {
-        graph.updateNode(node.id, { variableModes: { ...node.variableModes, [collection.id]: mode.modeId } });
-      }
+    // Like `.pen`, the requested mode is set on the rendered frame only; nested nodes keep their own pins.
+    if (frame && frame.variableModes[collection.id] !== undefined) {
+      graph.updateNode(frame.id, { variableModes: { ...frame.variableModes, [collection.id]: mode.modeId } });
     }
   }
 }
@@ -109,10 +108,10 @@ async function loadFig(file: string, bytes: Buffer, limits: LoadLimits): Promise
     format: "fig",
     doc: figSceneToPen(graph),
     ...(graph.figKiwiVersion !== null && { figVersion: graph.figKiwiVersion }),
-    async sceneFor(_frameId, theme) {
+    async sceneFor(frameId, theme) {
       const scene = spare ?? (await parse());
       spare = undefined;
-      applyFigTheme(scene, theme);
+      applyFigTheme(scene, ids.get(frameId) ?? frameId, theme);
       return scene;
     },
     graphIdOf: (nodeId) => ids.get(nodeId),
