@@ -3,7 +3,7 @@ import type { SafeGit } from "./git.js";
 import { resolveRepoPath } from "./paths.js";
 import { resolveVersion, type ResolvedVersion } from "./resolve.js";
 import type { SaveResult } from "./repo.js";
-import { DESIGN_PATHSPECS, getUnsavedChanges, type ChangedFile } from "./state.js";
+import { DESIGN_PATHSPECS, getUnsavedChanges, isDesignPath, type ChangedFile } from "./state.js";
 
 export interface RestoreOptions {
   version: string;
@@ -65,6 +65,21 @@ async function pathspecsFor(deps: RestoreDeps, sha: string, userPaths: string[] 
   return specs;
 }
 
+/** Changed files under the user's own pathspecs that are not designs, so a save would not keep them. */
+async function otherUnsaved(git: SafeGit, specs: string[]): Promise<string[]> {
+  const out = await git(["status", "--porcelain=v1", "-z", "--untracked-files=all", "--", ...specs]);
+  const parts = out.split("\0");
+  const found: string[] = [];
+  for (let i = 0; i < parts.length; i++) {
+    const entry = parts[i];
+    if (entry.length < 4) continue;
+    if (entry[0] === "R" || entry[0] === "C") i++;
+    const file = entry.slice(3);
+    if (!isDesignPath(file)) found.push(file);
+  }
+  return found;
+}
+
 /**
  * Brings files back as they were in a version, as unsaved changes. History is never touched:
  * only `git restore --worktree` runs, never a commit (except the optional save-first) or a ref move.
@@ -73,6 +88,16 @@ export async function restoreVersion(deps: RestoreDeps, options: RestoreOptions)
   const { git } = deps;
   const version = await resolveVersion(git, options.version);
   const label = labelOf(options.version);
+
+  const specs = await pathspecsFor(deps, version.sha, options.paths);
+  if (options.paths !== undefined && options.paths.length > 0) {
+    const others = await otherUnsaved(git, specs);
+    if (others.length > 0) {
+      throw new VcsRefusedError(
+        `${others.join(", ")} ${others.length === 1 ? "has" : "have"} unsaved changes that are not design files, and restoring would overwrite ${others.length === 1 ? "it" : "them"}. Move or commit ${others.length === 1 ? "it" : "them"} first.`,
+      );
+    }
+  }
 
   const unsaved = await getUnsavedChanges(git);
   let savedFirst: SaveResult | null = null;
@@ -85,7 +110,6 @@ export async function restoreVersion(deps: RestoreDeps, options: RestoreOptions)
     savedFirst = await deps.save(`Before restore to ${label}`);
   }
 
-  const specs = await pathspecsFor(deps, version.sha, options.paths);
   await git(["restore", `--source=${version.sha}`, "--worktree", "--", ...specs]);
 
   const { files } = await getUnsavedChanges(git);

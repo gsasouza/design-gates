@@ -14,6 +14,8 @@ export interface ChangedFile {
   state: FileState;
   /** Set when the file was renamed. */
   oldPath?: string;
+  /** Staged as new and then deleted from the folder: nothing to commit for it. */
+  addedThenDeleted?: true;
 }
 
 /** Parses `git status --porcelain=v1 -z` output. */
@@ -34,7 +36,9 @@ export function parseStatus(out: string): ChangedFile[] {
     else if (x === "A") state = y === "D" ? "deleted" : "new";
     else if (x === "D" || y === "D") state = "deleted";
     if (!isDesignPath(file)) continue;
-    files.push(oldPath === undefined ? { path: file, state } : { path: file, state, oldPath });
+    const entryOut: ChangedFile = oldPath === undefined ? { path: file, state } : { path: file, state, oldPath };
+    if (x === "A" && y === "D") entryOut.addedThenDeleted = true;
+    files.push(entryOut);
   }
   return files;
 }
