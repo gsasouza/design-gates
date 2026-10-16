@@ -192,7 +192,7 @@ test("orchestration with a fake GitReader", async () => {
       calls.push(`mergeBase ${a} ${b}`);
       return a === "main" ? "BASE" : a === "feature" ? "HEADSHA" : a;
     },
-    async listChangedPenFiles(base, head, globs) {
+    async listChangedDesignFiles(base, head, globs) {
       calls.push(`list ${base} ${String(head)} ${globs.join(",")}`);
       return files;
     },
@@ -203,6 +203,13 @@ test("orchestration with a fake GitReader", async () => {
       return b;
     },
     async readWorktree() {
+      throw new Error("worktree must not be read");
+    },
+    async readBlobBytes(ref, p) {
+      calls.push(`blobBytes ${ref}:${p}`);
+      throw new Error(`unexpected byte read ${ref}:${p}`);
+    },
+    async readWorktreeBytes() {
       throw new Error("worktree must not be read");
     },
   };

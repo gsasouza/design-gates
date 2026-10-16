@@ -1,4 +1,5 @@
 import type { PenDocument } from "../pen/types.js";
+import type { DesignSource } from "../source/types.js";
 
 /** Axis-aligned box in frame pixel coordinates (origin at the frame's top-left). */
 export interface NodeBox {
@@ -26,6 +27,17 @@ export interface RenderResult {
 export interface Renderer {
   renderFrame(
     doc: PenDocument,
+    frameId: string,
+    opts: { scale: number; theme?: Record<string, string> },
+  ): Promise<{
+    png: Buffer;
+    width: number;
+    height: number;
+    nodeBoxes: Record<string, { x: number; y: number; w: number; h: number }>;
+  }>;
+  /** Renders from a loaded source (any format); callers prefer it over `renderFrame` when present. */
+  renderSource?(
+    source: DesignSource,
     frameId: string,
     opts: { scale: number; theme?: Record<string, string> },
   ): Promise<{

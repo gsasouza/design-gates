@@ -46,8 +46,8 @@ describe("git reader (fake exec)", () => {
     assert.deepEqual(buildPathspecs(["a/**"]), [":(glob)a/**"]);
   });
 
-  it("builds the default .pen pathspec only when no globs are given", () => {
-    assert.deepEqual(buildPathspecs([]), [":(glob)**/*.pen"]);
+  it("builds the default design pathspecs only when no globs are given", () => {
+    assert.deepEqual(buildPathspecs([]), [":(glob)**/*.pen", ":(glob)**/*.fig"]);
   });
 
   it("only returns .pen paths even when git lists other files for user globs", async () => {
@@ -58,7 +58,7 @@ describe("git reader (fake exec)", () => {
     );
     const reader = createGitReader("/repo", exec);
     for (const head of ["head", WORKTREE] as const) {
-      const files = await reader.listChangedPenFiles("base", head, ["screens/**"]);
+      const files = await reader.listChangedDesignFiles("base", head, ["screens/**"]);
       const expected = [
         { path: "screens/a.pen", status: "modified" },
         { path: "screens/o.pen", status: "removed" },
@@ -71,7 +71,7 @@ describe("git reader (fake exec)", () => {
 
   it("builds ref-to-ref diff arguments", async () => {
     const { calls, exec } = fakeExec(() => "M\0a.pen\0");
-    const files = await createGitReader("/repo", exec).listChangedPenFiles("base", "head", ["x/*.pen"]);
+    const files = await createGitReader("/repo", exec).listChangedDesignFiles("base", "head", ["x/*.pen"]);
     assert.deepEqual(files, [{ path: "a.pen", status: "modified" }]);
     assert.deepEqual(calls[0], [
       "--no-optional-locks", "rev-parse", "--verify", "--end-of-options", "base^{commit}",
@@ -84,22 +84,22 @@ describe("git reader (fake exec)", () => {
 
   it("builds worktree diff and untracked arguments", async () => {
     const { calls, exec } = fakeExec((args) => (args.includes("ls-files") ? "n.pen\0m.pen\0" : "M\0m.pen\0"));
-    const files = await createGitReader("/repo", exec).listChangedPenFiles("base", WORKTREE, []);
+    const files = await createGitReader("/repo", exec).listChangedDesignFiles("base", WORKTREE, []);
     assert.deepEqual(files.map((f) => `${f.status}:${f.path}`), ["modified:m.pen", "added:n.pen"]);
     assert.deepEqual(calls[1], [
       "--no-optional-locks", "diff", "--name-status", "-M", "-z", SHA,
-      "--", ":(glob)**/*.pen",
+      "--", ":(glob)**/*.pen", ":(glob)**/*.fig",
     ]);
     assert.deepEqual(calls[2], [
       "--no-optional-locks", "ls-files", "--others", "--exclude-standard", "-z",
-      "--", ":(glob)**/*.pen",
+      "--", ":(glob)**/*.pen", ":(glob)**/*.fig",
     ]);
   });
 
   it("rejects refs starting with '-' without running git", async () => {
     const { calls, exec } = fakeExec(() => "");
     const reader = createGitReader("/repo", exec);
-    await assert.rejects(reader.listChangedPenFiles("--output=x", "head", []), (e: unknown) => {
+    await assert.rejects(reader.listChangedDesignFiles("--output=x", "head", []), (e: unknown) => {
       assert.ok(e instanceof InvalidRefError);
       assert.equal(e.ref, "--output=x");
       return true;
@@ -152,13 +152,13 @@ describe("git reader (real git, globs)", () => {
     await g("add", "-A");
     await g("commit", "-m", "screens");
     const reader = createGitReader(repo.path);
-    assert.deepEqual(await reader.listChangedPenFiles("head", "HEAD", ["screens/**"]), [
+    assert.deepEqual(await reader.listChangedDesignFiles("head", "HEAD", ["screens/**"]), [
       { path: "screens/a.pen", status: "added" },
     ]);
     await writeFile(path.join(repo.path, "screens", "a.pen"), '{"x":1}\n');
     await writeFile(path.join(repo.path, "screens", "notes.txt"), "changed\n");
     await writeFile(path.join(repo.path, "screens", "new.txt"), "u\n");
-    assert.deepEqual(await reader.listChangedPenFiles("head", WORKTREE, ["screens/**"]), [
+    assert.deepEqual(await reader.listChangedDesignFiles("head", WORKTREE, ["screens/**"]), [
       { path: "screens/a.pen", status: "added" },
     ]);
   });
@@ -176,7 +176,7 @@ describe("git reader (real git)", () => {
   const gitIn = async (...args: string[]) => (await run("git", ["--no-optional-locks", ...args], { cwd: repo.path })).stdout;
 
   it("reports added, removed, modified and renamed files", async () => {
-    const files = await createGitReader(repo.path).listChangedPenFiles("base", "head", []);
+    const files = await createGitReader(repo.path).listChangedDesignFiles("base", "head", []);
     const by = (p: string) => files.find((f) => f.path === p);
     assert.deepEqual(by("added.pen"), { path: "added.pen", status: "added" });
     assert.deepEqual(by("removed.pen"), { path: "removed.pen", status: "removed" });
@@ -194,7 +194,7 @@ describe("git reader (real git)", () => {
 
   it("throws a typed error for an invalid ref", async () => {
     const reader = createGitReader(repo.path);
-    await assert.rejects(reader.listChangedPenFiles("nope", "head", []), (e: unknown) => {
+    await assert.rejects(reader.listChangedDesignFiles("nope", "head", []), (e: unknown) => {
       assert.ok(e instanceof InvalidRefError);
       assert.equal(e.ref, "nope");
       assert.match(e.message, /nope/);
@@ -216,7 +216,7 @@ describe("git reader (real git)", () => {
     });
 
     it("reports tracked changes and untracked files as added", async () => {
-      const files = await createGitReader(repo.path).listChangedPenFiles("head", WORKTREE, []);
+      const files = await createGitReader(repo.path).listChangedDesignFiles("head", WORKTREE, []);
       assert.deepEqual(files.map((f) => `${f.status}:${f.path}`).sort(), [
         "added:untracked.pen",
         "modified:fill.pen",
@@ -228,7 +228,7 @@ describe("git reader (real git)", () => {
       await writeFile(path.join(repo.path, "docs", "spec.md"), "# x\n");
       await writeFile(path.join(repo.path, "docs", "n.pen"), "{}\n");
       const reader = createGitReader(repo.path);
-      const withGlob = await reader.listChangedPenFiles("head", WORKTREE, ["docs/**"]);
+      const withGlob = await reader.listChangedDesignFiles("head", WORKTREE, ["docs/**"]);
       assert.deepEqual(withGlob, [{ path: "docs/n.pen", status: "added" }]);
     });
 
@@ -237,7 +237,7 @@ describe("git reader (real git)", () => {
       const before = { status: await gitIn("status", "--porcelain"), head: await gitIn("rev-parse", "HEAD") };
       const bytes = await readFile(indexPath);
       const mtime = (await stat(indexPath)).mtimeMs;
-      await createGitReader(repo.path).listChangedPenFiles("base", WORKTREE, []);
+      await createGitReader(repo.path).listChangedDesignFiles("base", WORKTREE, []);
       assert.deepEqual(await readFile(indexPath), bytes);
       assert.equal((await stat(indexPath)).mtimeMs, mtime);
       assert.equal(await gitIn("status", "--porcelain"), before.status);

@@ -107,6 +107,7 @@ function file(f: FileDiff): unknown {
     path: f.path,
     ...(f.oldPath !== undefined && { oldPath: f.oldPath }),
     status: f.status,
+    ...(f.format !== undefined && f.format !== "pen" && { format: f.format }),
     frames: byKey(f.frames, (x) => x.id).map(frame),
   };
 }

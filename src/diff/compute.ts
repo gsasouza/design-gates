@@ -1,9 +1,10 @@
 import { createGitReader } from "../git/exec.js";
 import { defaultBase, type GitReader, WORKTREE } from "../git/reader.js";
-import { parsePen } from "../pen/load.js";
 import type { PenDocument, PenNode } from "../pen/types.js";
+import { designFormatOf } from "../source/format.js";
+import { readDesignSource } from "../source/read.js";
 import { matchFrames } from "./match.js";
-import type { DiffDocs, DiffResult, FileDiff, FrameDiff, MatchedBy } from "./model.js";
+import type { DiffDocs, DiffResult, DiffSources, FileDiff, FrameDiff, MatchedBy } from "./model.js";
 import { diffFrame } from "./semantic.js";
 import { diffVariables } from "./variables.js";
 
@@ -13,7 +14,7 @@ export interface ComputeOptions {
   base?: string;
   /** Head ref; defaults to the working tree. */
   head?: string;
-  /** Glob pathspecs narrowing the `.pen` files considered. */
+  /** Glob pathspecs narrowing the `.pen`/`.fig` files considered. */
   paths?: string[];
   /** Injected git access, mainly for tests. */
   git?: GitReader;
@@ -61,10 +62,10 @@ function diffFrames(base: PenDocument | undefined, head: PenDocument | undefined
   return frames;
 }
 
-/** Semantic diff plus the parsed documents it was computed from (keyed by result path). */
+/** Semantic diff plus the parsed documents and sources it was computed from (keyed by result path). */
 export async function computeSemanticDiffWithDocs(
   opts: ComputeOptions,
-): Promise<{ result: DiffResult; docs: DiffDocs }> {
+): Promise<{ result: DiffResult; docs: DiffDocs; sources: DiffSources }> {
   const git = opts.git ?? createGitReader(opts.repo);
   const baseRef = opts.base ?? (await defaultBase(git));
   // A commit's merge base with itself is its own sha; this also validates the ref.
@@ -72,21 +73,24 @@ export async function computeSemanticDiffWithDocs(
   const worktree = opts.head === undefined;
   const headSha = worktree ? "WORKTREE" : await git.mergeBase(opts.head!, opts.head!);
 
-  const changed = await git.listChangedPenFiles(baseSha, worktree ? WORKTREE : headSha, opts.paths ?? []);
+  const changed = await git.listChangedDesignFiles(baseSha, worktree ? WORKTREE : headSha, opts.paths ?? []);
   const files: FileDiff[] = [];
   const docs: DiffDocs = {};
+  const sources: DiffSources = {};
   for (const f of [...changed].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))) {
-    const base =
-      f.status === "added" ? undefined : parsePen(await git.readBlob(baseSha, f.oldPath ?? f.path));
-    const head =
-      f.status === "removed"
-        ? undefined
-        : parsePen(worktree ? await git.readWorktree(f.path) : await git.readBlob(headSha, f.path));
+    const baseSource =
+      f.status === "added" ? undefined : await readDesignSource(git, baseSha, f.oldPath ?? f.path);
+    const headSource =
+      f.status === "removed" ? undefined : await readDesignSource(git, worktree ? WORKTREE : headSha, f.path);
+    const base = baseSource?.doc;
+    const head = headSource?.doc;
     docs[f.path] = { ...(base && { base }), ...(head && { head }) };
+    sources[f.path] = { ...(baseSource && { base: baseSource }), ...(headSource && { head: headSource }) };
     files.push({
       path: f.path,
       ...(f.oldPath !== undefined && { oldPath: f.oldPath }),
       status: f.status,
+      format: designFormatOf(f.path) ?? "pen",
       frames: diffFrames(base, head),
     });
   }
@@ -100,7 +104,7 @@ export async function computeSemanticDiffWithDocs(
     variables,
     themes,
   };
-  return { result, docs };
+  return { result, docs, sources };
 }
 
 export async function computeSemanticDiff(opts: ComputeOptions): Promise<DiffResult> {

@@ -1,8 +1,10 @@
 import { readFile } from "node:fs/promises";
-import { type SceneGraph, fontManager, headlessRenderNodes, parsePenFile } from "@open-pencil/core";
+import { type SceneGraph, fontManager, headlessRenderNodes } from "@open-pencil/core";
 import { estimateTextSize } from "@open-pencil/core/layout";
-import type { PenNode } from "../pen/types.js";
-import { findNode, prepareDocument } from "./themes.js";
+import type { PenDocument, PenNode } from "../pen/types.js";
+import type { DesignSource } from "../source/types.js";
+import { penSource } from "../source/load.js";
+import { findNode } from "./themes.js";
 import type { NodeBox, RenderOptions, RenderResult, Renderer } from "./renderer.js";
 
 export { prepareDocument, resolveVariable } from "./themes.js";
@@ -69,41 +71,55 @@ function measureAutoSizedText(graph: SceneGraph): void {
   }
 }
 
+/** Page (canvas) that holds `nodeId`, found by walking its ancestors. */
+function pageIdOf(graph: SceneGraph, nodeId: string): string | undefined {
+  for (let node = graph.getNode(nodeId); node; node = node.parentId ? graph.getNode(node.parentId) : undefined) {
+    if (node.type === "CANVAS") return node.id;
+  }
+  return undefined;
+}
+
 /** Renderer backed by OpenPencil's headless CanvasKit (WASM) pipeline; needs no display or GPU. */
 export function createOpenPencilRenderer(options: OpenPencilRendererOptions = {}): Renderer {
   const defaultScale = options.scale ?? DEFAULT_SCALE;
   const fontsDir = options.fontsDir ?? DEFAULT_FONTS_DIR;
 
+  async function render(source: DesignSource, frameId: string, opts: Partial<RenderOptions>): Promise<RenderResult> {
+    const scale = opts.scale ?? defaultScale;
+    const { doc } = source;
+    const frameNode = findNode(doc.children, frameId);
+    if (!frameNode) throw new Error(`Frame not found: ${frameId}`);
+    await registerFonts(fontsDir);
+
+    const graph = await source.sceneFor(frameId, opts.theme);
+    const graphFrameId = source.graphIdOf(frameId);
+    const frame = graphFrameId ? graph.getNode(graphFrameId) : undefined;
+    const pageId = graphFrameId ? pageIdOf(graph, graphFrameId) : undefined;
+    if (!graphFrameId || !frame || !pageId) throw new Error(`Frame not found in OpenPencil scene: ${frameId}`);
+
+    if (source.format === "pen") measureAutoSizedText(graph);
+    const data = await headlessRenderNodes(graph, pageId, [graphFrameId], { scale, format: "PNG" });
+    if (!data) throw new Error(`OpenPencil rendered nothing for frame: ${frameId}`);
+    const png = Buffer.from(data);
+
+    const origin = graph.getAbsoluteBounds(graphFrameId);
+    const nodeBoxes: Record<string, NodeBox> = {};
+    for (const id of collectIds(frameNode, [])) {
+      const graphId = source.graphIdOf(id);
+      if (!graphId || !graph.getNode(graphId)) continue;
+      const b = graph.getAbsoluteBounds(graphId);
+      nodeBoxes[id] = {
+        x: (b.x - origin.x) * scale,
+        y: (b.y - origin.y) * scale,
+        w: b.width * scale,
+        h: b.height * scale,
+      };
+    }
+    return { png, ...pngSize(png), nodeBoxes };
+  }
+
   return {
-    async renderFrame(doc, frameId, opts: Partial<RenderOptions> = {}): Promise<RenderResult> {
-      const scale = opts.scale ?? defaultScale;
-      const source = findNode(doc.children, frameId);
-      if (!source) throw new Error(`Frame not found: ${frameId}`);
-      await registerFonts(fontsDir);
-
-      const graph = parsePenFile(JSON.stringify(prepareDocument(doc, frameId, opts.theme)));
-      const frame = graph.getNode(frameId);
-      const page = graph.getPages(true)[0];
-      if (!frame || !page) throw new Error(`Frame not found in OpenPencil scene: ${frameId}`);
-
-      measureAutoSizedText(graph);
-      const data = await headlessRenderNodes(graph, page.id, [frameId], { scale, format: "PNG" });
-      if (!data) throw new Error(`OpenPencil rendered nothing for frame: ${frameId}`);
-      const png = Buffer.from(data);
-
-      const origin = graph.getAbsoluteBounds(frameId);
-      const nodeBoxes: Record<string, NodeBox> = {};
-      for (const id of collectIds(source, [])) {
-        if (!graph.getNode(id)) continue;
-        const b = graph.getAbsoluteBounds(id);
-        nodeBoxes[id] = {
-          x: (b.x - origin.x) * scale,
-          y: (b.y - origin.y) * scale,
-          w: b.width * scale,
-          h: b.height * scale,
-        };
-      }
-      return { png, ...pngSize(png), nodeBoxes };
-    },
+    renderFrame: (doc, frameId, opts) => render(penSource(doc), frameId, opts),
+    renderSource: (source, frameId, opts) => render(source, frameId, opts),
   };
 }

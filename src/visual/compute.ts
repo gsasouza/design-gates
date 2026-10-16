@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { ChangeBox, DiffDocs, DiffResult } from "../diff/model.js";
+import type { ChangeBox, DiffDocs, DiffResult, DiffSources } from "../diff/model.js";
 import type { Renderer } from "../render/renderer.js";
 import { DEFAULT_MIN_AREA, nodeChangeBoxes, pixelChangeBoxes, sortBoxes } from "./change-boxes.js";
 import { DEFAULT_THRESHOLD } from "./pixel-diff.js";
@@ -14,6 +14,8 @@ export interface FileSystemSeam {
 export interface VisualDiffOptions {
   result: DiffResult;
   docs: DiffDocs;
+  /** Loaded sources behind `docs`; frames are rendered from them when the renderer supports it. */
+  sources?: DiffSources;
   renderer: Renderer;
   /** Directory receiving `images/...`; must not be inside the diffed repo. */
   outDir: string;
@@ -51,6 +53,7 @@ export async function computeVisualDiff(opts: VisualDiffOptions): Promise<DiffRe
       const renders = await renderFrameThemes({
         renderer,
         docs: docs[file.path],
+        ...(opts.sources && { sources: opts.sources[file.path] }),
         frame,
         keys: themeKeysFor(result, file.path, frame),
         scale,
