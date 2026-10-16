@@ -10,8 +10,29 @@ export const MAX_IGNORE_LENGTH = 200;
 /** The source of a `/regex/` ignore entry, or undefined when the entry is a plain string. */
 export const regexSource = (entry: string): string | undefined => (entry.length > 2 && entry.startsWith("/") && entry.endsWith("/") ? entry.slice(1, -1) : undefined);
 
-/** True when a regex source quantifies a group that is itself quantified, e.g. `(a+)+`, the classic catastrophic-backtracking shape. */
-export const hasNestedQuantifier = (source: string): boolean => /\([^()]*[+*}][^()]*\)[+*{]/.test(source);
+/**
+ * Best-effort check: true when a quantified group contains a quantifier at any depth, e.g. `(a+)+` or `((a+))+`.
+ * Escaped characters and character classes are skipped. Alternation shapes such as `(a|aa)+` are not detected.
+ */
+export const hasNestedQuantifier = (source: string): boolean => {
+  const stack: boolean[] = [];
+  let inClass = false;
+  for (let i = 0; i < source.length; i++) {
+    const c = source[i]!;
+    if (c === "\\") { i++; continue; }
+    if (inClass) { if (c === "]") inClass = false; continue; }
+    if (c === "[") inClass = true;
+    else if (c === "(") stack.push(false);
+    else if (c === ")") {
+      const inner = stack.pop() ?? false;
+      const next = source[i + 1];
+      const quantified = next === "+" || next === "*" || next === "{";
+      if (quantified && inner) return true;
+      if (stack.length > 0 && (inner || quantified)) stack[stack.length - 1] = true;
+    } else if ((c === "+" || c === "*" || c === "{") && stack.length > 0) stack[stack.length - 1] = true;
+  }
+  return false;
+};
 
 const compiled = new Map<string, RegExp | null>();
 
