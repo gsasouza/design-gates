@@ -172,7 +172,7 @@ export async function buildDiffReport(o: DiffOptions, deps: DiffDeps): Promise<{
 
   const tmp = await fs.mkdtemp(path.join(deps.tmpdir, "design-gates-"));
   try {
-    const { result, docs } = await computeSemanticDiffWithDocs({
+    const { result, docs, sources } = await computeSemanticDiffWithDocs({
       repo,
       ...(o.base !== undefined && { base: o.base }),
       ...(o.head !== undefined && { head: o.head }),
@@ -182,6 +182,7 @@ export async function buildDiffReport(o: DiffOptions, deps: DiffDeps): Promise<{
     await computeVisualDiff({
       result,
       docs,
+      sources,
       renderer: deps.createRenderer(o.scale ?? 1),
       outDir: tmp,
       scale: o.scale ?? 1,

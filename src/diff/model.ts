@@ -1,4 +1,6 @@
 import type { PenDocument } from "../pen/types.js";
+import type { DesignFormat } from "../source/format.js";
+import type { DesignSource } from "../source/types.js";
 
 /** "default", or "axis=value" pairs sorted by axis and joined with ",". */
 export type ThemeKey = string;
@@ -64,6 +66,8 @@ export interface FileDiff {
   path: string;
   oldPath?: string;
   status: FileStatus;
+  /** Format of the file; held in memory, `serializeDiff` only writes it for non-`.pen` files. */
+  format?: DesignFormat;
   frames: FrameDiff[];
 }
 
@@ -100,3 +104,6 @@ export interface DiffResult {
 
 /** Parsed documents per result file path. */
 export type DiffDocs = Record<string, { base?: PenDocument; head?: PenDocument }>;
+
+/** Loaded design sources per result file path, for rendering. */
+export type DiffSources = Record<string, { base?: DesignSource; head?: DesignSource }>;

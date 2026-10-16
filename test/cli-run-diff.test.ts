@@ -22,7 +22,7 @@ function fakeGit(changed: ChangedFile[], calls: string[] = []): GitReader {
       if (a === "nope") throw new InvalidRefError(a, "does not resolve to a commit");
       return `sha-${a}`;
     },
-    async listChangedPenFiles(base, head, globs) {
+    async listChangedDesignFiles(base, head, globs) {
       calls.push(`list ${base} ${String(head)} ${globs.join("|")}`);
       return changed;
     },
@@ -31,6 +31,12 @@ function fakeGit(changed: ChangedFile[], calls: string[] = []): GitReader {
     },
     async readWorktree() {
       return penText("#00ff00");
+    },
+    async readBlobBytes(ref) {
+      return Buffer.from(penText(ref.includes("base") || ref.includes("main") ? "#ff0000" : "#00ff00"));
+    },
+    async readWorktreeBytes() {
+      return Buffer.from(penText("#00ff00"));
     },
   };
 }

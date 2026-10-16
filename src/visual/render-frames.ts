@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
-import type { ThemeKey, DiffDocs, DiffResult, FrameDiff, FrameImages } from "../diff/model.js";
+import type { ThemeKey, DiffDocs, DiffResult, DiffSources, FrameDiff, FrameImages } from "../diff/model.js";
 import type { PenDocument } from "../pen/types.js";
 import type { Renderer } from "../render/renderer.js";
+import type { DesignSource } from "../source/types.js";
 import { pixelDiff, type PixelDiff } from "./pixel-diff.js";
 import type { Boxes } from "./change-boxes.js";
 
@@ -67,12 +68,14 @@ export function themeKeysFor(result: DiffResult, file: string, frame: FrameDiff)
 async function renderSide(
   renderer: Renderer,
   doc: PenDocument | undefined,
+  source: DesignSource | undefined,
   id: string | undefined,
   scale: number,
   theme: Theme | undefined,
 ): Promise<{ png: Buffer; boxes: Boxes } | undefined> {
   if (!doc || !id) return undefined;
-  const r = await renderer.renderFrame(doc, id, theme ? { scale, theme } : { scale });
+  const opts = theme ? { scale, theme } : { scale };
+  const r = source && renderer.renderSource ? await renderer.renderSource(source, id, opts) : await renderer.renderFrame(doc, id, opts);
   return { png: r.png, boxes: r.nodeBoxes };
 }
 
@@ -80,17 +83,19 @@ async function renderSide(
 export async function renderFrameThemes(opts: {
   renderer: Renderer;
   docs: DiffDocs[string] | undefined;
+  /** Sources behind `docs`; rendered in preference to the documents when the renderer can. */
+  sources?: DiffSources[string];
   frame: FrameDiff;
   keys: ThemeKey[];
   scale: number;
   threshold?: number;
 }): Promise<ThemedRender[]> {
-  const { renderer, docs, frame, keys, scale } = opts;
+  const { renderer, docs, sources, frame, keys, scale } = opts;
   const out: ThemedRender[] = [];
   for (const key of keys) {
     const theme = parseThemeKey(key);
-    const base = await renderSide(renderer, docs?.base, frame.baseId ?? (frame.status === "added" ? undefined : frame.id), scale, theme);
-    const head = await renderSide(renderer, docs?.head, frame.headId ?? (frame.status === "removed" ? undefined : frame.id), scale, theme);
+    const base = await renderSide(renderer, docs?.base, sources?.base, frame.baseId ?? (frame.status === "added" ? undefined : frame.id), scale, theme);
+    const head = await renderSide(renderer, docs?.head, sources?.head, frame.headId ?? (frame.status === "removed" ? undefined : frame.id), scale, theme);
     if (!base && !head) continue;
     out.push({ key, ...(base && { base }), ...(head && { head }), diff: pixelDiff(base?.png, head?.png, { threshold: opts.threshold }) });
   }

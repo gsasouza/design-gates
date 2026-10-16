@@ -30,6 +30,13 @@ export type { RuleEntry, RuleInput } from "./rules/index.js";
 export { loadPenFile, parsePen } from "./pen/load.js";
 export type { Renderer } from "./render/renderer.js";
 export { createOpenPencilRenderer } from "./render/openpencil.js";
+export { designFormatOf } from "./source/format.js";
+export type { DesignFormat } from "./source/format.js";
+export type { DesignSource } from "./source/types.js";
+export { MAX_FIG_BYTES, MAX_FIG_INFLATED_BYTES, loadDesignSource, penSource } from "./source/load.js";
+export type { LoadLimits } from "./source/load.js";
+export { readDesignSource } from "./source/read.js";
+export { figSceneToPen } from "./fig/normalize.js";
 export type {
   ChangeBox,
   DiffDocs,
