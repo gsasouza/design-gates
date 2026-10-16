@@ -17,6 +17,8 @@ export interface ChangedFile {
   oldPath?: string;
   /** Staged as new and then deleted from the folder: nothing to commit for it. */
   addedThenDeleted?: true;
+  /** The deletion half of a staged cross-format rename: already removed from the index, so it needs no `git add`. */
+  alreadyStaged?: true;
 }
 
 /** Parses `git status --porcelain=v1 -z` output. */
@@ -39,7 +41,7 @@ export function parseStatus(out: string): ChangedFile[] {
     if (!isDesignPath(file)) continue;
     // A rename across formats (pen <-> fig) is a removal plus an addition, like in compare.
     if (oldPath !== undefined && designFormatOf(oldPath) !== designFormatOf(file)) {
-      if (x === "R" && isDesignPath(oldPath)) files.push({ path: oldPath, state: "deleted" });
+      if (x === "R" && isDesignPath(oldPath)) files.push({ path: oldPath, state: "deleted", alreadyStaged: true });
       files.push({ path: file, state: "new" });
       continue;
     }
