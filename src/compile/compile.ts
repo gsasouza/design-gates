@@ -1,7 +1,7 @@
 import type { PenDocument, PenNode } from "../pen/types.js";
 import { defaultTheme, isVariableRef, resolveAlias, type Theme } from "../render/themes.js";
 import { themeKey } from "../diff/variables.js";
-import { KNOWN_TYPES, KNOWN_VERSIONS, MAX_COMPILED_NODES, MAX_DEPTH, MAX_PROP_DEPTH, MAX_REF_DEPTH } from "./constants.js";
+import { KNOWN_FIG_VERSIONS, KNOWN_TYPES, KNOWN_VERSIONS, MAX_COMPILED_NODES, MAX_DEPTH, MAX_PROP_DEPTH, MAX_REF_DEPTH } from "./constants.js";
 import type { CompileDiagnostic, CompileOptions, CompiledDocument, CompiledNode, Provenance, VariableUse } from "./types.js";
 
 const ESCAPED_VARIABLE = /^\\\$[^\s$]+$/;
@@ -56,7 +56,13 @@ export function compile(doc: PenDocument, opts: CompileOptions = {}): CompiledDo
   const themes = isObject(doc.themes) ? (doc.themes as CompiledDocument["themes"]) : {};
   const topNodes = (Array.isArray(doc.children) ? doc.children : []).filter(isObject) as PenNode[];
   const version = typeof doc.version === "string" ? doc.version : "";
-  if (!KNOWN_VERSIONS.includes(version)) {
+  const fig = opts.format === "fig";
+  if (fig) {
+    if (opts.figVersion === undefined || !KNOWN_FIG_VERSIONS.includes(opts.figVersion)) {
+      const shown = opts.figVersion === undefined ? "not reported" : `"${opts.figVersion}"`;
+      diag({ rule: "SCH-001", code: "unknown-fig-version", nodeId: "", path: "", message: `Unknown .fig version ${shown}` });
+    }
+  } else if (!KNOWN_VERSIONS.includes(version)) {
     diag({ rule: "SCH-001", code: "unknown-version", nodeId: "", path: "", message: `Unknown document version "${version}"` });
   }
 
@@ -276,6 +282,7 @@ export function compile(doc: PenDocument, opts: CompileOptions = {}): CompiledDo
 
   return {
     file: opts.file ?? "",
+    ...(fig && { format: "fig" as const }),
     version,
     themes,
     variables,

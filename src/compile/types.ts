@@ -58,6 +58,7 @@ export interface CompileDiagnostic {
     | "id-contains-slash"
     | "unknown-type"
     | "unknown-version"
+    | "unknown-fig-version"
     | "too-deep"
     | "ref-missing"
     | "ref-not-reusable"
@@ -77,6 +78,8 @@ export interface CompileDiagnostic {
 export interface CompiledDocument {
   /** Repo-relative POSIX path. */
   file: string;
+  /** Present (as `fig`) only for a document normalized from a `.fig`; absent means `.pen`. */
+  format?: "fig";
   version: string;
   themes: PenThemes;
   variables: PenVariables;
@@ -89,4 +92,8 @@ export interface CompiledDocument {
 
 export interface CompileOptions {
   file?: string;
+  /** Format of the source the document came from; a `.fig` is checked against the fig-kiwi version, not the `.pen` one. */
+  format?: "pen" | "fig";
+  /** Fig-kiwi version reported for a `.fig` source. */
+  figVersion?: number;
 }

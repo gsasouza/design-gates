@@ -15,7 +15,7 @@ export function diagnosticViolations(compiled: CompiledDocument, rule: Diagnosti
     .filter((d) => d.rule === rule)
     .map((d) => {
       const fix = fixFor(d);
-      const unknownVersion = d.code === "unknown-version";
+      const unknownVersion = d.code === "unknown-version" || d.code === "unknown-fig-version";
       return {
         rule,
         severity: unknownVersion ? "warn" : "block",
