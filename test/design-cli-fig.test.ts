@@ -102,3 +102,33 @@ test("a mixed .pen and .fig folder is handled together, and a pen<->fig rename i
   assert.equal(byPath["extra.fig"].oldPath, undefined);
   assert.equal(byPath["extra.pen"].state, "deleted");
 });
+
+test("compare across a pen->fig rename lists an add and a delete, and restore of a mixed version brings both back", async () => {
+  const repo = ["--repo", fx.path];
+  const before = (await git(fx.path, "rev-parse", "HEAD")).trim();
+  const penBytes = await readFile(path.join(fx.path, "base.fig"));
+  await copyFile(path.join(FIG, "head.fig"), path.join(fx.path, "extra.fig"));
+  assert.equal((await design(["save", "-m", "Rename to fig", ...repo])).code, 0);
+  const after = (await git(fx.path, "rev-parse", "HEAD")).trim();
+  assert.notEqual(before, after);
+
+  const outDir = await mkdtemp(path.join(tmpdir(), "design-fig-rename-"));
+  try {
+    const compare = await design(["compare", before, after, "--out", outDir, ...repo, "--json"]);
+    assert.equal(compare.code, 0, compare.stderr);
+    const diff = JSON.parse(await readFile(path.join(outDir, "diff.json"), "utf8"));
+    const paths = diff.files.map((f: { path: string }) => f.path).sort();
+    assert.deepEqual(paths, ["extra.fig", "extra.pen"]);
+  } finally {
+    await rm(outDir, { recursive: true, force: true });
+  }
+
+  // Restore a version holding both formats (base.fig + extra.pen) over the current one.
+  const restore = await design(["restore", before, ...repo]);
+  assert.equal(restore.code, 0, restore.stderr);
+  const status = JSON.parse((await design(["status", ...repo, "--json"])).stdout);
+  const byPath = Object.fromEntries(status.files.map((f: { path: string; state: string }) => [f.path, f.state]));
+  assert.equal(byPath["extra.fig"], "deleted");
+  assert.equal(byPath["extra.pen"], "new");
+  assert.deepEqual(await readFile(path.join(fx.path, "base.fig")), penBytes);
+});
