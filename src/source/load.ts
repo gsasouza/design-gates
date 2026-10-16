@@ -60,7 +60,14 @@ function applyFigTheme(graph: SceneGraph, theme: Record<string, string> | undefi
   for (const collection of graph.variableCollections.values()) {
     const wanted = theme[collection.name];
     const mode = wanted === undefined ? undefined : collection.modes.find((m) => m.name === wanted);
-    if (mode) graph.activeMode.set(collection.id, mode.modeId);
+    if (!mode) continue;
+    graph.activeMode.set(collection.id, mode.modeId);
+    // A node that pins its own mode for the collection (as Figma frames do) would otherwise ignore the requested one.
+    for (const node of graph.getAllNodes()) {
+      if (node.variableModes[collection.id] !== undefined) {
+        graph.updateNode(node.id, { variableModes: { ...node.variableModes, [collection.id]: mode.modeId } });
+      }
+    }
   }
 }
 
