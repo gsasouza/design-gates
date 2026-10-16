@@ -114,8 +114,8 @@ describe("design-gates diff on .fig fixture pairs", () => {
     assert.equal(frame.nodes[0]!.change, "modified");
     assert.deepEqual(frame.nodes[0]!.props!.map((p) => p.path), ["fill.imageHash"]);
     assert.ok(frame.nodes[0]!.props!.every((p) => p.path === "fill" || p.path.startsWith("fill.")));
-    // the pixel region lies inside the node's own modified box, which absorbs it (pixelChangeBoxes)
-    assert.deepEqual(frame.changeBoxes.map((b) => [b.kind, b.nodeId]), [["modified", "1:102"]]);
+    // the photo fills the whole frame, so its box cannot absorb the pixel region (pixelChangeBoxes)
+    assert.deepEqual(frame.changeBoxes.map((b) => [b.kind, b.nodeId]), [["modified", "1:102"], ["pixel", undefined]]);
     assert.ok(frame.pixelDiffRatio!.default! > 0);
     const source = await loadDesignSource("d.fig", readFileSync(new URL(`../../${figFixturePath("image-fill", "head")}`, import.meta.url)));
     const find = (nodes: PenNode[]): PenNode | undefined => nodes.flatMap((n) => [n, ...(n.children ?? [])]).find((n) => n.id === "1:102") ?? (nodes.some((n) => n.children) ? find(nodes.flatMap((n) => n.children ?? [])) : undefined);
