@@ -161,8 +161,9 @@ const noBanned = (rec: { subcommands(): string[] }) => {
 test("restore on a clean folder: exact argv and summary", async () => {
   const rec = sceneGit({ afterRestore: ["M  a.pen"] });
   const out = await (await repoOf(rec)).restore({ version: "2" });
-  assert.deepEqual(rec.calls.slice(-3), [
+  assert.deepEqual(rec.calls.slice(-4), [
     [NL, "ls-files", "-z", `--with-tree=${SHA2}`, "--", ...SPECS],
+    STATUS,
     [NL, "restore", `--source=${SHA2}`, "--worktree", "--", ":(glob)**/*.pen", "assets/"],
     STATUS,
   ]);
@@ -196,12 +197,24 @@ test("restore --save-first commits 'Before restore to #n' and then restores", as
   const out = await (await repoOf(rec)).restore({ version: "3", saveFirst: true });
   const subs = rec.subcommands();
   assert.ok(subs.indexOf("commit") < subs.indexOf("restore"));
-  assert.deepEqual(rec.calls.find((c) => c[1] === "commit"), [NL, "commit", "--message=Before restore to #3", "--", "a.pen"]);
+  assert.deepEqual(rec.calls.find((c) => c[1] === "commit"), [NL, "commit", "--message=Before restore to #3", "--", ":(literal)a.pen"]);
   assert.ok(rec.calls.some((c) => c[1] === "restore" && c.includes(`--source=${SHA3}`)), "restores the version resolved before saving");
   assert.equal(out.savedFirst?.saved, true);
   assert.match(out.summary, /saved first \(ddddddd\)/);
   assert.equal(subs.filter((s) => s === "commit").length, 1);
   noBanned(rec);
+});
+
+test("restore of a user path outside the designs is refused when it has unsaved changes, even with --save-first", async () => {
+  for (const saveFirst of [false, true]) {
+    const rec = sceneGit({ dirty: [" M notes.txt"], tree: ["notes.txt"] });
+    await assert.rejects(
+      (await repoOf(rec)).restore({ version: "1", paths: ["notes.txt"], saveFirst }),
+      (e: Error) => e instanceof VcsRefusedError && /notes\.txt/.test(e.message),
+    );
+    assert.ok(!rec.subcommands().includes("restore"));
+    assert.ok(!rec.subcommands().includes("commit"));
+  }
 });
 
 test("restore --save-first: a failing save propagates and no restore runs", async () => {
@@ -251,10 +264,10 @@ test("explore with a name creates and switches", async () => {
   const out = await (await repoOf(rec)).explore({ name: "bold-colors" });
   assert.deepEqual(rec.calls.map((c) => c.slice(1)), [
     ["check-ref-format", "--branch", "bold-colors"],
-    ["for-each-ref", "--format=%(refname:short)", "refs/heads/"],
+    ["for-each-ref", "--format=%(refname:lstrip=2)", "refs/heads/"],
     STATUS.slice(1),
     ["switch", "-c", "bold-colors"],
-    ["for-each-ref", "--format=%(refname:short)", "refs/heads/"],
+    ["for-each-ref", "--format=%(refname:lstrip=2)", "refs/heads/"],
   ]);
   assert.equal(out.created, true);
   assert.equal(out.summary, 'Started exploration "bold-colors" from the current version and switched to it.');

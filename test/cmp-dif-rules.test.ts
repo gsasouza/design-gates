@@ -139,3 +139,55 @@ test("check --base exits 1 when a component change reaches blockAt", async () =>
     await repo.cleanup();
   }
 });
+
+test("DIF-001: a theme axis change is reported with the nodes pinning it", async () => {
+  const mk = (themes: Record<string, string[]>) =>
+    parsePen(JSON.stringify({ version: "2.6", themes, children: [{ id: "s", type: "frame", children: [{ id: "p", type: "frame", theme: { mode: "dark" } }] }] }));
+  const baseDoc = mk({});
+  const headDoc = mk({ mode: ["light", "dark"] });
+  const resolved = resolveConfig({ rules: { "DIF-001": { warnAt: 1 } } });
+  assert.ok("config" in resolved);
+  const head = compile(headDoc, { file: "t.pen" });
+  const v = rule("DIF-001").run(head, resolved.config, {
+    base: compile(baseDoc, { file: "t.pen" }),
+    head,
+    variables: diffVariables({ "t.pen": { base: baseDoc, head: headDoc } }),
+  });
+  assert.equal(v.length, 1);
+  assert.equal(v[0]!.nodeId, "theme:mode");
+  assert.equal(v[0]!.message, "Theme mode added: mode=dark: 1 nodes; 1 nodes in 1 screens (s)");
+});
+
+function difInline(baseDoc: unknown, headDoc: unknown, warnAt = 1): Violation[] {
+  const b = parsePen(JSON.stringify(baseDoc));
+  const h = parsePen(JSON.stringify(headDoc));
+  const resolved = resolveConfig({ rules: { "DIF-001": { warnAt } } });
+  assert.ok("config" in resolved);
+  const head = compile(h, { file: "t.pen" });
+  return rule("DIF-001").run(head, resolved.config, {
+    base: compile(b, { file: "t.pen" }),
+    head,
+    variables: diffVariables({ "t.pen": { base: b, head: h } }),
+  });
+}
+
+const nested = (labelFill: string) => ({
+  version: "2.6",
+  children: [
+    { id: "B", type: "frame", reusable: true, children: [{ id: "lbl", type: "text", content: "x", fill: labelFill }] },
+    { id: "A", type: "frame", reusable: true, children: [{ id: "inner", type: "ref", ref: "B" }] },
+    { id: "s", type: "frame", children: [{ id: "useA", type: "ref", ref: "A" }, { id: "useB", type: "ref", ref: "B" }] },
+  ],
+});
+
+test("DIF-001: a change inside nested B is reported once, on B, counting transitive instances", () => {
+  const v = difInline(nested("#000000"), nested("#111111"));
+  assert.deepEqual(v.map((x) => x.nodeId), ["B"]);
+  // B is used directly by useB and, through A, by useA; the in-definition instance inner does not count
+  assert.deepEqual(v[0]!.affectedInstances, ["useA", "useB"]);
+});
+
+test("DIF-001: reusable top-level frames are not counted as screens", () => {
+  const v = difInline(nested("#000000"), nested("#111111"));
+  assert.match(v[0]!.message, /in 1 screens \(s\)$/);
+});

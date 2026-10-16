@@ -20,9 +20,11 @@ function canonical(value: unknown, depth = 0): unknown {
 function signature(compiled: CompiledDocument, component: CompiledNode): string {
   const rows: [string, unknown][] = [];
   const walk = (node: CompiledNode, depth: number): void => {
-    const own = Object.entries(node.props).filter(([k]) => node.provenance[k]?.origin !== "component");
+    const own = Object.entries(node.props).filter(([k]) => (node.expanded ? node.provenance[k]?.origin === "instance" : node.provenance[k]?.origin !== "component"));
     const sourceChildren = node.children.map((id) => getNode(compiled, id)).filter((c): c is CompiledNode => c !== undefined && !c.expanded);
-    rows.push([node.path, [node.type, own.map(([k, v]) => [k, canonical(v)]), sourceChildren.map((c) => c.sourceId)]]);
+    // an expanded node belongs to the nested component; only the overrides set here count
+    if (!node.expanded) rows.push([node.path, [node.type, own.map(([k, v]) => [k, canonical(v)]), sourceChildren.map((c) => c.sourceId)]]);
+    else if (own.length) rows.push([node.path, own.map(([k, v]) => [k, canonical(v)])]);
     if (depth >= 128) return;
     for (const id of node.children) {
       const child = getNode(compiled, id);
@@ -46,7 +48,7 @@ function severityFor(count: number, config: Dif001Config, names: (string | undef
 }
 
 function screensOf(compiled: CompiledDocument, ids: Iterable<string>): string[] {
-  return [...new Set([...ids].map((id) => topFrameOf(compiled, id)?.id).filter((s): s is string => s !== undefined))].sort(cmp);
+  return [...new Set([...ids].map((id) => topFrameOf(compiled, id)).filter((f): f is CompiledNode => f !== undefined && f.props.reusable !== true).map((f) => f.id))].sort(cmp);
 }
 
 function themeMatches(node: CompiledNode, key: string): boolean {
@@ -107,6 +109,32 @@ export const dif001: Rule = (compiled, config, diff) => {
       nodeId: `$${name}`,
       path: `$${name}`,
       message: `Variable $${name} changed: ${counts.join(", ")}; ${all.size} nodes in ${screens.length} screens${screens.length ? ` (${screens.join(", ")})` : ""}`,
+    });
+  }
+
+  for (const change of (diff.variables?.themes ?? []).filter((t) => t.file === compiled.file)) {
+    const doc = change.change === "removed" ? base : compiled;
+    const perValue = new Map<string, number>();
+    const all = new Set<string>();
+    for (const node of doc.nodes) {
+      const pin = node.props.theme;
+      const value = typeof pin === "object" && pin !== null ? (pin as Record<string, unknown>)[change.name] : undefined;
+      if (typeof value !== "string") continue;
+      const key = `${change.name}=${value}`;
+      perValue.set(key, (perValue.get(key) ?? 0) + 1);
+      all.add(node.id);
+    }
+    const severity = severityFor(all.size, rule, [`theme:${change.name}`, change.name]);
+    if (!severity) continue;
+    const screens = screensOf(doc, all);
+    const counts = [...perValue].sort(([a], [b]) => cmp(a, b)).map(([k, n]) => `${k}: ${n} nodes`);
+    out.push({
+      rule: "DIF-001",
+      severity,
+      file: compiled.file,
+      nodeId: `theme:${change.name}`,
+      path: `theme:${change.name}`,
+      message: `Theme ${change.name} ${change.change}: ${counts.join(", ")}; ${all.size} nodes in ${screens.length} screens${screens.length ? ` (${screens.join(", ")})` : ""}`,
     });
   }
   return out.sort((a, b) => cmp(a.nodeId, b.nodeId));

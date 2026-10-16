@@ -24,7 +24,7 @@ export interface SwitchResult {
 }
 
 async function listExplorations(git: SafeGit): Promise<string[]> {
-  const out = await git(["for-each-ref", "--format=%(refname:short)", "refs/heads/"]);
+  const out = await git(["for-each-ref", "--format=%(refname:lstrip=2)", "refs/heads/"]);
   return out.split("\n").filter((n) => n !== "");
 }
 

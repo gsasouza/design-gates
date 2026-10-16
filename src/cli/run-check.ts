@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { BASELINE_FILE, entryOf, fingerprint, parseBaseline, serializeBaseline } from "../check/baseline.js";
 import { FORMATS, formatAgent, formatSarif, formatText, type Format, type Reported } from "../check/format.js";
@@ -28,6 +29,8 @@ export interface CheckOptions {
 export interface CheckDeps {
   /** The repository root. */
   cwd: string;
+  /** Where relative user paths start; defaults to `cwd`. */
+  invokedFrom?: string;
   stdout: (text: string) => void;
   stderr: (text: string) => void;
   git?: GitReader;
@@ -37,9 +40,19 @@ export interface CheckDeps {
   entries?: readonly RuleEntry[];
 }
 
+/** The repository root of the current directory (`git rev-parse --show-toplevel`). */
+function repoRoot(): string {
+  try {
+    return execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  } catch {
+    throw new UsageError("not inside a git repository");
+  }
+}
+
 export function defaultCheckDeps(): CheckDeps {
   return {
-    cwd: process.cwd(),
+    cwd: repoRoot(),
+    invokedFrom: process.cwd(),
     stdout: (t) => void process.stdout.write(t),
     stderr: (t) => void process.stderr.write(t),
     fs: defaultFs,
@@ -49,9 +62,13 @@ export function defaultCheckDeps(): CheckDeps {
 const isMissing = (err: unknown): boolean => (err as { code?: string } | null)?.code === "ENOENT";
 
 /** Repo-relative POSIX form of a user path; refuses anything outside the repo. */
-function repoRelative(root: string, input: string, what: string): string {
-  const rel = path.relative(root, path.resolve(root, input));
-  if (rel === "" || rel === ".." || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
+function repoRelative(root: string, from: string, input: string, what: string, allowRoot = false): string {
+  const rel = path.relative(root, path.resolve(from, input));
+  if (rel === "") {
+    if (allowRoot) return "";
+    throw new UsageError(`${what} must be inside the repository, got "${input}"`);
+  }
+  if (rel === ".." || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
     throw new UsageError(`${what} must be inside the repository, got "${input}"`);
   }
   return rel.split(path.sep).join("/");
@@ -64,8 +81,8 @@ function validate(o: CheckOptions): Format {
   return format as Format;
 }
 
-async function loadConfig(git: GitReader, root: string, o: CheckOptions): Promise<GatesConfig> {
-  const file = o.config !== undefined ? repoRelative(root, o.config, "--config") : CONFIG_FILE;
+async function loadConfig(git: GitReader, root: string, from: string, o: CheckOptions): Promise<GatesConfig> {
+  const file = o.config !== undefined ? repoRelative(root, from, o.config, "--config") : CONFIG_FILE;
   let text: string;
   try {
     text = await git.readWorktree(file);
@@ -117,9 +134,11 @@ async function build(o: CheckOptions, deps: CheckDeps): Promise<number> {
   const root = deps.cwd;
   const git = deps.git ?? createGitReader(root);
   const entries = deps.entries ?? registry;
-  const config = await loadConfig(git, root, o);
+  const from = deps.invokedFrom ?? root;
+  const config = await loadConfig(git, root, from, o);
 
-  const globs = (o.paths ?? []).map((p) => repoRelative(root, p, "path"));
+  // `.` (the repo root itself) means all files
+  const globs = (o.paths ?? []).map((p) => repoRelative(root, from, p, "path", true)).filter((g) => g !== "");
   if (o.base !== undefined) {
     try {
       await git.mergeBase(o.base, o.base);
@@ -146,9 +165,17 @@ async function build(o: CheckOptions, deps: CheckDeps): Promise<number> {
     const compiled = compile(loaded.head, { file });
     const input: RuleInput = { file, compiled };
     if (o.base !== undefined) {
+      let variables: DiffContext["variables"];
+      try {
+        variables = diffVariables({ [file]: { head: loaded.head, ...(loaded.baseDoc && { base: loaded.baseDoc }) } });
+      } catch (err) {
+        // an untrusted document can be too deep to walk; report it instead of failing the run
+        if (!sch001Off) cliViolations.push(withSchSeverity(parseFailureViolation(file, err), config));
+        continue;
+      }
       const diff: DiffContext = {
         head: compiled,
-        variables: diffVariables({ [file]: { head: loaded.head, ...(loaded.baseDoc && { base: loaded.baseDoc }) } }),
+        variables,
         ...(loaded.baseDoc && { base: compile(loaded.baseDoc, { file }) }),
       };
       input.diff = diff;
@@ -167,10 +194,12 @@ async function build(o: CheckOptions, deps: CheckDeps): Promise<number> {
   }
 
   let known = new Set<string>();
-  try {
-    known = parseBaseline(await git.readWorktree(BASELINE_FILE));
-  } catch (err) {
-    if (!isMissing(err)) throw new UsageError(err instanceof Error ? err.message : String(err));
+  if (!o.updateBaseline) {
+    try {
+      known = parseBaseline(await git.readWorktree(BASELINE_FILE));
+    } catch (err) {
+      if (!isMissing(err)) throw new UsageError(err instanceof Error ? err.message : String(err));
+    }
   }
   if (o.updateBaseline) {
     const target = path.join(root, BASELINE_FILE);
@@ -185,11 +214,11 @@ async function build(o: CheckOptions, deps: CheckDeps): Promise<number> {
 }
 
 /** Runs `design-gates check`; resolves to the exit code: 0 clean, 1 a block violation remains, 2 usage/config/other error. */
-export async function runCheck(options: CheckOptions, deps: CheckDeps = defaultCheckDeps()): Promise<number> {
+export async function runCheck(options: CheckOptions, deps?: CheckDeps): Promise<number> {
   try {
-    return await build(options, deps);
+    return await build(options, deps ?? defaultCheckDeps());
   } catch (err) {
-    deps.stderr(`design-gates: ${err instanceof Error ? err.message : String(err)}\n`);
+    (deps?.stderr ?? ((t: string) => void process.stderr.write(t)))(`design-gates: ${err instanceof Error ? err.message : String(err)}\n`);
     return 2;
   }
 }

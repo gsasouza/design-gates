@@ -1,11 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFile, symlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defaultFs } from "../src/cli/run-diff.js";
-import { runCheck, type CheckDeps, type CheckOptions } from "../src/cli/run-check.js";
+import { defaultCheckDeps, runCheck, type CheckDeps, type CheckOptions } from "../src/cli/run-check.js";
 import { registry, type RuleEntry } from "../src/rules/index.js";
 import type { Violation } from "../src/gates/types.js";
 import { createFixtureRepo } from "./helpers/fixture-repo.js";
@@ -296,5 +296,66 @@ test("text output has one line per violation plus a summary", async () => {
   });
   await withRepo("check/clean", async (repo) => {
     assert.equal((await check(repo, { format: "text" })).out, "No violations.\n");
+  });
+});
+
+test("run from a subdirectory, paths resolve against it and `.` means all files", async () => {
+  await withRepo("check/fail", async (repo) => {
+    const whole = await check(repo);
+    const sub = path.join(repo, "nested");
+    const dot = await check(repo, { paths: ["."] }, { invokedFrom: repo });
+    assert.equal(dot.code, whole.code);
+    assert.equal(dot.out, whole.out);
+    const outside = await check(repo, { paths: ["../.."] }, { invokedFrom: sub });
+    assert.equal(outside.code, 2);
+  });
+});
+
+test("real git: from a subdirectory the repo root holds config, baseline and the relative file", async () => {
+  await withRepo("check/fail", async (repo) => {
+    const sub = path.join(repo, "nested");
+    await mkdir(sub);
+    await writeFile(path.join(repo, "design-gates.config.json"), '{"rules":{"SCH-002":{"severity":"warn"}}}');
+    const prev = process.cwd();
+    process.chdir(sub);
+    try {
+      const run = async (options: CheckOptions): Promise<Result> => {
+        let out = "";
+        let err = "";
+        const code = await runCheck(options, { ...defaultCheckDeps(), stdout: (t) => (out += t), stderr: (t) => (err += t) });
+        return { code, out, err };
+      };
+      const r = await run({});
+      assert.equal(r.code, 0, r.err);
+      const [v] = parse(r).violations;
+      assert.equal(v!.file, "bad.pen");
+      assert.equal(v!.severity, "warn");
+      const u = await run({ updateBaseline: true });
+      assert.equal(u.code, 0, u.err);
+      assert.match(await readFile(path.join(repo, "design-gates-baseline.json"), "utf8"), /"file": "bad.pen"/);
+      await assert.rejects(readFile(path.join(sub, "design-gates-baseline.json"), "utf8"));
+    } finally {
+      process.chdir(prev);
+    }
+  });
+});
+
+test("--update-baseline replaces an invalid existing baseline", async () => {
+  await withRepo("check/fail", async (repo) => {
+    const file = path.join(repo, "design-gates-baseline.json");
+    await writeFile(file, "[]");
+    assert.equal((await check(repo, { updateBaseline: true })).code, 0);
+    assert.deepEqual((JSON.parse(await readFile(file, "utf8")) as { version: number }).version, 1);
+  });
+});
+
+test("a document too deep to diff under --base is reported as SCH-001, not exit 2", async () => {
+  await withRepo("check/clean", async (repo) => {
+    const n = 5000;
+    const text = `{"version":"2.6","children":[${'{"id":"n","type":"frame","children":['.repeat(n)}{"id":"leaf","type":"frame"}${"]}".repeat(n)}]}`;
+    await writeFile(path.join(repo, "deep.pen"), text);
+    const r = await check(repo, { base: "base" });
+    assert.notEqual(r.code, 2, r.err);
+    assert.ok(parse(r).violations.some((v) => v.file === "deep.pen"));
   });
 });

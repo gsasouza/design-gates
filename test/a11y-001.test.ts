@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_CONFIG, registry, resolveConfig, runRules, type GatesConfig, type Violation } from "../src/index.js";
+import { compile, DEFAULT_CONFIG, registry, resolveConfig, runRules, type GatesConfig, type Violation } from "../src/index.js";
 import { composite, contrastRatio, parseColor } from "../src/rules/a11y/color.js";
 import { compileFixture } from "./helpers/gates.js";
 
@@ -111,4 +111,15 @@ test("output is deterministic", async () => {
   for (const name of ["theme-fail", "cap-fail", "component-fail", "gradient-fail"]) {
     assert.equal(JSON.stringify(await check(name)), JSON.stringify(await check(name)), name);
   }
+});
+
+test("many theme axes are capped without materialising the product", () => {
+  const themes = Object.fromEntries(Array.from({ length: 40 }, (_, i) => [`axis${String(i).padStart(2, "0")}`, ["a", "b", "c"]]));
+  const doc = { version: "2.6", themes, children: [{ id: "s", type: "frame", fill: "#FFFFFF", children: [{ id: "t", type: "text", content: "x", fill: "#000000" }] }] };
+  const compiled = compile(doc as never, { file: "many.pen" });
+  const out = runRules([{ file: "many.pen", compiled }], DEFAULT_CONFIG).filter((v) => v.rule === "A11Y-001");
+  assert.equal(out.length, 1);
+  assert.equal(out[0]!.severity, "info");
+  assert.match(out[0]!.message, /evaluated 16 of 12157665459056929000 theme combinations/);
+  assert.match(out[0]!.message, / and \d+ more$/);
 });

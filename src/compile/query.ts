@@ -19,16 +19,19 @@ function indexOf(compiled: CompiledDocument): Index {
   for (const n of compiled.nodes) {
     if (n.instanceOf !== undefined) direct.set(n.instanceOf, [...(direct.get(n.instanceOf) ?? []), n.id]);
   }
-  /** Instances of `id`, plus instances of every component that holds an instance of it. */
+  /**
+   * Instance roots of `id` outside any component definition, plus those of every component that
+   * holds an instance of it. Expanded copies and in-definition instances are not counted.
+   */
   const collect = (id: string, visiting: Set<string>, out: Set<string>): void => {
     if (visiting.has(id)) return;
     visiting.add(id);
     for (const instanceId of direct.get(id) ?? []) {
-      out.add(instanceId);
       const inst = byId.get(instanceId);
       if (!inst || inst.expanded) continue;
       const holder = [...inst.parents].reverse().map((p) => byId.get(p)).find((p) => p?.props.reusable === true);
       if (holder) collect(holder.id, visiting, out);
+      else out.add(instanceId);
     }
   };
   const instances = new Map<string, string[]>();
@@ -57,7 +60,7 @@ export function listComponents(compiled: CompiledDocument): CompiledNode[] {
   return compiled.nodes.filter((n) => n.props.reusable === true && !n.expanded).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 }
 
-/** Sorted ids of the instances of a component, including instances of components that contain one. */
+/** Sorted ids of the instance roots of a component, including instances of components that contain one. */
 export function listInstances(compiled: CompiledDocument, componentId: string): string[] {
   return [...(indexOf(compiled).instances.get(componentId) ?? [])];
 }

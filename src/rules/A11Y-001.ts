@@ -73,16 +73,30 @@ function pinnedAxes(chain: CompiledNode[]): Set<string> {
   return pinned;
 }
 
-/** All combinations of the unpinned axes' values with the node's pinned values, sorted by key. */
-export function nodeCombinations(compiled: CompiledDocument, node: CompiledNode, chain: CompiledNode[]): { key: string; theme: Theme }[] {
+/**
+ * The first 2 * MAX_COMBINATIONS (sorted; the second half only feeds the bounded skipped listing) combinations of the unpinned axes' values with the node's
+ * pinned values, plus the arithmetic total; the product itself is never materialised.
+ */
+export function nodeCombinations(compiled: CompiledDocument, node: CompiledNode, chain: CompiledNode[]): { combos: { key: string; theme: Theme }[]; total: number } {
   const pinned = pinnedAxes(chain);
   const axes = Object.entries(compiled.themes)
-    .map(([axis, values]) => [axis, Array.isArray(values) ? [...new Set(values.filter((v): v is string => typeof v === "string"))] : []] as const)
+    .map(([axis, values]) => [axis, Array.isArray(values) ? [...new Set(values.filter((v): v is string => typeof v === "string"))].sort(byString) : []] as const)
     .filter(([axis, values]) => values.length > 0 && !pinned.has(axis))
     .sort(([a], [b]) => byString(a, b));
-  let combos: Theme[] = [{ ...node.theme }];
-  for (const [axis, values] of axes) combos = combos.flatMap((c) => values.map((v) => ({ ...c, [axis]: v })));
-  return combos.map((theme) => ({ theme, key: themeKey(theme) })).sort((a, b) => byString(a.key, b.key));
+  const total = axes.reduce((n, [, values]) => n * values.length, 1);
+  const combos: { key: string; theme: Theme }[] = [];
+  // odometer over the sorted axes: the last axis varies fastest, which is the sorted key order
+  const index = axes.map(() => 0);
+  for (let n = 0; n < Math.min(total, 2 * MAX_COMBINATIONS); n++) {
+    const theme: Theme = { ...node.theme };
+    axes.forEach(([axis, values], i) => (theme[axis] = values[index[i]!]!));
+    combos.push({ theme, key: themeKey(theme) });
+    for (let i = axes.length - 1; i >= 0; i--) {
+      if (++index[i]! < axes[i]![1].length) break;
+      index[i] = 0;
+    }
+  }
+  return { combos: combos.sort((a, b) => byString(a.key, b.key)), total };
 }
 
 type Outcome = { kind: "review"; message: string } | { kind: "ratio"; ratio: number; min: number };
@@ -176,18 +190,16 @@ export const runA11y001: Rule = (compiled, config) => {
   for (const text of compiled.nodes) {
     if (text.type !== "text") continue;
     const chain = ancestorsOf(compiled, text);
-    const combos = nodeCombinations(compiled, text, [text, ...chain]);
-    const evaluated = combos.slice(0, MAX_COMBINATIONS);
+    const { combos: generated, total } = nodeCombinations(compiled, text, [text, ...chain]);
+    const evaluated = generated.slice(0, MAX_COMBINATIONS);
+    const skipped = generated.slice(MAX_COMBINATIONS);
     const base = { rule: ID, file: compiled.file, nodeId: text.id, path: text.path };
-    if (combos.length > MAX_COMBINATIONS) {
+    if (total > MAX_COMBINATIONS) {
       out.push({
         ...base,
         severity: "info",
         fixedSeverity: true,
-        message: `${ID} evaluated ${evaluated.length} of ${combos.length} theme combinations; evaluated: [${evaluated.map((c) => c.key).join(", ")}]; skipped: [${combos
-          .slice(MAX_COMBINATIONS)
-          .map((c) => c.key)
-          .join(", ")}]`,
+        message: `${ID} evaluated ${evaluated.length} of ${total} theme combinations; evaluated: [${evaluated.map((c) => c.key).join(", ")}]; skipped: [${skipped.map((c) => c.key).join(", ")}]${total - evaluated.length > skipped.length ? ` and ${total - evaluated.length - skipped.length} more` : ""}`,
       });
     }
     let reviewed = false;

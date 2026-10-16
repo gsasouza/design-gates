@@ -1,4 +1,4 @@
-import { readFile, realpath, writeFile } from "node:fs/promises";
+import { lstat, readFile, realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createVcsExecFileGit, createSafeGit, type SafeGit } from "./git.js";
 import type { GitExec } from "../git/exec.js";
@@ -92,12 +92,16 @@ function describeFiles(files: ChangedFile[]): string {
 
 /** Paths to stage: only files git reported, so no pathspec ever fails to match. */
 function addSpecsOf(files: ChangedFile[]): string[] {
-  return [...new Set(files.map((f) => f.path))];
+  return [...new Set(files.map((f) => `:(literal)${f.path}`))];
 }
 
 /** Paths to commit: the staged files plus the old name of renames. */
 function commitSpecsOf(files: ChangedFile[]): string[] {
-  return [...new Set(files.flatMap((f) => (f.oldPath ? [f.path, f.oldPath] : [f.path])))];
+  return [
+    ...new Set(
+      files.filter((f) => f.addedThenDeleted !== true).flatMap((f) => (f.oldPath ? [f.path, f.oldPath] : [f.path])).map((p) => `:(literal)${p}`),
+    ),
+  ];
 }
 
 export function createDesignRepo(options: DesignRepoOptions): DesignRepo {
@@ -114,8 +118,12 @@ export function createDesignRepo(options: DesignRepoOptions): DesignRepo {
 
   async function saveFiles(message: string, files: ChangedFile[]): Promise<SaveResult> {
     await guarded(["add", "--", ...addSpecsOf(files)]);
+    const commitSpecs = commitSpecsOf(files);
+    if (commitSpecs.length === 0) {
+      return { saved: false, version: null, message: null, files: [], summary: "Nothing to save: no design changes since the last version." };
+    }
     try {
-      await git(["commit", `--message=${message}`, "--", ...commitSpecsOf(files)]);
+      await git(["commit", `--message=${message}`, "--", ...commitSpecs]);
     } catch (err) {
       throw classifyCommitFailure(err);
     }
@@ -142,6 +150,9 @@ export function createDesignRepo(options: DesignRepoOptions): DesignRepo {
     const file = path.join(root, ".gitignore");
     let current = "";
     try {
+      if ((await lstat(file)).isSymbolicLink()) {
+        throw new VcsRefusedError("The .gitignore in this folder is a link to another file, so it won't be changed. Replace it with a regular file first.");
+      }
       current = await readFile(file, "utf8");
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;

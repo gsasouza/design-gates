@@ -252,3 +252,62 @@ test("compare writes a real report between a saved version and the working files
   assert.deepEqual(opened, [r.reportPath]);
   assert.equal(rawGit(dir, "log", "--format=%H"), log);
 });
+
+test("real git: a file staged and then deleted does not break save", async () => {
+  const dir = await folder();
+  await writeFile(path.join(dir, "a.pen"), "1");
+  const repo = make(dir);
+  await repo.init();
+  await writeFile(path.join(dir, "x.pen"), "x");
+  rawGit(dir, "add", "x.pen");
+  await rm(path.join(dir, "x.pen"));
+  await writeFile(path.join(dir, "a.pen"), "2");
+  const out = await repo.save({ message: "Two" });
+  assert.equal(out.saved, true);
+  assert.deepEqual(rawGit(dir, "show", "--name-only", "--format=").trim().split("\n"), ["a.pen"]);
+  await rm(path.join(dir, "a.pen"));
+  rawGit(dir, "reset", "--quiet");
+  await writeFile(path.join(dir, "y.pen"), "y");
+  rawGit(dir, "add", "y.pen");
+  await rm(path.join(dir, "y.pen"));
+  await writeFile(path.join(dir, "a.pen"), "2");
+  assert.equal((await repo.save()).saved, false);
+});
+
+test("real git: restore with user paths never overwrites uncommitted non-design work", async () => {
+  const dir = await folder();
+  await writeFile(path.join(dir, "a.pen"), "1");
+  await writeFile(path.join(dir, "notes.txt"), "v1");
+  await mkdir(path.join(dir, "docs"));
+  await writeFile(path.join(dir, "docs", "d.txt"), "d1");
+  rawGit(dir, "init", "-q", "-b", "main");
+  const repo = make(dir);
+  rawGit(dir, "add", ".");
+  rawGit(dir, "commit", "-q", "-m", "base");
+  await writeFile(path.join(dir, "notes.txt"), "mine");
+  await writeFile(path.join(dir, "docs", "d.txt"), "mine too");
+
+  for (const opts of [{}, { saveFirst: true }]) {
+    for (const p of ["notes.txt", "docs"]) {
+      await assert.rejects(repo.restore({ version: "1", paths: [p], ...opts }), VcsRefusedError);
+      assert.equal(await readFile(path.join(dir, "notes.txt"), "utf8"), "mine");
+      assert.equal(await readFile(path.join(dir, "docs", "d.txt"), "utf8"), "mine too");
+    }
+  }
+  assert.equal(rawGit(dir, "log", "--format=%s"), "base\n");
+});
+
+test("real git: a tag named like a branch does not make versions or explorations ambiguous", async () => {
+  const dir = await folder();
+  await writeFile(path.join(dir, "a.pen"), "1");
+  const repo = make(dir);
+  await repo.init();
+  await repo.explore({ name: "idea" });
+  rawGit(dir, "tag", "idea");
+  rawGit(dir, "tag", "main");
+  const list = (await repo.explore()).explorations;
+  assert.deepEqual(list, [{ name: "idea", current: true }, { name: "main", current: false }]);
+  const v = await resolveVersion(createSafeGit(createVcsExecFileGit(dir, ISOLATED)), "main");
+  assert.equal(v.sha, rawGit(dir, "rev-parse", "refs/heads/main").trim());
+  assert.equal((await repo.switchTo("main")).switched, true);
+});
