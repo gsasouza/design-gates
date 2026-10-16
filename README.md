@@ -143,6 +143,10 @@ Exit codes: `0` worked (including "nothing to save"); `1` stopped by a safety ru
 
 Safety promises: everything stays local (nothing is pushed or uploaded); earlier versions are never rewritten or deleted; your global git configuration is never touched (a local name and email are set in the folder only when missing).
 
+### Agent skill
+
+`skills/design-cli/SKILL.md` is an [Agent Skill](https://docs.claude.com/en/docs/claude-code/skills) that teaches an AI agent to use the `design` CLI safely (always `--json`, exit codes, no direct git). To install it, copy the `skills/design-cli` folder into a project's `.claude/skills/` or into `~/.claude/skills/`.
+
 ## Gates
 
 `design-gates check` runs a deterministic rule engine over `.pen` documents (phase 1: SCH-001/002/003, TOK-001, TOK-002, A11Y-001, CMP-001, DIF-001). This section is the foundation: the compiler, the config model and the rule registry. Rules are pure functions of the compiled document, the config and an optional diff; they never read the clock or the network.
