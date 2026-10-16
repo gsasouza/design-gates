@@ -29,6 +29,7 @@ export interface RestoreDeps {
 }
 
 const PEN_SPEC = ":(glob)**/*.pen";
+const FIG_SPEC = ":(glob)**/*.fig";
 const ASSETS_SPEC = "assets/";
 
 /** The user's own reference as a label: `3` and `#3` both read `#3`. */
@@ -48,6 +49,7 @@ async function pathspecsFor(deps: RestoreDeps, sha: string, userPaths: string[] 
     const found = await filesIn(deps.git, sha, DESIGN_PATHSPECS);
     const specs = [
       ...(found.some((p) => p.endsWith(".pen")) ? [PEN_SPEC] : []),
+      ...(found.some((p) => p.endsWith(".fig")) ? [FIG_SPEC] : []),
       ...(found.some((p) => p.startsWith("assets/")) ? [ASSETS_SPEC] : []),
     ];
     if (specs.length === 0) throw nothing;

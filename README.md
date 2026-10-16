@@ -76,6 +76,14 @@ Component, instance-subtree and some other nodes come back from OpenPencil's rea
 
 Regenerate the fixtures in `fixtures/fig/` (written by OpenPencil's own `.fig` writer from scenes built in `test/helpers/fig-fixtures.ts`; deterministic, no network) with `npm run fixtures:fig`. The test suite regenerates them in memory and compares the parsed scenes with the committed files. The script needs no new dependency; it uses the already-installed `@open-pencil/core`, and `npm run fixtures:fig` builds first.
 
+### Workflow
+
+In Figma use **File > Save local copy** to get a `.fig`, put it in your design folder and commit it to git. There is no conversion step: `design-gates diff` and `design-gates check` read the `.fig` from git directly, and the `design` CLI (`save`, `status`, `compare`, `restore`) treats `.fig` exactly like `.pen`. A `.fig` is always read and written as bytes, so `design restore` brings a file back byte-identical. A rename between `.pen` and `.fig` is shown as one file removed and one added.
+
+On a `.fig` the gates run on the normalized document. SCH-001 validates it against the fig format. A construct the gates cannot judge (for example a gradient fill, or geometry that is not mapped) gives `review`, never `block`.
+
+Out of scope: Figma cloud files, the REST API and access tokens; converting between `.fig` and `.pen`; writing `.fig` files; Figma plugins.
+
 ## Computing a semantic diff
 
 ```ts
