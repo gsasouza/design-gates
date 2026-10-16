@@ -96,3 +96,13 @@ test("TOK-001 properties accepts only the nine controlled properties", () => {
     assert.ok("error" in r && /rules\.TOK-001\.properties/.test(r.error), JSON.stringify(bad));
   }
 });
+
+test("TOK-001 ignoreValues rejects nested quantifiers at any depth but not escaped parens", () => {
+  for (const bad of ["/(a+)+/", "/((a+))+/", "/(a(b*))*/"]) {
+    const r = resolveConfig({ rules: { "TOK-001": { ignoreValues: { fill: [bad] } } } });
+    assert.ok("error" in r && /nested quantifiers/.test(r.error), bad);
+  }
+  for (const ok of ["/\\(a+\\)+/", "/^(#fff)+$/", "/[(a+]+/"]) {
+    assert.ok("config" in resolveConfig({ rules: { "TOK-001": { ignoreValues: { fill: [ok] } } } }), ok);
+  }
+});
