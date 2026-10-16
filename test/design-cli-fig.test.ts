@@ -113,6 +113,7 @@ test("a staged pen->fig git mv is add plus delete, not a rename", async () => {
   assert.equal(byPath["moved.fig"].state, "new");
   assert.equal(byPath["moved.fig"].oldPath, undefined);
   assert.equal(byPath["moved.pen"].state, "deleted");
+  assert.ok(status.files.every((f: object) => !("alreadyStaged" in f)));
 });
 
 test("compare across a pen->fig rename lists an add and a delete, and restore brings the old format back", async () => {

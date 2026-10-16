@@ -91,6 +91,11 @@ function describeFiles(files: ChangedFile[]): string {
   return files.map((f) => `${f.path} (${f.state})`).join(", ");
 }
 
+/** A changed file as reported to callers: without the internal `alreadyStaged` marker. */
+function publicFile({ alreadyStaged: _staged, ...file }: ChangedFile): ChangedFile {
+  return file;
+}
+
 /** Paths to stage: only files git reported, so no pathspec ever fails to match. */
 function addSpecsOf(files: ChangedFile[]): string[] {
   return [...new Set(files.filter((f) => f.alreadyStaged !== true).map((f) => `:(literal)${f.path}`))];
@@ -134,7 +139,7 @@ export function createDesignRepo(options: DesignRepoOptions): DesignRepo {
       saved: true,
       version: { sha: head.sha, shortId: head.shortId },
       message,
-      files: committed,
+      files: committed.map(publicFile),
       summary: `Saved a new version (${head.shortId}): ${message}. ${count(committed.length, "file")} included.`,
     };
   }
@@ -233,7 +238,7 @@ export function createDesignRepo(options: DesignRepoOptions): DesignRepo {
       files.length === 0
         ? `No unsaved changes on ${where}.`
         : `${count(files.length, "unsaved change")} on ${where}: ${describeFiles(files)}.`;
-    return { exploration: name, files, clean: files.length === 0, summary };
+    return { exploration: name, files: files.map(publicFile), clean: files.length === 0, summary };
   }
 
   async function history(opts: { file?: string; limit?: number } = {}): Promise<HistoryResult> {
@@ -263,7 +268,10 @@ export function createDesignRepo(options: DesignRepoOptions): DesignRepo {
     save,
     history,
     resolveVersion: (ref) => resolveVersion(guarded, ref),
-    unsavedChanges: () => getUnsavedChanges(guarded),
+    unsavedChanges: async () => {
+      const { unsaved, files } = await getUnsavedChanges(guarded);
+      return { unsaved, files: files.map(publicFile) };
+    },
     restore: (opts) => restoreVersion({ git: guarded, repo, save: (message) => save({ message }) }, opts),
     explore: (opts = {}) => exploreOrList(guarded, opts.name),
     switchTo: (name) => switchExploration(guarded, name),
