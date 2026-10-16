@@ -20,7 +20,7 @@ export interface DesignDeps {
   diff?: DiffDeps;
 }
 
-const OPTIONS = {
+export const OPTIONS = {
   repo: { type: "string" },
   json: { type: "boolean" },
   help: { type: "boolean", short: "h" },
