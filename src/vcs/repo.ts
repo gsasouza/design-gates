@@ -1,3 +1,4 @@
+import { constants } from "node:fs";
 import { lstat, readFile, realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createVcsExecFileGit, createSafeGit, type SafeGit } from "./git.js";
@@ -119,6 +120,7 @@ export function createDesignRepo(options: DesignRepoOptions): DesignRepo {
   async function saveFiles(message: string, files: ChangedFile[]): Promise<SaveResult> {
     await guarded(["add", "--", ...addSpecsOf(files)]);
     const commitSpecs = commitSpecsOf(files);
+    const committed = files.filter((f) => f.addedThenDeleted !== true);
     if (commitSpecs.length === 0) {
       return { saved: false, version: null, message: null, files: [], summary: "Nothing to save: no design changes since the last version." };
     }
@@ -132,8 +134,8 @@ export function createDesignRepo(options: DesignRepoOptions): DesignRepo {
       saved: true,
       version: { sha: head.sha, shortId: head.shortId },
       message,
-      files,
-      summary: `Saved a new version (${head.shortId}): ${message}. ${count(files.length, "file")} included.`,
+      files: committed,
+      summary: `Saved a new version (${head.shortId}): ${message}. ${count(committed.length, "file")} included.`,
     };
   }
 
@@ -160,7 +162,16 @@ export function createDesignRepo(options: DesignRepoOptions): DesignRepo {
     const wanted = new Set([REPORT_DIR_IGNORE, "/design-diff", "design-diff/", "design-diff"]);
     if (current.split(/\r?\n/).some((l) => wanted.has(l.trim()))) return false;
     const sep = current === "" || current.endsWith("\n") ? "" : "\n";
-    await writeFile(file, `${current}${sep}${REPORT_DIR_IGNORE}\n`);
+    try {
+      await writeFile(file, `${current}${sep}${REPORT_DIR_IGNORE}\n`, {
+        flag: constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC | constants.O_NOFOLLOW,
+      });
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "ELOOP") {
+        throw new VcsRefusedError("The .gitignore in this folder is a link to another file, so it won't be changed. Replace it with a regular file first.");
+      }
+      throw err;
+    }
     return true;
   }
 
@@ -201,7 +212,8 @@ export function createDesignRepo(options: DesignRepoOptions): DesignRepo {
     const gitignoreUpdated = await ensureGitignore(root);
     const identitySet = await ensureIdentity();
     const { files } = await getUnsavedChanges(git);
-    const saved = files.length > 0 ? await saveFiles(FIRST_VERSION_MESSAGE, files) : null;
+    const result = files.length > 0 ? await saveFiles(FIRST_VERSION_MESSAGE, files) : null;
+    const saved = result?.saved ? result : null;
 
     const changed = createdRepo || gitignoreUpdated || identitySet.length > 0 || saved !== null;
     const parts: string[] = [];
