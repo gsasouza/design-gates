@@ -268,3 +268,30 @@ test("history without file, with limit, and with file", async () => {
   await assert.rejects(repo.history({ file: "../out.pen" }), VcsUsageError);
   await assert.rejects(repo.history({ limit: 0 }), VcsUsageError);
 });
+
+test("init with only added-then-deleted entries saves nothing and reports no first version", async () => {
+  const dir = await tmp();
+  const rec = recordingGit((a) => {
+    if (a[0] === "rev-parse") return dir;
+    if (a[0] === "status") return porcelain("AD gone.pen");
+    return undefined;
+  });
+  const r = await createDesignRepo({ repo: dir, exec: rec.exec }).init();
+  assert.equal(r.saved, null);
+  assert.ok(!rec.calls.some((c) => c.includes("commit")));
+  assert.ok(!r.summary.includes("First version"));
+});
+
+test("save summary and files count only committed entries, not added-then-deleted", async () => {
+  const dir = await tmp();
+  const rec = recordingGit((a) => {
+    if (a[0] === "rev-parse") return dir;
+    if (a[0] === "status") return porcelain("?? a.pen", "AD gone.pen");
+    if (a[0] === "log") return LOG_LINE(SHA1, "aaaaaaa", "msg");
+    return undefined;
+  });
+  const r = await createDesignRepo({ repo: dir, exec: rec.exec }).save({ message: "msg" });
+  assert.equal(r.saved, true);
+  assert.deepEqual(r.files.map((f) => f.path), ["a.pen"]);
+  assert.ok(r.summary.includes("1 file included"), r.summary);
+});
