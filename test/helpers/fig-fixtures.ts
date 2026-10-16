@@ -125,10 +125,10 @@ function imageFill(side: FigSide): SceneGraph {
   const frame = b.add(1, "FRAME", b.page, { name: "Photo card", width: 120, height: 80 });
   b.add(2, "RECTANGLE", frame, {
     name: "Photo",
-    x: 10,
-    y: 10,
-    width: 80,
-    height: 50,
+    x: 0,
+    y: 0,
+    width: 120,
+    height: 80,
     fills: [{ type: "IMAGE", color: { r: 0, g: 0, b: 0, a: 1 }, opacity: 1, visible: true, imageHash: hash, imageScaleMode: "FILL" }],
   });
   return b.graph;

@@ -22,6 +22,9 @@ import {
 } from "./changes.js";
 import { esc, valueHtml } from "./html.js";
 
+/** Format label shown next to a `.fig` path; `.pen` files carry none. */
+const FIG_LABEL = "Figma .fig";
+
 export { esc } from "./html.js";
 
 export interface RenderReportOptions {
@@ -322,7 +325,7 @@ class Renderer {
   private sidebar(): string {
     let h = `<nav id="sidebar" aria-label="Changed frames">`;
     this.result.files.forEach((file, fi) => {
-      h += `<h2>${esc(file.path)}</h2><ul data-file="${fi}">`;
+      h += `<h2>${esc(file.path)}${file.format === "fig" ? ` · ${FIG_LABEL}` : ""}</h2><ul data-file="${fi}">`;
       const unchanged: FrameDiff[] = [];
       for (const frame of file.frames) {
         if (!this.rendered.has(frame)) {

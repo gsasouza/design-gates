@@ -27,6 +27,8 @@ export interface FixtureRepoOptions {
   base?: string;
   /** Directory under `fixtures/` for commit 2 (default `head`). */
   head?: string;
+  /** Commits one file per side instead of a whole tree: fixture paths `base` and `head` are stored as `as`. */
+  single?: { base: string; head: string; as: string };
 }
 
 /**
@@ -63,15 +65,20 @@ export async function createFixtureRepo(opts: FixtureRepoOptions = {}): Promise<
     for (const entry of await readdir(dir)) {
       if (entry !== ".git") await rm(path.join(dir, entry), { recursive: true, force: true });
     }
+    if (opts.single) {
+      const from = side === "base" ? opts.single.base : opts.single.head;
+      await cp(fileURLToPath(fixtureUrl(from)), path.join(dir, opts.single.as));
+      return;
+    }
     await cp(fileURLToPath(fixtureUrl(`${side}/`)), dir, { recursive: true });
   };
   try {
     await git("init", "-b", "main");
-    await replaceTree(opts.base ?? "base");
+    await replaceTree(opts.single ? "base" : (opts.base ?? "base"));
     await git("add", "-A");
     await git("commit", "-m", "base");
     await git("tag", "base");
-    await replaceTree(opts.head ?? "head");
+    await replaceTree(opts.single ? "head" : (opts.head ?? "head"));
     await git("add", "-A");
     await git("commit", "-m", "head");
     await git("tag", "head");
