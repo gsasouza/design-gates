@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadPenFile } from "../src/index.js";
-import { defaultTheme, prepareDocument, resolveVariable, withFrameTheme } from "../src/render/themes.js";
+import { defaultTheme, findNode, prepareDocument, resolveVariable, withFrameTheme } from "../src/render/themes.js";
 import { fixtureUrl } from "./helpers/fixtures.js";
 
 const themed = await loadPenFile(fixtureUrl("spike/themed.pen").pathname);
@@ -119,4 +119,45 @@ test("prepareDocument bakes a component with the theme of an instance under a ne
   assert.equal(byId("comp").fill, "#111111");
   assert.notEqual(dark.ref, "comp");
   assert.equal(byId(dark.ref).fill, "#222222");
+});
+
+const nestedDoc = (descendants: Record<string, unknown>): Doc =>
+  ({
+    version: "2.6",
+    themes: { mode: ["light", "dark"] },
+    variables: { c: { type: "color", value: [{ value: "#ffffff" }, { value: "#000000", theme: { mode: "dark" } }] } },
+    children: [
+      { id: "B", type: "frame", reusable: true, width: 10, height: 10, children: [{ id: "dot", type: "rectangle", width: 4, height: 4, fill: "$c" }] },
+      { id: "A", type: "frame", reusable: true, width: 10, height: 10, children: [{ id: "b-inst", type: "ref", ref: "B" }] },
+      {
+        id: "frame",
+        type: "frame",
+        width: 40,
+        height: 20,
+        children: [{ id: "dark-pin", type: "frame", theme: { mode: "dark" }, children: [{ id: "a-inst", type: "ref", ref: "A", descendants }] }],
+      },
+    ],
+  }) as unknown as Doc;
+
+test("prepareDocument maps each override path segment through the variant that holds it", async () => {
+  const { compile } = await import("../src/compile/compile.js");
+  const prepared = prepareDocument(nestedDoc({ "b-inst/dot": { fill: "#ff0000" } }), "frame");
+  const inst = findNode(prepared.children, "a-inst")!;
+  const outer = findNode(prepared.children, String(inst.ref))!;
+  const nested = findNode(prepared.children, String(outer.children![0]!.ref))!;
+  const dot = nested.children![0]!.id;
+  assert.notEqual(nested.id, "B");
+  assert.deepEqual(Object.keys(inst.descendants!), [`${outer.children![0]!.id}/${dot}`]);
+  const result = compile(prepared);
+  assert.ok(!result.diagnostics.some((d) => d.code === "descendant-missing"));
+  const target = result.nodes.find((n) => n.path.includes("a-inst") && n.sourceId === dot);
+  assert.ok(target);
+  assert.equal(target.props.fill, "#ff0000");
+});
+
+test("prepareDocument still suffixes a single-segment override path", () => {
+  const prepared = prepareDocument(nestedDoc({ "b-inst": { opacity: 0.5 } }), "frame");
+  const inst = findNode(prepared.children, "a-inst")!;
+  const outer = findNode(prepared.children, String(inst.ref))!;
+  assert.deepEqual(Object.keys(inst.descendants!), [outer.children![0]!.id]);
 });
