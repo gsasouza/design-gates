@@ -1,0 +1,19 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "checkout",
+      "type": "frame",
+      "name": "Checkout",
+      "width": 100,
+      "height": 100
+    },
+    {
+      "id": "cart",
+      "type": "frame",
+      "name": "Cart",
+      "width": 100,
+      "height": 100
+    }
+  ]
+}

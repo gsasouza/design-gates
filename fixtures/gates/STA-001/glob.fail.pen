@@ -1,0 +1,26 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "checkout",
+      "type": "frame",
+      "name": "Checkout",
+      "width": 100,
+      "height": 100
+    },
+    {
+      "id": "cart",
+      "type": "frame",
+      "name": "Cart Page",
+      "width": 100,
+      "height": 100
+    },
+    {
+      "id": "home",
+      "type": "frame",
+      "name": "Home",
+      "width": 100,
+      "height": 100
+    }
+  ]
+}

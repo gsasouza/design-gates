@@ -196,7 +196,7 @@ Safety promises: everything stays local (nothing is pushed or uploaded); earlier
 
 ## Gates
 
-`design-gates check` runs a deterministic rule engine over `.pen` documents (phase 1: SCH-001/002/003, TOK-001, TOK-002, A11Y-001, CMP-001, DIF-001). This section is the foundation: the compiler, the config model and the rule registry. Rules are pure functions of the compiled document, the config and an optional diff; they never read the clock or the network.
+`design-gates check` runs a deterministic rule engine over `.pen` documents (phase 1: SCH-001/002/003, TOK-001, TOK-002, A11Y-001, CMP-001, DIF-001, and the opt-in STA-001). This section is the foundation: the compiler, the config model and the rule registry. Rules are pure functions of the compiled document, the config and an optional diff; they never read the clock or the network.
 
 ### Rules
 
@@ -210,6 +210,7 @@ Safety promises: everything stays local (nothing is pushed or uploaded); earlier
 | DIF-001 | Blast radius, only with `--base`: a changed reusable component (compared by its own props and children, nested components on their own) with its transitive instances and the screens containing them; a changed variable or theme value with the affected nodes per theme. | warn at `warnAt`, block at `blockAt`; block is warn when in `scope` | `severity`, `warnAt` (5), `blockAt` (20), `scope` (`[]`, ids/names, `*` glob; `--scope` adds to it) | none |
 | TOK-001 | Hard-coded value: a literal (not a `$variable`) in fill, stroke (colour), `effect.color`, `cornerRadius`, `gap`, `padding`, `fontSize`, `strokeWidth` (`stroke.thickness`, a number or per-side object) or `fontFamily`. Colours are read through the solid-paint reader, so a gradient or image is not reported. A literal inside a component is reported once on the node that defines it, with `affectedInstances`; instance overrides are reported on the instance. | `block` for colours and `fontSize`, `warn` otherwise | `severity`, `properties` (all nine names above), `ignoreValues` (per property; plain strings, or `/regex/` strings of at most 200 characters and without nested quantifiers such as `(a+)+` (best-effort check; rejected as a config error), for example `{ "fill": ["transparent", "/^#00/"] }`), `onlyIn` (top-level frame names or ids, `*` glob; `[]` = all) | one variable has the value in the node's theme: `replace` with `$name`; several: `candidates` sorted by name; none: no fix |
 | TOK-002 | Off-scale numeric value: `gap` and `padding` (spacing), `cornerRadius` (radius), `fontSize`, `strokeWidth`. Checks literals and numeric variable definitions read by those properties (reported on the variable, `nodeId` `$name`, once per category and themed entry, not again where it is used). | `warn`; `block` when the top-level `strict` is `true` | `severity`, `scales` (`spacing` `{ "base": 4 }`, `radius` `{ "base": 2 }`, `strokeWidth` `[1, 2, 4]`, `fontSize` `[12, 14, 16, 20, 24, 32, 40, 48]`; a category is `{ "base": n }` or a list), `tolerance` (0), top-level `strict` (`false`) | `candidates`: the nearest allowed value, or both neighbours in ascending order when equidistant (`gap: 18`, base 4: `[16, 20]`) |
+| `STA-001` | All states covered (opt-in): a screen (top-level non-reusable frame) or reusable component that declares data (metadata `states: true`, or name/id matching a `screens` glob) has a variant for each configured state. A variant is a sibling of the same kind named by `pattern` (case-insensitive, trimmed), or a node with metadata `variantOf` + `state`. Variants never declare data. One finding per missing state, with `prop` `states.<state>`. | `warn` | `severity`, `states` (`["empty", "error", "loading"]`), `screens` (`[]`, name/id `*` glob), `pattern` (`"{name} / {state}"`) | none |
 
 ### Severities
 
@@ -289,6 +290,8 @@ Safety promises: everything stays local (nothing is pushed or uploaded); earlier
 }
 ```
 
+Opt-in rules (currently `STA-001`) are not in the defaults above and run only when `rules.<ID>` is present in your config, even as `{}`; without a config, or without that key, they never run. `severity: "off"` still disables them. `enabled` is internal and is a config error if written.
+
 `rules.<ID>` also accepts `severity`. Unknown option keys under a known rule are kept for later rules to read; known keys of the wrong type are an error.
 
 | Key | Default | Meaning |
@@ -300,6 +303,7 @@ Safety promises: everything stays local (nothing is pushed or uploaded); earlier
 | `rules.CMP-001.minNodes` | `3` | Minimum subtree size for a repeated structure to be reported. |
 | `rules.DIF-001.warnAt` / `blockAt` | `5` / `20` | Change thresholds for warn / block. |
 | `rules.DIF-001.scope` | `[]` | Scope ids; `--scope` appends to it. |
+| `rules.STA-001.states` / `screens` / `pattern` | `["empty", "error", "loading"]` / `[]` / `"{name} / {state}"` | Opt-in. Required states (non-empty list); screen or component names/ids (`*` glob) that declare data; variant name pattern (must contain `{name}` and `{state}`). |
 | `rules.TOK-001.properties` / `ignoreValues` / `onlyIn` | see JSON above | Checked properties, per-property ignored literals, frames to check. |
 | `rules.TOK-002.scales` / `tolerance` | see JSON above / `0` | Allowed values per category; accepted distance from a scale value. |
 
@@ -326,6 +330,25 @@ Exit codes: `0` no `block` violation left after suppression and baseline; `1` at
 ### Suppression
 
 A node may carry `"metadata": { "type": "design-gates", "ignore": ["TOK-001"], "reason": "legacy screen" }`. It suppresses the listed rules on that node and its subtree; suppressed violations are left out of the output. `reason` is mandatory: without a non-empty reason nothing is suppressed and the marker is itself reported as a `block` violation of `SCH-001` ("design-gates suppression without reason"). Setting `rules.SCH-001.severity` to `off` disables SCH-001 entirely, including this report and the file-level report for a `.pen` file that cannot be parsed.
+
+A marker may instead (or also) carry the keys `states: true` (this screen or component declares data, see STA-001), `variantOf` (a compiled id, source id or name of the base) with `state` (or `breakpoint`) naming the variant. `reason` is required only when `ignore` is a non-empty list; a marker with only the other keys is valid and silent.
+
+Example for STA-001: config `{ "rules": { "STA-001": { "states": ["empty", "error"] } } }` and a document
+
+```json
+{ "version": "2.6", "children": [
+  { "id": "checkout", "type": "frame", "name": "Checkout", "metadata": { "type": "design-gates", "states": true } },
+  { "id": "checkout-empty", "type": "frame", "name": "Checkout / empty" }
+] }
+```
+
+gives
+
+```json
+{"violations":[{"rule":"STA-001","severity":"warn","file":"a.pen","nodeId":"checkout","path":"checkout","message":"Screen \"Checkout\" has no \"error\" state variant"}]}
+```
+
+A variant can also be marked with metadata instead of its name: `{ "type": "design-gates", "variantOf": "checkout", "state": "error" }`.
 
 ### Baseline
 
