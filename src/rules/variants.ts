@@ -77,11 +77,11 @@ const isVariantOf = (variant: Candidate, base: Candidate, kind: VariantKey, key:
   variant.node.id !== base.node.id && variant.kind === base.kind && (viaNaming(variant, base, kind, key, naming) || viaMetadata(variant, base, kind, key));
 
 /** Variants of `base` for one state or breakpoint, by naming or metadata, sorted by id. */
-export function variantsOf(compiled: CompiledDocument, base: Candidate, kind: VariantKey, key: string, naming: VariantNaming): Candidate[] {
-  return listCandidates(compiled).filter((c) => isVariantOf(c, base, kind, key, naming));
+export function variantsOf(candidates: readonly Candidate[], base: Candidate, kind: VariantKey, key: string, naming: VariantNaming): Candidate[] {
+  return candidates.filter((c) => isVariantOf(c, base, kind, key, naming));
 }
 
 /** Whether `node` is a state or breakpoint variant of another candidate of its kind. */
-export function isVariant(compiled: CompiledDocument, node: Candidate, naming: VariantNaming): boolean {
-  return listCandidates(compiled).some((base) => (["state", "breakpoint"] as const).some((kind) => isVariantOf(node, base, kind, undefined, naming)));
+export function isVariant(candidates: readonly Candidate[], node: Candidate, naming: VariantNaming): boolean {
+  return candidates.some((base) => (["state", "breakpoint"] as const).some((kind) => isVariantOf(node, base, kind, undefined, naming)));
 }

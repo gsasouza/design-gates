@@ -11,12 +11,13 @@ export const sta001: Rule = (compiled, config) => {
   // Breakpoint variants (by RSP-001's configured naming, or metadata) never declare data.
   const naming: VariantNaming = { statePattern: pattern, states, ...breakpointNaming(config) };
   const out: Violation[] = [];
-  for (const candidate of listCandidates(compiled)) {
+  const candidates = listCandidates(compiled);
+  for (const candidate of candidates) {
     const { node, name } = candidate;
     const declares = markerOf(node)?.states === true || globs.some((g) => [name, node.sourceId, node.id].some((s) => g.test(s)));
-    if (!declares || isVariant(compiled, candidate, naming)) continue;
+    if (!declares || isVariant(candidates, candidate, naming)) continue;
     for (const state of states) {
-      if (variantsOf(compiled, candidate, "state", state, naming).length > 0) continue;
+      if (variantsOf(candidates, candidate, "state", state, naming).length > 0) continue;
       out.push({
         rule: "STA-001",
         severity: "warn",
