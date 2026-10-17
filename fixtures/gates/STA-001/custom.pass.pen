@@ -1,0 +1,30 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "checkout",
+      "type": "frame",
+      "name": "Checkout",
+      "width": 100,
+      "height": 100,
+      "metadata": {
+        "type": "design-gates",
+        "states": true
+      }
+    },
+    {
+      "id": "checkout-empty",
+      "type": "frame",
+      "name": "Checkout - empty",
+      "width": 100,
+      "height": 100
+    },
+    {
+      "id": "checkout-offline",
+      "type": "frame",
+      "name": "Checkout - offline",
+      "width": 100,
+      "height": 100
+    }
+  ]
+}

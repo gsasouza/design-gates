@@ -22,7 +22,7 @@ export type { ThemeCombination } from "./compile/query.js";
 export { KNOWN_TYPES, KNOWN_VERSIONS } from "./compile/constants.js";
 export type { CompileDiagnostic, CompileOptions, CompiledDocument, CompiledNode, DiagnosticRule, Provenance, VariableUse } from "./compile/types.js";
 export type { DiffContext, Fix, Rule, Severity, Violation } from "./gates/types.js";
-export { DEFAULT_CONFIG, RULE_IDS, resolveConfig } from "./gates/config.js";
+export { DEFAULT_CONFIG, OPT_IN_RULES, RULE_IDS, resolveConfig } from "./gates/config.js";
 export type { ConfigResult, GatesConfig, RuleConfig, RuleId, SeverityOverride } from "./gates/config.js";
 export { registry, runRules } from "./rules/index.js";
 export { parseFailureViolation } from "./rules/parse-failure.js";

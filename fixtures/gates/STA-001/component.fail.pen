@@ -1,0 +1,65 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "card",
+      "type": "frame",
+      "name": "Card",
+      "width": 100,
+      "height": 100,
+      "reusable": true,
+      "metadata": {
+        "type": "design-gates",
+        "states": true
+      }
+    },
+    {
+      "id": "card-empty",
+      "type": "frame",
+      "name": "Card / empty",
+      "width": 100,
+      "height": 100,
+      "reusable": true
+    },
+    {
+      "id": "card-error",
+      "type": "frame",
+      "name": "Card / error",
+      "width": 100,
+      "height": 100,
+      "reusable": true
+    },
+    {
+      "id": "home",
+      "type": "frame",
+      "name": "Home",
+      "width": 100,
+      "height": 100,
+      "metadata": {
+        "type": "design-gates",
+        "states": true
+      }
+    },
+    {
+      "id": "home-empty",
+      "type": "frame",
+      "name": "Home / empty",
+      "width": 100,
+      "height": 100
+    },
+    {
+      "id": "home-error",
+      "type": "frame",
+      "name": "Home / error",
+      "width": 100,
+      "height": 100
+    },
+    {
+      "id": "home-loading",
+      "type": "frame",
+      "name": "Home / loading",
+      "width": 100,
+      "height": 100
+    }
+  ]
+}

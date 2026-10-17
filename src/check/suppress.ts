@@ -12,7 +12,7 @@ export interface Suppressions {
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
-/** Reads `metadata: { type: 'design-gates', ignore, reason }` markers; a marker without a non-empty reason suppresses nothing. */
+/** Reads `metadata: { type: 'design-gates', ignore, reason }` markers; a marker with an `ignore` list but no non-empty reason suppresses nothing. */
 export function collectSuppressions(compiled: CompiledDocument, file: string): Suppressions {
   const byNode = new Map<string, Set<string>>();
   const invalid: Violation[] = [];
@@ -20,13 +20,15 @@ export function collectSuppressions(compiled: CompiledDocument, file: string): S
     const meta = node.props.metadata;
     if (!isObject(meta) || meta.type !== "design-gates") continue;
     const reason = typeof meta.reason === "string" ? meta.reason.trim() : "";
+    const ignore = Array.isArray(meta.ignore) ? meta.ignore.filter((r): r is string => typeof r === "string") : [];
+    // A marker that only carries states / variant keys suppresses nothing and needs no reason.
+    if (ignore.length === 0) continue;
     if (reason === "") {
       // Nodes expanded from a component repeat the component's marker; report it once, on the source.
       if (!node.expanded) invalid.push({ rule: "SCH-001", severity: "block", file, nodeId: node.id, path: node.path, message: SUPPRESSION_NO_REASON });
       continue;
     }
-    const ignore = Array.isArray(meta.ignore) ? meta.ignore.filter((r): r is string => typeof r === "string") : [];
-    if (ignore.length > 0) byNode.set(node.id, new Set(ignore));
+    byNode.set(node.id, new Set(ignore));
   }
   return { byNode, invalid };
 }

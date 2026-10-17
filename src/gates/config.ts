@@ -1,14 +1,19 @@
 import { CONTROLLED_PROPS, hasNestedQuantifier, isControlledProp, MAX_IGNORE_LENGTH } from "./tok.js";
 import type { Severity } from "./types.js";
 
-export const RULE_IDS = ["A11Y-001", "CMP-001", "DIF-001", "SCH-001", "SCH-002", "SCH-003", "TOK-001", "TOK-002"] as const;
+export const RULE_IDS = ["A11Y-001", "CMP-001", "DIF-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002"] as const;
 export type RuleId = (typeof RULE_IDS)[number];
+
+/** Rules that run only when the user's config has a `rules.<ID>` entry. */
+export const OPT_IN_RULES: readonly RuleId[] = ["STA-001"];
 
 export type SeverityOverride = Severity | "off";
 
 /** Options every rule accepts. Unknown keys are kept so later cards can extend a rule's bag. */
 export interface RuleConfig {
   severity?: SeverityOverride;
+  /** Set by resolveConfig for an opt-in rule the user configured; never written by the user. */
+  enabled?: boolean;
   [key: string]: unknown;
 }
 
@@ -48,6 +53,15 @@ export interface Dif001Config extends RuleConfig {
   scope: string[];
 }
 
+export interface Sta001Config extends RuleConfig {
+  /** State names every declaring screen or component needs a variant for. */
+  states: string[];
+  /** Screen or component names/ids (`*` glob) that declare data without a metadata marker. */
+  screens: string[];
+  /** Variant name; `{name}` is the base name, `{state}` the state. */
+  pattern: string;
+}
+
 export interface GatesConfig {
   /** Colour assumed behind the top-level frames when computing contrast. */
   canvasColor: string;
@@ -60,6 +74,7 @@ export interface GatesConfig {
     "SCH-001": RuleConfig;
     "SCH-002": RuleConfig;
     "SCH-003": RuleConfig;
+    "STA-001": Sta001Config;
     "TOK-001": Tok001Config;
     "TOK-002": Tok002Config;
   };
@@ -75,6 +90,7 @@ export const DEFAULT_CONFIG: GatesConfig = {
     "SCH-001": {},
     "SCH-002": {},
     "SCH-003": {},
+    "STA-001": { enabled: false, states: ["empty", "error", "loading"], screens: [], pattern: "{name} / {state}" },
     "TOK-001": { properties: ["fill", "stroke", "effect.color", "cornerRadius", "gap", "padding", "fontSize", "strokeWidth", "fontFamily"], ignoreValues: {}, onlyIn: [] },
     "TOK-002": {
       scales: {
@@ -128,11 +144,15 @@ const ignoreValues: Check = (v) => {
 const properties: Check = (v) =>
   isStringList(v) && v.every(isControlledProp) ? undefined : `must be an array of ${CONTROLLED_PROPS.join(", ")}`;
 
+const states: Check = (v) => (isStringList(v) && v.length > 0 && v.every((s) => s.trim() !== "") ? undefined : "must be a non-empty array of non-empty strings");
+const pattern: Check = (v) => (typeof v === "string" && v.includes("{name}") && v.includes("{state}") ? undefined : "must be a string containing {name} and {state}");
+
 /** Validators for the option keys each rule knows; other keys are kept untouched. */
 const OPTION_CHECKS: Partial<Record<RuleId, Record<string, Check>>> = {
   "A11Y-001": { minRatio: number(1), minRatioLarge: number(1) },
   "CMP-001": { minNodes: integer(1) },
   "DIF-001": { warnAt: number(0), blockAt: number(0), scope: stringList },
+  "STA-001": { states, screens: stringList, pattern },
   "TOK-001": { properties, ignoreValues, onlyIn: stringList },
   "TOK-002": { scales, tolerance: number(0) },
 };
@@ -141,11 +161,13 @@ function resolveRule(id: RuleId, raw: unknown): RuleConfig | string {
   if (!isObject(raw)) return `rules.${id} must be an object`;
   const out: Record<string, unknown> = { ...structuredClone(DEFAULT_CONFIG.rules[id]) };
   for (const [key, value] of Object.entries(raw)) {
+    if (key === "enabled") return `rules.${id}.enabled is not a config key`;
     const check = key === "severity" ? (v: unknown) => (typeof v === "string" && SEVERITIES.includes(v) ? undefined : `must be one of ${SEVERITIES.join(", ")}`) : OPTION_CHECKS[id]?.[key];
     const problem = check?.(value);
     if (problem) return `rules.${id}.${key} ${problem}`;
     Object.defineProperty(out, key, { value: structuredClone(value), enumerable: true, writable: true, configurable: true });
   }
+  if (OPT_IN_RULES.includes(id)) out.enabled = true;
   if (id === "DIF-001" && (out.warnAt as number) > (out.blockAt as number)) return "rules.DIF-001.warnAt must not exceed blockAt";
   return out as RuleConfig;
 }
