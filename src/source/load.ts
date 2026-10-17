@@ -1,12 +1,12 @@
 import { type SceneGraph, parsePenFile } from "@open-pencil/core";
 import { parseFigFile } from "@open-pencil/core/io/formats/fig";
 import { MAX_COMPILED_NODES } from "../compile/constants.js";
-import { figGuids } from "../fig/guids.js";
+import { type NodeChange, figGuids } from "../fig/guids.js";
 import { figSceneToPen } from "../fig/normalize.js";
 import { figAxes } from "../fig/variables.js";
 import { parsePen } from "../pen/load.js";
 import { prepareDocument } from "../render/themes.js";
-import { checkKiwiInflation, decompressChunkCapped } from "./inflate-cap.js";
+import { type InflateSeams, checkKiwiInflation } from "./inflate-cap.js";
 import { designFormatOf } from "./format.js";
 import { emittedIdMap } from "./ids.js";
 import type { DesignSource } from "./types.js";
@@ -110,30 +110,50 @@ export function penSource(doc: DesignSource["doc"]): DesignSource {
   };
 }
 
-async function loadFig(file: string, bytes: Buffer, limits: LoadLimits): Promise<DesignSource> {
+/** Internal seams of `loadFig`, for tests; not part of `LoadLimits`. */
+export interface FigSeams extends InflateSeams {
+  parse?: (buffer: ArrayBuffer) => Promise<SceneGraph>;
+}
+
+/** A failure of the capped pass or the reader as an `Invalid .fig document` error, once. */
+function asFigError(err: unknown): never {
+  const message = err instanceof Error ? err.message : String(err);
+  if (message.startsWith("Invalid .fig document: ")) throw err;
+  return failFig(message);
+}
+
+export async function loadFig(file: string, bytes: Buffer, limits: LoadLimits, seams: FigSeams = {}): Promise<DesignSource> {
   const maxBytes = limits.maxFigBytes ?? MAX_FIG_BYTES;
   if (bytes.length > maxBytes) failFig(`${file} is ${bytes.length} bytes, over the ${maxBytes} byte cap (MAX_FIG_BYTES)`);
   checkInflatedSize(bytes, limits.maxFigInflatedBytes ?? MAX_FIG_INFLATED_BYTES);
   const chunkCap = limits.maxFigChunkBytes ?? MAX_FIG_CHUNK_BYTES;
   const overCap = (): never => failFig(`decompressed data passes the ${chunkCap} byte cap (MAX_FIG_CHUNK_BYTES)`);
-  checkKiwiInflation(bytes, chunkCap, overCap);
+  let changes: NodeChange[] | undefined;
+  try {
+    // The one capped decompression and decode; it passes before the reader sees the file.
+    changes = await checkKiwiInflation(bytes, chunkCap, overCap, seams);
+  } catch (err) {
+    return asFigError(err);
+  }
 
   const copy = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
   let graph: SceneGraph;
-  let guids: Map<string, string>;
   try {
-    graph = await parseFigFile(copy);
-    guids = await figGuids(bytes, graph, (chunk) => decompressChunkCapped(chunk, chunkCap, overCap));
+    // parseFigFile takes only the raw bytes and decompresses them again internally, with no hook to
+    // cap or reuse that; the chunks were proven under the budget just above.
+    graph = await (seams.parse ?? parseFigFile)(copy);
   } catch (err) {
-    return failFig(err instanceof Error ? err.message : String(err));
+    return asFigError(err);
   }
+  const guids = figGuids(graph, changes ?? []);
   const maxNodes = limits.maxNodes ?? MAX_COMPILED_NODES;
   const nodes = [...graph.getAllNodes()];
   if (nodes.length > maxNodes) failFig(`${file} has more than ${maxNodes} nodes (MAX_COMPILED_NODES)`);
-  const doc = figSceneToPen(graph, guids);
+  const emitted: Array<[string, string]> = [];
+  const doc = figSceneToPen(graph, guids, emitted);
   let ids: Map<string, string>;
   try {
-    ids = emittedIdMap(doc, nodes, guids);
+    ids = emittedIdMap(emitted);
   } catch (err) {
     return failFig(`${file} has ${err instanceof Error ? err.message : String(err)}`);
   }

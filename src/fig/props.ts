@@ -9,6 +9,8 @@ export interface FigContext {
   pin: FigVariables["pin"];
   /** Figma GUIDs by graph node id, for nodes whose own `source.id` is missing. */
   guids: ReadonlyMap<string, string>;
+  /** When set, receives a `[doc id, graph id]` pair for every node the normalizer emits. */
+  emitted?: Array<[string, string]>;
 }
 
 /** Stable id of a scene node: its Figma GUID, which survives sibling reordering (graph ids are assigned by file order). */

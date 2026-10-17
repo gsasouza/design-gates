@@ -12,6 +12,7 @@ export const FIG_PEN_VERSION = "2.6";
 function toPenNode(ctx: FigContext, node: SceneNode): PenNode {
   const { type, exact } = PEN_TYPES[node.type];
   const base: PenNode = { id: figNodeId(node, ctx.guids), type, name: node.name, ...(exact ? {} : { figType: node.type }) };
+  ctx.emitted?.push([base.id, node.id]);
   const instance = node.type === "INSTANCE" ? penInstance(ctx, node) : undefined;
   if (instance) return { ...base, ...instance };
 
@@ -32,11 +33,12 @@ function toPenNode(ctx: FigContext, node: SceneNode): PenNode {
 /**
  * Normalizes a parsed `.fig` scene into a PenDocument. The top-level children are the layers of
  * every page, in page order (pages themselves are not nodes); node ids are the Figma GUIDs.
- * Figma variables become `variables`, their collections and modes `themes`.
+ * Figma variables become `variables`, their collections and modes `themes`. `emitted`, when given,
+ * receives the `[doc id, graph id]` of every emitted node.
  */
-export function figSceneToPen(graph: SceneGraph, guids: ReadonlyMap<string, string> = new Map()): PenDocument {
+export function figSceneToPen(graph: SceneGraph, guids: ReadonlyMap<string, string> = new Map(), emitted?: Array<[string, string]>): PenDocument {
   const { names, variables, themes, pin } = figVariables(graph);
-  const ctx: FigContext = { graph, names, pin, guids };
+  const ctx: FigContext = { graph, names, pin, guids, ...(emitted && { emitted }) };
   const children = graph
     .getPages()
     .flatMap((page) => graph.getChildren(page.id))
