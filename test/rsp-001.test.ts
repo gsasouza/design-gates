@@ -43,6 +43,10 @@ test("baseBreakpoint: the base frame satisfies it; without it the breakpoint is 
   assert.deepEqual(summary(await run("base.pass", ON)), ["checkout:breakpoints.mobile:warn"]);
 });
 
+test("baseBreakpoint matches the breakpoint name case-insensitively", async () => {
+  assert.deepEqual(await run("base.pass", rsp(["Mobile", "tablet"], { baseBreakpoint: "mobile" })), []);
+});
+
 test("width configured and matching gives nothing", async () => {
   const bps = [{ name: "mobile", width: 375 }, { name: "tablet", width: 768 }];
   assert.deepEqual(await run("covered.pass", rsp(bps)), []);
