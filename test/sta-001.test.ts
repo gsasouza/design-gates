@@ -139,3 +139,13 @@ test("a breakpoint variant never counts as declaring, even via a screens glob", 
   const out = runRules([{ file, compiled }], config(raw)).filter((v) => v.rule === "STA-001");
   assert.deepEqual(summary(out), ["checkout:states.empty:warn"]);
 });
+
+test("a non-array ignore without a reason is reported; an empty ignore list is silent", () => {
+  const mk = (metadata: unknown) => compile({ version: "2.6", children: [{ id: "f", type: "frame", width: 1, height: 1, metadata }] } as never, { file: "a.pen" });
+  assert.equal(collectSuppressions(mk({ type: "design-gates", ignore: "TOK-001" }), "a.pen").invalid.length, 1);
+  assert.deepEqual(collectSuppressions(mk({ type: "design-gates", ignore: [] }), "a.pen").invalid, []);
+});
+
+test("duplicate states, also case-variant ones, are a config error", () => {
+  for (const states of [["empty", "empty"], ["empty", "Empty "]]) assert.ok("error" in resolveConfig({ rules: { "STA-001": { states } } }), JSON.stringify(states));
+});

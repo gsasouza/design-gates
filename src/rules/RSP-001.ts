@@ -41,16 +41,17 @@ export const rsp001: Rule = (compiled, config) => {
     });
   };
 
-  for (const candidate of listCandidates(compiled)) {
+  const candidates = listCandidates(compiled);
+  for (const candidate of candidates) {
     const { node, name } = candidate;
-    if (candidate.kind !== "screen" || isVariant(compiled, candidate, naming)) continue;
+    if (candidate.kind !== "screen" || isVariant(candidates, candidate, naming)) continue;
     if (globs.length > 0 && !globs.some((g) => [name, node.sourceId, node.id].some((s) => g.test(s)))) continue;
     for (const b of breakpoints) {
       if (isBase(b)) {
         checkWidth(candidate, b);
         continue;
       }
-      const frames = variantsOf(compiled, candidate, "breakpoint", b.name, naming);
+      const frames = variantsOf(candidates, candidate, "breakpoint", b.name, naming);
       if (frames.length === 0) {
         out.push({
           rule: "RSP-001",

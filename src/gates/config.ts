@@ -167,7 +167,11 @@ const ignoreValues: Check = (v) => {
 const properties: Check = (v) =>
   isStringList(v) && v.every(isControlledProp) ? undefined : `must be an array of ${CONTROLLED_PROPS.join(", ")}`;
 
-const states: Check = (v) => (isStringList(v) && v.length > 0 && v.every((s) => s.trim() !== "") ? undefined : "must be a non-empty array of non-empty strings");
+const states: Check = (v) => {
+  if (!(isStringList(v) && v.length > 0 && v.every((s) => s.trim() !== ""))) return "must be a non-empty array of non-empty strings";
+  const keys = v.map((s) => s.trim().toLowerCase());
+  return new Set(keys).size === keys.length ? undefined : "must not contain duplicate states (case-insensitive)";
+};
 const pattern: Check = (v) => (typeof v === "string" && v.includes("{name}") && v.includes("{state}") ? undefined : "must be a string containing {name} and {state}");
 
 const breakpointName = (e: unknown): string | undefined => (typeof e === "string" ? e : isObject(e) && typeof e.name === "string" ? e.name : undefined);
