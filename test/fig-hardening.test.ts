@@ -7,6 +7,7 @@ import type { RuleId } from "../src/gates/config.js";
 import type { PenDocument } from "../src/pen/types.js";
 import { runRules, type RuleEntry } from "../src/rules/index.js";
 import { createOpenPencilRenderer } from "../src/render/openpencil.js";
+import { checkKiwiInflation } from "../src/source/inflate-cap.js";
 import { emittedIdMap } from "../src/source/ids.js";
 import { loadDesignSource } from "../src/source/load.js";
 import { writeFig } from "./helpers/fig-fixtures.js";
@@ -53,9 +54,9 @@ describe("zstd chunk cap", () => {
     await assert.rejects(loadDesignSource("z.fig", blobOf(frame)), /Invalid \.fig document: .*MAX_FIG_CHUNK_BYTES/);
   });
 
-  it("rejects a frame that does not declare its content size", async () => {
+  it("accepts a frame that does not declare its content size while its output stays under the cap", async () => {
     const frame = Buffer.concat([Buffer.from([0x28, 0xb5, 0x2f, 0xfd, 0x00, 0x00]), lastEmptyBlock]);
-    await assert.rejects(loadDesignSource("z.fig", blobOf(frame)), /Invalid \.fig document: .*MAX_FIG_CHUNK_BYTES/);
+    await checkKiwiInflation(blobOf(frame), 2000, () => assert.fail("over the cap"));
   });
 });
 
@@ -88,15 +89,14 @@ describe("two collections with the same name", () => {
 });
 
 describe("emitted id check", () => {
-  const node = (id: string, sourceId?: string): SceneNode => ({ id, source: sourceId === undefined ? {} : { id: sourceId } }) as unknown as SceneNode;
-  const doc = (...ids: string[]): PenDocument => ({ version: "2.6", children: ids.map((id) => ({ id, type: "frame" })) }) as PenDocument;
+  const emitted = (...pairs: Array<[string, string]>): Array<[string, string]> => pairs;
 
   it("fails on two emitted nodes with one id", () => {
-    assert.throws(() => emittedIdMap(doc("1:5", "1:5"), [node("a", "1:5"), node("b", "1:5")], new Map()), /two nodes with the id 1:5/);
+    assert.throws(() => emittedIdMap(emitted(["1:5", "a"], ["1:5", "b"])), /two nodes with the id 1:5/);
   });
 
   it("lets a node that is never emitted share a fallback id with a GUID", () => {
-    const ids = emittedIdMap(doc("1:5"), [node("1:5"), node("g", "1:5")], new Map());
+    const ids = emittedIdMap(emitted(["1:5", "g"]));
     assert.deepEqual([...ids], [["1:5", "g"]]);
   });
 });
