@@ -105,3 +105,20 @@ test("a baselined missing state is marked, a newly missing state is not", async 
   const flags = after.map((v) => [v.prop, baseline.has(fingerprint(entryOf({ ...v, file })))]);
   assert.deepEqual(flags, [["states.error", true], ["states.loading", false]].map(([p, b]) => [p, b]));
 });
+
+test("variant matcher bypasses: unmatched/other-kind variantOf, wrong state and self reference do not count", async () => {
+  const out = await sta("bypass.fail", ON);
+  // shop: "error" is covered via variantOf by id; the ghost (unmatched variantOf), the
+  // component (different kind) and its own self-referencing marker do not cover the rest.
+  assert.deepEqual(summary(out), ["shop:states.empty:warn", "shop:states.loading:warn"]);
+});
+
+test("screens globs match regex metacharacters literally", async () => {
+  const out = await sta("meta.fail", { rules: { "STA-001": { screens: ["Cart (1)", "a.b"], states: ["empty"] } } });
+  assert.deepEqual(out.map((v) => v.nodeId), ["ab", "cart1"]);
+});
+
+test("screens globs match by compiled id as well as name", async () => {
+  const out = await sta("meta.fail", { rules: { "STA-001": { screens: ["sid-*"], states: ["empty"] } } });
+  assert.deepEqual(out.map((v) => v.nodeId), ["sid-only"]);
+});

@@ -1,0 +1,6 @@
+{"version":"2.6","children":[
+{"id":"cart1","type":"frame","name":"Cart (1)","width":100,"height":100},
+{"id":"cartX","type":"frame","name":"Cart 1","width":100,"height":100},
+{"id":"ab","type":"frame","name":"a.b","width":100,"height":100},
+{"id":"aXb","type":"frame","name":"aXb","width":100,"height":100},
+{"id":"sid-only","type":"frame","name":"Other","width":100,"height":100}]}

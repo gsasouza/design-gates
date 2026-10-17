@@ -1,0 +1,5 @@
+{"version":"2.6","children":[
+{"id":"shop","type":"frame","name":"Shop","width":100,"height":100,"metadata":{"type":"design-gates","states":true,"variantOf":"Shop","state":"empty"}},
+{"id":"s-id","type":"frame","name":"Zed","width":100,"height":100,"metadata":{"type":"design-gates","variantOf":"shop","state":"error"}},
+{"id":"s-ghost","type":"frame","name":"Ghost","width":100,"height":100,"metadata":{"type":"design-gates","variantOf":"nonexistent","state":"empty"}},
+{"id":"widget","type":"frame","reusable":true,"name":"Widget","width":10,"height":10,"metadata":{"type":"design-gates","variantOf":"shop","state":"loading"}}]}
