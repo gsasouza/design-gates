@@ -107,6 +107,11 @@ test("config validation", () => {
     { breakpoints: [{ name: "mobile", width: 0 }] },
     { breakpoints: [{ name: "mobile", width: "375" }] },
     { breakpoints: [{ name: "mobile", width: -5 }] },
+    { breakpoints: ["  "] },
+    { breakpoints: ["mobile", " mobile "] },
+    { breakpoints: [{ name: "mobile", width: 1, foo: 1 }] },
+    { breakpoints: [{ name: "mobile", width: NaN }] },
+    { breakpoints: [{ name: "mobile", width: Infinity }] },
     { breakpoints: [{ width: 5 }] },
     { breakpoints: ["mobile"], baseBreakpoint: "tablet" },
     { breakpoints: ["mobile"], baseBreakpoint: 3 },
@@ -119,6 +124,8 @@ test("config validation", () => {
   const ok = resolveConfig(rsp(["mobile", { name: "tablet", width: 768 }], { baseBreakpoint: "Mobile" }));
   assert.ok("config" in ok);
   assert.equal(ok.config.rules["RSP-001"].enabled, true);
+  const padded = resolveConfig(rsp(["mobile"], { baseBreakpoint: " Mobile " }));
+  assert.ok("config" in padded);
   assert.equal(config().rules["RSP-001"].enabled, false);
 });
 
