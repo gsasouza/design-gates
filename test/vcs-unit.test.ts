@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
+import { lstat, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
@@ -79,6 +79,30 @@ test("init refuses to write through a .gitignore symlink", async () => {
   await symlink(target, path.join(dir, ".gitignore"));
   const rec = recordingGit((a) => (a[0] === "rev-parse" ? dir : undefined));
   await assert.rejects(createDesignRepo({ repo: dir, exec: rec.exec }).init(), VcsRefusedError);
+  assert.equal(await readFile(target, "utf8"), "keep\n");
+});
+
+test("init refuses a .gitignore swapped for a symlink between the check and the write", { skip: process.platform === "win32" && "O_NOFOLLOW/ELOOP is POSIX-specific" }, async () => {
+  const dir = await tmp();
+  const file = path.join(dir, ".gitignore");
+  const target = path.join(await tmp(), "elsewhere");
+  await writeFile(file, "node_modules\n");
+  await writeFile(target, "keep\n");
+  const fs = {
+    lstat,
+    readFile,
+    writeFile: (async (f: Parameters<typeof writeFile>[0], data: Parameters<typeof writeFile>[1], opts: Parameters<typeof writeFile>[2]) => {
+      await rm(file);
+      await symlink(target, file);
+      return writeFile(f, data, opts);
+    }) as typeof writeFile,
+  };
+  const rec = recordingGit((a) => (a[0] === "rev-parse" ? dir : undefined));
+  await assert.rejects(createDesignRepo({ repo: dir, exec: rec.exec, fs }).init(), (e) => {
+    assert.ok(e instanceof VcsRefusedError);
+    assert.match(e.message, /is a link to another file/);
+    return true;
+  });
   assert.equal(await readFile(target, "utf8"), "keep\n");
 });
 
