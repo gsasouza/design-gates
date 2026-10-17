@@ -96,7 +96,8 @@ function zstdCapped(chunk: Uint8Array, cap: number, over: () => never): Uint8Arr
 /**
  * Decompresses one fig-kiwi chunk under `cap`: zstd is streamed with a running output count (the
  * declared sizes only gate the up-front allocation), deflate is inflated with an output limit.
- * Returns null for a chunk that is neither: it is left to the reader's own decoder, never decoded here.
+ * Malformed zstd throws. Returns null for a chunk that is neither zstd nor raw deflate: it is left to
+ * the reader's own decoder, never decoded here.
  */
 export function decompressChunkCapped(chunk: Uint8Array, cap: number, over: () => never): Uint8Array | null {
   if (isZstd(chunk)) return zstdCapped(chunk, cap, over);

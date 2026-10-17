@@ -156,12 +156,15 @@ export function prepareDocument(doc: PenDocument, frameId: string, theme?: Theme
       const id = `${seg}${segSuffix}`;
       const node = siblings?.find((c) => c.id === id);
       out.push(id);
-      if (typeof node?.ref === "string") {
+      if (!node) {
+        siblings = undefined;
+        segSuffix = suffix;
+      } else if (typeof node.ref === "string") {
         const component = findNode([...copy.children, ...variants], node.ref);
         siblings = component?.children;
         segSuffix = [...made.values()].includes(node.ref) ? node.ref.slice(node.ref.lastIndexOf("@")) : "";
       } else {
-        siblings = node?.children;
+        siblings = node.children;
       }
     }
     return out.join("/");
