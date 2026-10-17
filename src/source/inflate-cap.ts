@@ -114,7 +114,7 @@ export interface InflateSeams {
  * Inflates each chunk of a bare fig-kiwi blob under a shared `cap` and discards it, so a
  * decompression bomb fails here instead of exhausting memory in the reader. With `wanted`, the data
  * chunk (the second) is decoded right after its decompression and only the node changes are kept.
- * Malformed blobs are left for the reader.
+ * Malformed zstd throws. Bad magic, truncated framing, and a chunk that is neither zstd nor valid raw deflate are left for the reader.
  */
 async function checkKiwiChunks(blob: Buffer, cap: number, over: () => never, seams: InflateSeams, wanted: boolean): Promise<NodeChange[] | undefined> {
   if (blob.length < KIWI_HEADER || blob.toString("latin1", 0, KIWI_MAGIC.length) !== KIWI_MAGIC) return undefined;
