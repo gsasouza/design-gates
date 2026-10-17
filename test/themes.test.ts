@@ -161,3 +161,13 @@ test("prepareDocument still suffixes a single-segment override path", () => {
   const outer = findNode(prepared.children, String(inst.ref))!;
   assert.deepEqual(Object.keys(inst.descendants!), [outer.children![0]!.id]);
 });
+
+test("prepareDocument gives unresolvable segments after a nested instance the outer suffix", () => {
+  const prepared = prepareDocument(nestedDoc({ "b-inst/missing/deeper": { opacity: 0.5 } }), "frame");
+  const inst = findNode(prepared.children, "a-inst")!;
+  const outer = findNode(prepared.children, String(inst.ref))!;
+  const nestedRef = String(outer.children![0]!.ref);
+  const outerSuffix = String(inst.ref).slice(String(inst.ref).lastIndexOf("@"));
+  assert.notEqual(nestedRef.slice(nestedRef.lastIndexOf("@")), outerSuffix);
+  assert.deepEqual(Object.keys(inst.descendants!), [`${outer.children![0]!.id}/missing${nestedRef.slice(nestedRef.lastIndexOf("@"))}/deeper${outerSuffix}`]);
+});

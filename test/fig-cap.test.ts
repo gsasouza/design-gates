@@ -40,6 +40,14 @@ describe("zstd chunk streaming cap", () => {
     }
   });
 
+  it("concatenates the output parts of an undeclared-size frame longer than its window", () => {
+    const data = Buffer.alloc(3 * 1024 * 1024 + 123);
+    for (let i = 0; i < data.length; i++) data[i] = (i * 31 + (i >> 8)) & 0xff;
+    const out = decompressChunkCapped(rawZstdFrame(data, false), data.length + 1, () => assert.fail("over"));
+    assert.ok(out);
+    assert.equal(Buffer.compare(Buffer.from(out), data), 0);
+  });
+
   it("refuses a frame whose window descriptor passes the cap, before decompressing it", async () => {
     const canvas = await bareFig(RECTS);
     for (const window of [0xf8, 0xa0]) {
