@@ -145,6 +145,28 @@ export function prepareDocument(doc: PenDocument, frameId: string, theme?: Theme
   const made = new Map<string, string>();
   const frameKey = JSON.stringify(sorted(frameTheme));
 
+  const variantOf = (id: string): PenNode | undefined => variants.find((v) => v.id === id);
+
+  /** Map an override path through the ids of the variant that holds each segment, descending into nested instances' components. */
+  const mapPath = (path: string, root: PenNode | undefined, suffix: string): string => {
+    const out: string[] = [];
+    let siblings = root?.children;
+    let segSuffix = suffix;
+    for (const seg of path.split("/")) {
+      const id = `${seg}${segSuffix}`;
+      const node = siblings?.find((c) => c.id === id);
+      out.push(id);
+      if (typeof node?.ref === "string") {
+        const component = findNode([...copy.children, ...variants], node.ref);
+        siblings = component?.children;
+        segSuffix = [...made.values()].includes(node.ref) ? node.ref.slice(node.ref.lastIndexOf("@")) : "";
+      } else {
+        siblings = node?.children;
+      }
+    }
+    return out.join("/");
+  };
+
   /** Re-point instances under `node` whose theme differs from the frame's at a component baked for their theme. */
   const retarget = (node: PenNode, parent: Theme): void => {
     const here = isTheme(node.theme) ? { ...parent, ...node.theme } : parent;
@@ -167,7 +189,7 @@ export function prepareDocument(doc: PenDocument, frameId: string, theme?: Theme
         if (typeof overrides === "object" && overrides !== null && !Array.isArray(overrides)) {
           const suffix = id.slice(id.lastIndexOf("@"));
           node.descendants = Object.fromEntries(
-            Object.entries(overrides as Record<string, unknown>).map(([path, v]) => [path.split("/").map((seg) => `${seg}${suffix}`).join("/"), v]),
+            Object.entries(overrides as Record<string, unknown>).map(([path, v]) => [mapPath(path, variantOf(id), suffix), v]),
           ) as typeof node.descendants;
         }
       }
