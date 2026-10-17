@@ -1,5 +1,5 @@
 import { constants } from "node:fs";
-import { lstat, readFile, realpath, writeFile } from "node:fs/promises";
+import { lstat as fsLstat, readFile as fsReadFile, realpath, writeFile as fsWriteFile } from "node:fs/promises";
 import path from "node:path";
 import { createVcsExecFileGit, createSafeGit, type SafeGit } from "./git.js";
 import type { GitExec } from "../git/exec.js";
@@ -17,11 +17,20 @@ export const FIRST_VERSION_MESSAGE = "First version";
 const DEFAULT_NAME = "Designer";
 const DEFAULT_EMAIL = "designer@localhost";
 
+/** File-system calls used by `.gitignore` handling. */
+export interface GitignoreFs {
+  lstat: typeof fsLstat;
+  readFile: typeof fsReadFile;
+  writeFile: typeof fsWriteFile;
+}
+
 export interface DesignRepoOptions {
   repo: string;
   exec?: GitExec;
   /** Source of "now" for default save messages. */
   clock?: () => Date;
+  /** Internal test seam for `.gitignore` file access; defaults to node:fs/promises. */
+  fs?: GitignoreFs;
 }
 
 export interface SaveResult {
@@ -113,6 +122,7 @@ function commitSpecsOf(files: ChangedFile[]): string[] {
 export function createDesignRepo(options: DesignRepoOptions): DesignRepo {
   const { repo } = options;
   const clock = options.clock ?? (() => new Date());
+  const { lstat, readFile, writeFile } = options.fs ?? { lstat: fsLstat, readFile: fsReadFile, writeFile: fsWriteFile };
   const git: SafeGit = createSafeGit(options.exec ?? createVcsExecFileGit(repo));
 
   const guarded: SafeGit = guardNotRepo(git);
