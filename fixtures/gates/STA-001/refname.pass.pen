@@ -1,0 +1,52 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "scr-1",
+      "type": "frame",
+      "name": "Checkout",
+      "width": 100,
+      "height": 100,
+      "metadata": {
+        "type": "design-gates",
+        "states": true
+      }
+    },
+    {
+      "id": "v-a",
+      "type": "frame",
+      "name": "Alpha",
+      "width": 100,
+      "height": 100,
+      "metadata": {
+        "type": "design-gates",
+        "variantOf": "Checkout",
+        "state": "empty"
+      }
+    },
+    {
+      "id": "v-b",
+      "type": "frame",
+      "name": "Beta",
+      "width": 100,
+      "height": 100,
+      "metadata": {
+        "type": "design-gates",
+        "variantOf": "Checkout",
+        "state": "error"
+      }
+    },
+    {
+      "id": "v-c",
+      "type": "frame",
+      "name": "Gamma",
+      "width": 100,
+      "height": 100,
+      "metadata": {
+        "type": "design-gates",
+        "variantOf": "Checkout",
+        "state": "loading"
+      }
+    }
+  ]
+}

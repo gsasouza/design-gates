@@ -122,3 +122,12 @@ test("screens globs match by compiled id as well as name", async () => {
   const out = await sta("meta.fail", { rules: { "STA-001": { screens: ["sid-*"], states: ["empty"] } } });
   assert.deepEqual(out.map((v) => v.nodeId), ["sid-only"]);
 });
+
+test("a variant matched by a screens glob never counts as declaring", async () => {
+  const out = await sta("globvariant.fail", { rules: { "STA-001": { screens: ["Checkout*"] } } });
+  assert.deepEqual(summary(out), ["checkout:states.error:warn", "checkout:states.loading:warn"]);
+});
+
+test("metadata variantOf matches the base display name", async () => {
+  assert.deepEqual(await sta("refname.pass", ON), []);
+});
