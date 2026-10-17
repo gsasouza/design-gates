@@ -1,0 +1,5 @@
+{"version":"2.6","children":[
+{"id":"checkout","type":"frame","name":"Checkout","width":375,"height":100}
+,
+{"id":"checkout-t","type":"frame","name":"Checkout @ tablet","width":768,"height":100}
+]}

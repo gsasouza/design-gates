@@ -4,6 +4,7 @@ import { runA11y001 } from "./A11Y-001.js";
 import { cmp001 } from "./CMP-001.js";
 import { dif001 } from "./DIF-001.js";
 import { downgradeFigBlocks } from "./fig-review.js";
+import { rsp001 } from "./RSP-001.js";
 import { sch001 } from "./SCH-001.js";
 import { sch002 } from "./SCH-002.js";
 import { sch003 } from "./SCH-003.js";
@@ -42,6 +43,13 @@ const ENTRIES: RuleEntry[] = [
     description: "A changed component or variable and the instances, nodes and screens it affects.",
     defaultSeverity: "warn",
     run: dif001,
+  },
+  {
+    id: "RSP-001",
+    title: "Responsive frames present",
+    description: "A screen has a frame for each configured breakpoint, at the configured width (opt-in).",
+    defaultSeverity: "warn",
+    run: rsp001,
   },
   {
     id: "SCH-001",

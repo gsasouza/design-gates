@@ -1,0 +1,7 @@
+{"version":"2.6","children":[
+{"id":"checkout","type":"frame","name":"Checkout","width":1440,"height":100}
+,
+{"id":"checkout-m","type":"frame","name":"Checkout @ mobile","width":375,"height":100}
+,
+{"id":"checkout-t","type":"frame","name":"Tablet layout","width":768,"height":100,"metadata":{"type":"design-gates","variantOf":"checkout","breakpoint":"tablet"}}
+]}
