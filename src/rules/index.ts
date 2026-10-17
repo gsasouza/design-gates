@@ -1,5 +1,5 @@
 import type { CompiledDocument } from "../compile/types.js";
-import type { GatesConfig, RuleId } from "../gates/config.js";
+import { OPT_IN_RULES, type GatesConfig, type RuleId } from "../gates/config.js";
 import { runA11y001 } from "./A11Y-001.js";
 import { cmp001 } from "./CMP-001.js";
 import { dif001 } from "./DIF-001.js";
@@ -7,6 +7,7 @@ import { downgradeFigBlocks } from "./fig-review.js";
 import { sch001 } from "./SCH-001.js";
 import { sch002 } from "./SCH-002.js";
 import { sch003 } from "./SCH-003.js";
+import { sta001 } from "./STA-001.js";
 import { run as tok001 } from "./TOK-001.js";
 import { run as tok002 } from "./TOK-002.js";
 import type { DiffContext, Rule, Severity, Violation } from "../gates/types.js";
@@ -64,6 +65,13 @@ const ENTRIES: RuleEntry[] = [
     run: sch003,
   },
   {
+    id: "STA-001",
+    title: "All states covered",
+    description: "A screen or component that declares data has an empty, error and loading state variant (opt-in).",
+    defaultSeverity: "warn",
+    run: sta001,
+  },
+  {
     id: "TOK-001",
     title: "Hard-coded value",
     description: "A literal colour, radius, spacing, font or stroke width where a design variable should be used.",
@@ -81,6 +89,8 @@ const ENTRIES: RuleEntry[] = [
 
 /** All registered rules, sorted by id. */
 export const registry: readonly RuleEntry[] = [...ENTRIES].sort((a, b) => cmp(a.id, b.id));
+
+export { OPT_IN_RULES };
 
 export interface RuleInput {
   /** Repo-relative POSIX path. */
@@ -105,6 +115,7 @@ export function runRules(files: readonly RuleInput[], config: GatesConfig, entri
   const out: Violation[] = [];
   for (const input of files) {
     for (const entry of entries) {
+      if (OPT_IN_RULES.includes(entry.id) && config.rules[entry.id]?.enabled !== true) continue;
       const override = config.rules[entry.id]?.severity;
       if (override === "off") continue;
       const adjusted = entry.run(input.compiled, config, input.diff).map((v) => adjust({ ...v, file: input.file }, override));

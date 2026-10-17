@@ -1,0 +1,42 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "checkout",
+      "type": "frame",
+      "name": "Checkout",
+      "width": 100,
+      "height": 100,
+      "metadata": {
+        "type": "design-gates",
+        "states": true
+      }
+    },
+    {
+      "id": "checkout-empty",
+      "type": "frame",
+      "name": "Checkout / empty",
+      "width": 100,
+      "height": 100
+    },
+    {
+      "id": "chk-err",
+      "type": "frame",
+      "name": "Anything",
+      "width": 100,
+      "height": 100,
+      "metadata": {
+        "type": "design-gates",
+        "variantOf": "checkout",
+        "state": "error"
+      }
+    },
+    {
+      "id": "checkout-loading",
+      "type": "frame",
+      "name": "  checkout / LOADING ",
+      "width": 100,
+      "height": 100
+    }
+  ]
+}

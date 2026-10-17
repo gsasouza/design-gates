@@ -277,7 +277,7 @@ test("sarif output has the 2.1.0 shape", async () => {
     const r = await check(repo, { format: "sarif" }, { entries: [...registry.filter((r) => r.id !== "CMP-001"), quietRule("info")] });
     const doc = JSON.parse(r.out);
     validateSarif(doc);
-    assert.deepEqual(doc.runs[0].tool.driver.rules.map((x: { id: string }) => x.id), ["A11Y-001", "CMP-001", "DIF-001", "SCH-001", "SCH-002", "SCH-003", "TOK-001", "TOK-002"]);
+    assert.deepEqual(doc.runs[0].tool.driver.rules.map((x: { id: string }) => x.id), ["A11Y-001", "CMP-001", "DIF-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002"]);
     assert.deepEqual(doc.runs[0].results.map((x: { ruleId: string; level: string }) => [x.ruleId, x.level]), [["CMP-001", "note"], ["SCH-002", "error"]]);
     assert.equal(doc.runs[0].results[1].locations[0].physicalLocation.artifactLocation.uri, "bad.pen");
     assert.equal(doc.runs[0].results[1].locations[0].logicalLocations[0].fullyQualifiedName, "f/use");
