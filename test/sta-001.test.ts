@@ -131,3 +131,11 @@ test("a variant matched by a screens glob never counts as declaring", async () =
 test("metadata variantOf matches the base display name", async () => {
   assert.deepEqual(await sta("refname.pass", ON), []);
 });
+
+test("a breakpoint variant never counts as declaring, even via a screens glob", async () => {
+  const file = "RSP-001/covered.pass.pen";
+  const compiled = await compileFixture(file);
+  const raw = { rules: { "STA-001": { screens: ["Checkout*"], states: ["empty"] }, "RSP-001": { breakpoints: ["mobile", "tablet"] } } };
+  const out = runRules([{ file, compiled }], config(raw)).filter((v) => v.rule === "STA-001");
+  assert.deepEqual(summary(out), ["checkout:states.empty:warn"]);
+});

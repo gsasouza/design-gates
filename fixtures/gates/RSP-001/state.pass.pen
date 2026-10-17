@@ -1,0 +1,7 @@
+{"version":"2.6","children":[
+{"id":"checkout","type":"frame","name":"Checkout","width":1440,"height":100}
+,
+{"id":"checkout-m","type":"frame","name":"Checkout @ mobile","width":375,"height":100}
+,
+{"id":"checkout-e","type":"frame","name":"Checkout / empty","width":1440,"height":100}
+]}

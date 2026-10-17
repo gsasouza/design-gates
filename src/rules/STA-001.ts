@@ -1,4 +1,5 @@
 import type { Rule, Violation } from "../gates/types.js";
+import { breakpointNaming } from "./RSP-001.js";
 import { isVariant, listCandidates, markerOf, variantsOf, type VariantNaming } from "./variants.js";
 
 const globToRegExp = (glob: string): RegExp => new RegExp(`^${glob.split("*").map((s) => s.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*")}$`);
@@ -7,8 +8,8 @@ const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 export const sta001: Rule = (compiled, config) => {
   const { states, screens, pattern } = config.rules["STA-001"];
   const globs = screens.map(globToRegExp);
-  // Breakpoint naming is RSP-001's; here breakpoint variants are recognised by metadata only.
-  const naming: VariantNaming = { statePattern: pattern, states, breakpoints: [] };
+  // Breakpoint variants (by RSP-001's configured naming, or metadata) never declare data.
+  const naming: VariantNaming = { statePattern: pattern, states, ...breakpointNaming(config) };
   const out: Violation[] = [];
   for (const candidate of listCandidates(compiled)) {
     const { node, name } = candidate;

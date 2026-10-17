@@ -1,0 +1,7 @@
+{"version":"2.6","children":[
+{"id":"checkout","type":"frame","name":"Checkout","width":1440,"height":100}
+,
+{"id":"cart","type":"frame","name":"Cart","width":1440,"height":100}
+,
+{"id":"cart-mobile","type":"frame","name":"Cart @ mobile","width":375,"height":100}
+]}

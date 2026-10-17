@@ -1,11 +1,11 @@
 import { CONTROLLED_PROPS, hasNestedQuantifier, isControlledProp, MAX_IGNORE_LENGTH } from "./tok.js";
 import type { Severity } from "./types.js";
 
-export const RULE_IDS = ["A11Y-001", "CMP-001", "DIF-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002"] as const;
+export const RULE_IDS = ["A11Y-001", "CMP-001", "DIF-001", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002"] as const;
 export type RuleId = (typeof RULE_IDS)[number];
 
 /** Rules that run only when the user's config has a `rules.<ID>` entry. */
-export const OPT_IN_RULES: readonly RuleId[] = ["STA-001"];
+export const OPT_IN_RULES: readonly RuleId[] = ["RSP-001", "STA-001"];
 
 export type SeverityOverride = Severity | "off";
 
@@ -62,6 +62,20 @@ export interface Sta001Config extends RuleConfig {
   pattern: string;
 }
 
+/** A breakpoint: a bare name, or a name with the frame width it expects. */
+export type BreakpointEntry = string | { name: string; width?: number };
+
+export interface Rsp001Config extends RuleConfig {
+  /** Breakpoints every screen needs a frame for; required and non-empty when the rule is configured. */
+  breakpoints: BreakpointEntry[];
+  /** Screen names/ids (`*` glob) to check; empty = all screens. */
+  screens: string[];
+  /** Variant name; `{name}` is the base name, `{breakpoint}` the breakpoint name. */
+  pattern: string;
+  /** Breakpoint the unsuffixed base frame stands for. */
+  baseBreakpoint?: string;
+}
+
 export interface GatesConfig {
   /** Colour assumed behind the top-level frames when computing contrast. */
   canvasColor: string;
@@ -71,6 +85,7 @@ export interface GatesConfig {
     "A11Y-001": A11y001Config;
     "CMP-001": Cmp001Config;
     "DIF-001": Dif001Config;
+    "RSP-001": Rsp001Config;
     "SCH-001": RuleConfig;
     "SCH-002": RuleConfig;
     "SCH-003": RuleConfig;
@@ -87,6 +102,7 @@ export const DEFAULT_CONFIG: GatesConfig = {
     "A11Y-001": { minRatio: 4.5, minRatioLarge: 3 },
     "CMP-001": { minNodes: 3 },
     "DIF-001": { warnAt: 5, blockAt: 20, scope: [] },
+    "RSP-001": { enabled: false, breakpoints: [], screens: [], pattern: "{name} @ {breakpoint}" },
     "SCH-001": {},
     "SCH-002": {},
     "SCH-003": {},
@@ -147,11 +163,32 @@ const properties: Check = (v) =>
 const states: Check = (v) => (isStringList(v) && v.length > 0 && v.every((s) => s.trim() !== "") ? undefined : "must be a non-empty array of non-empty strings");
 const pattern: Check = (v) => (typeof v === "string" && v.includes("{name}") && v.includes("{state}") ? undefined : "must be a string containing {name} and {state}");
 
+const breakpointName = (e: unknown): string | undefined => (typeof e === "string" ? e : isObject(e) && typeof e.name === "string" ? e.name : undefined);
+const breakpoints: Check = (v) => {
+  const form = 'must be a non-empty array of names or { "name": string, "width": positive number } objects';
+  if (!Array.isArray(v) || v.length === 0) return form;
+  const seen = new Set<string>();
+  for (const e of v) {
+    const name = breakpointName(e);
+    if (name === undefined || name.trim() === "") return form;
+    if (isObject(e) && (Object.keys(e).some((k) => k !== "name" && k !== "width") || (e.width !== undefined && !(isNumber(e.width, 0) && e.width > 0)))) {
+      return `has an invalid entry "${name}": expected { "name": string, "width": positive number }`;
+    }
+    const key = name.trim().toLowerCase();
+    if (seen.has(key)) return `has a duplicate name "${name}"`;
+    seen.add(key);
+  }
+  return undefined;
+};
+const breakpointPattern: Check = (v) =>
+  typeof v === "string" && v.includes("{name}") && v.includes("{breakpoint}") ? undefined : "must be a string containing {name} and {breakpoint}";
+
 /** Validators for the option keys each rule knows; other keys are kept untouched. */
 const OPTION_CHECKS: Partial<Record<RuleId, Record<string, Check>>> = {
   "A11Y-001": { minRatio: number(1), minRatioLarge: number(1) },
   "CMP-001": { minNodes: integer(1) },
   "DIF-001": { warnAt: number(0), blockAt: number(0), scope: stringList },
+  "RSP-001": { breakpoints, screens: stringList, pattern: breakpointPattern, baseBreakpoint: (v) => (typeof v === "string" ? undefined : "must be a string") },
   "STA-001": { states, screens: stringList, pattern },
   "TOK-001": { properties, ignoreValues, onlyIn: stringList },
   "TOK-002": { scales, tolerance: number(0) },
@@ -168,6 +205,13 @@ function resolveRule(id: RuleId, raw: unknown): RuleConfig | string {
     Object.defineProperty(out, key, { value: structuredClone(value), enumerable: true, writable: true, configurable: true });
   }
   if (OPT_IN_RULES.includes(id)) out.enabled = true;
+  if (id === "RSP-001") {
+    if (raw.breakpoints === undefined) return "rules.RSP-001.breakpoints is required";
+    const base = out.baseBreakpoint;
+    if (base !== undefined && !(out.breakpoints as BreakpointEntry[]).some((e) => breakpointName(e)?.trim().toLowerCase() === (base as string).trim().toLowerCase())) {
+      return "rules.RSP-001.baseBreakpoint must be one of the breakpoint names";
+    }
+  }
   if (id === "DIF-001" && (out.warnAt as number) > (out.blockAt as number)) return "rules.DIF-001.warnAt must not exceed blockAt";
   return out as RuleConfig;
 }
