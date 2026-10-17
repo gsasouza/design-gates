@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
-import { BASELINE_FILE, entryOf, fingerprint, parseBaseline, serializeBaseline } from "../check/baseline.js";
+import { BASELINE_FILE, entryOf, fingerprint, isBaselined, parseBaseline, serializeBaseline } from "../check/baseline.js";
 import { FORMATS, formatAgent, formatSarif, formatText, type Format, type Reported } from "../check/format.js";
 import { applySuppressions, collectSuppressions } from "../check/suppress.js";
 import { compile } from "../compile/compile.js";
@@ -214,7 +214,7 @@ async function build(o: CheckOptions, deps: CheckDeps): Promise<number> {
     await deps.fs.writeFile(target, serializeBaseline(violations));
     known = new Set(violations.map((v) => fingerprint(entryOf(v))));
   }
-  const reported: Reported[] = violations.map((v) => (known.has(fingerprint(entryOf(v))) ? { ...v, baselined: true } : v));
+  const reported: Reported[] = violations.map((v) => (isBaselined(known, v) ? { ...v, baselined: true } : v));
 
   deps.stdout(format === "agent" ? formatAgent(reported) : format === "sarif" ? formatSarif(reported, entries) : formatText(reported));
   return reported.some((v) => v.severity === "block" && !v.baselined) ? 1 : 0;

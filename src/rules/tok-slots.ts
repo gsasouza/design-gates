@@ -1,9 +1,10 @@
 import { getNode, listInstances } from "../compile/query.js";
 import type { CompiledDocument, CompiledNode } from "../compile/types.js";
-import type { ControlledProp } from "../gates/tok.js";
+import type { Tok001Config } from "../gates/config.js";
+import { isIgnored, normalizeColor, type ControlledProp } from "../gates/tok.js";
 import { solidColor } from "../pen/paint.js";
 import type { PenFill } from "../pen/types.js";
-import { isVariableRef } from "../render/themes.js";
+import { isVariableRef, resolveAlias } from "../render/themes.js";
 
 /** A literal (not `$variable`) value found in a controlled property. */
 export interface Slot {
@@ -105,4 +106,49 @@ export function affectedInstances(compiled: CompiledDocument, node: CompiledNode
   const component = chain.find((n) => n !== undefined && !n.expanded && n.props.reusable === true);
   const ids = component ? listInstances(compiled, component.id) : [];
   return ids.length ? ids : undefined;
+}
+
+/** Controlled properties whose findings block (TOK-001 and TOK-005 share this). */
+export const TOK_BLOCKING: ReadonlySet<ControlledProp> = new Set(["fill", "stroke", "effect.color", "fontSize"]);
+
+const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+
+/** Lookup key of a value among variable values: colours compare normalised and case-insensitively. */
+export function valueKey(slot: Pick<Slot, "kind" | "value">): string | undefined {
+  if (slot.kind === "number") return typeof slot.value === "number" ? `n:${slot.value}` : undefined;
+  if (typeof slot.value !== "string") return undefined;
+  const color = normalizeColor(slot.value);
+  return slot.kind === "color" ? (color ? `c:${color}` : undefined) : `s:${slot.value}`;
+}
+
+/** Variable names (`$name`, sorted) per value key, resolved in the given theme. */
+export function variableIndex(compiled: CompiledDocument, theme: CompiledNode["theme"]): Map<string, string[]> {
+  const index = new Map<string, string[]>();
+  for (const name of Object.keys(compiled.variables).sort(cmp)) {
+    const r = resolveAlias(`$${name}`, compiled.variables, theme);
+    if (r.status !== "ok") continue;
+    const value = r.value;
+    const keys =
+      typeof value === "number"
+        ? [`n:${value}`]
+        : typeof value === "string"
+          ? [normalizeColor(value) ? `c:${normalizeColor(value)}` : `s:${value}`]
+          : [];
+    for (const key of keys) index.set(key, [...(index.get(key) ?? []), `$${name}`]);
+  }
+  return index;
+}
+
+const globToRegExp = (glob: string): RegExp => new RegExp(`^${glob.split("*").map((s) => s.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*")}$`);
+
+/** The `onlyIn` / `ignoreValues` options of TOK-001: true when a slot is not excluded by them. */
+export function tok001Filter(compiled: CompiledDocument, cfg: Pick<Tok001Config, "onlyIn" | "ignoreValues">): (node: CompiledNode, slot: Slot) => boolean {
+  const only = cfg.onlyIn.map(globToRegExp);
+  const inScope = (node: CompiledNode): boolean => {
+    if (!only.length) return true;
+    const top = getNode(compiled, node.topFrameId);
+    const names = [top?.id, top?.sourceId, typeof top?.props.name === "string" ? top.props.name : undefined];
+    return names.some((n) => n !== undefined && only.some((re) => re.test(n)));
+  };
+  return (node, slot) => inScope(node) && !isIgnored(slot.value, Object.hasOwn(cfg.ignoreValues, slot.controlled) ? cfg.ignoreValues[slot.controlled] ?? [] : []);
 }

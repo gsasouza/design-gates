@@ -1,11 +1,11 @@
 import { CONTROLLED_PROPS, hasNestedQuantifier, isControlledProp, MAX_IGNORE_LENGTH } from "./tok.js";
 import type { Severity } from "./types.js";
 
-export const RULE_IDS = ["A11Y-001", "CMP-001", "DIF-001", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002"] as const;
+export const RULE_IDS = ["A11Y-001", "CMP-001", "DIF-001", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-005"] as const;
 export type RuleId = (typeof RULE_IDS)[number];
 
 /** Rules that run only when the user's config has a `rules.<ID>` entry. */
-export const OPT_IN_RULES: readonly RuleId[] = ["RSP-001", "STA-001"];
+export const OPT_IN_RULES: readonly RuleId[] = ["RSP-001", "STA-001", "TOK-005"];
 
 export type SeverityOverride = Severity | "off";
 
@@ -24,6 +24,11 @@ export interface Tok001Config extends RuleConfig {
   ignoreValues: Record<string, string[]>;
   /** Top-level frame names or ids to check (`*` glob); empty = all frames. */
   onlyIn: string[];
+}
+
+export interface Tok005Config extends RuleConfig {
+  /** Properties checked for raw values equal to a token; same names as TOK-001. */
+  properties: string[];
 }
 
 export const SCALE_CATEGORIES = ["fontSize", "radius", "spacing", "strokeWidth"] as const;
@@ -92,6 +97,7 @@ export interface GatesConfig {
     "STA-001": Sta001Config;
     "TOK-001": Tok001Config;
     "TOK-002": Tok002Config;
+    "TOK-005": Tok005Config;
   };
 }
 
@@ -117,6 +123,7 @@ export const DEFAULT_CONFIG: GatesConfig = {
       },
       tolerance: 0,
     },
+    "TOK-005": { enabled: false, properties: ["fill", "stroke", "effect.color", "cornerRadius", "gap", "padding", "fontSize", "strokeWidth", "fontFamily"] },
   },
 };
 
@@ -192,6 +199,7 @@ const OPTION_CHECKS: Partial<Record<RuleId, Record<string, Check>>> = {
   "STA-001": { states, screens: stringList, pattern },
   "TOK-001": { properties, ignoreValues, onlyIn: stringList },
   "TOK-002": { scales, tolerance: number(0) },
+  "TOK-005": { properties },
 };
 
 function resolveRule(id: RuleId, raw: unknown): RuleConfig | string {

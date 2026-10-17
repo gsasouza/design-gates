@@ -196,7 +196,7 @@ Safety promises: everything stays local (nothing is pushed or uploaded); earlier
 
 ## Gates
 
-`design-gates check` runs a deterministic rule engine over `.pen` documents (phase 1: SCH-001/002/003, TOK-001, TOK-002, A11Y-001, CMP-001, DIF-001, and the opt-in RSP-001 and STA-001). This section is the foundation: the compiler, the config model and the rule registry. Rules are pure functions of the compiled document, the config and an optional diff; they never read the clock or the network.
+`design-gates check` runs a deterministic rule engine over `.pen` documents (phase 1: SCH-001/002/003, TOK-001, TOK-002, A11Y-001, CMP-001, DIF-001, and the opt-in RSP-001, STA-001 and TOK-005). This section is the foundation: the compiler, the config model and the rule registry. Rules are pure functions of the compiled document, the config and an optional diff; they never read the clock or the network.
 
 ### Rules
 
@@ -208,10 +208,11 @@ Safety promises: everything stays local (nothing is pushed or uploaded); earlier
 | SCH-003 | Broken variable: undefined `$name`, alias cycle (message lists the chain), escaped variable string `"\\$name"`. | block | `severity` | escaped variable: `replace` with `$name` |
 | CMP-001 | Detached instance (exact only): a non-`ref` subtree outside any component whose component-mode `structureHash` equals a reusable component's (same shape and styling; names and text ignored) and that has at least `minNodes` nodes. Only the outermost match is reported; with several matching components the smallest id is used and the others are listed in the message. | warn | `severity`, `minNodes` (default 3) | `ref` with `descendants` holding the new text `content`, keyed by slash-separated id path |
 | DIF-001 | Blast radius, only with `--base`: a changed reusable component (compared by its own props and children, nested components on their own) with its transitive instances and the screens containing them; a changed variable or theme value with the affected nodes per theme. | warn at `warnAt`, block at `blockAt`; block is warn when in `scope` | `severity`, `warnAt` (5), `blockAt` (20), `scope` (`[]`, ids/names, `*` glob; `--scope` adds to it) | none |
-| TOK-001 | Hard-coded value: a literal (not a `$variable`) in fill, stroke (colour), `effect.color`, `cornerRadius`, `gap`, `padding`, `fontSize`, `strokeWidth` (`stroke.thickness`, a number or per-side object) or `fontFamily`. Colours are read through the solid-paint reader, so a gradient or image is not reported. A literal inside a component is reported once on the node that defines it, with `affectedInstances`; instance overrides are reported on the instance. | `block` for colours and `fontSize`, `warn` otherwise | `severity`, `properties` (all nine names above), `ignoreValues` (per property; plain strings, or `/regex/` strings of at most 200 characters and without nested quantifiers such as `(a+)+` (best-effort check; rejected as a config error), for example `{ "fill": ["transparent", "/^#00/"] }`), `onlyIn` (top-level frame names or ids, `*` glob; `[]` = all) | one variable has the value in the node's theme: `replace` with `$name`; several: `candidates` sorted by name; none: no fix |
+| TOK-001 | Hard-coded value: a literal (not a `$variable`) in fill, stroke (colour), `effect.color`, `cornerRadius`, `gap`, `padding`, `fontSize`, `strokeWidth` (`stroke.thickness`, a number or per-side object) or `fontFamily`. Colours are read through the solid-paint reader, so a gradient or image is not reported. A literal inside a component is reported once on the node that defines it, with `affectedInstances`; instance overrides are reported on the instance. When TOK-005 is enabled (configured and not `off`), TOK-001 no longer reports a slot TOK-005 reports (a literal equal to a token in a property TOK-005 checks); literals with no matching token stay TOK-001. | `block` for colours and `fontSize`, `warn` otherwise | `severity`, `properties` (all nine names above), `ignoreValues` (per property; plain strings, or `/regex/` strings of at most 200 characters and without nested quantifiers such as `(a+)+` (best-effort check; rejected as a config error), for example `{ "fill": ["transparent", "/^#00/"] }`), `onlyIn` (top-level frame names or ids, `*` glob; `[]` = all) | one variable has the value in the node's theme: `replace` with `$name`; several: `candidates` sorted by name; none: no fix |
 | TOK-002 | Off-scale numeric value: `gap` and `padding` (spacing), `cornerRadius` (radius), `fontSize`, `strokeWidth`. Checks literals and numeric variable definitions read by those properties (reported on the variable, `nodeId` `$name`, once per category and themed entry, not again where it is used). | `warn`; `block` when the top-level `strict` is `true` | `severity`, `scales` (`spacing` `{ "base": 4 }`, `radius` `{ "base": 2 }`, `strokeWidth` `[1, 2, 4]`, `fontSize` `[12, 14, 16, 20, 24, 32, 40, 48]`; a category is `{ "base": n }` or a list), `tolerance` (0), top-level `strict` (`false`) | `candidates`: the nearest allowed value, or both neighbours in ascending order when equidistant (`gap: 18`, base 4: `[16, 20]`) |
 | `RSP-001` | Responsive frames present (opt-in): every screen (top-level non-reusable `frame` that is not a state or breakpoint variant of another; components are not checked) has a frame for each configured breakpoint, except `baseBreakpoint`, which the base frame itself satisfies. A breakpoint frame is a sibling named by `pattern` (case-insensitive, trimmed) or a node with metadata `variantOf` + `breakpoint`. One finding per missing breakpoint on the screen, `prop` `breakpoints.<name>`. For a breakpoint with a `width`, a breakpoint frame (or the base frame for `baseBreakpoint`) whose `width` is not that number gets a separate finding on that frame, `prop` `width` (a non-numeric width such as `fill_container` is a mismatch). | `warn` | `severity`, `breakpoints` (required), `screens` (`[]`, name/id `*` glob), `pattern` (`"{name} @ {breakpoint}"`), `baseBreakpoint` | none |
 | `STA-001` | All states covered (opt-in): a screen (top-level non-reusable frame) or reusable component that declares data (metadata `states: true`, or name/id matching a `screens` glob) has a variant for each configured state. A variant is a sibling of the same kind named by `pattern` (case-insensitive, trimmed), or a node with metadata `variantOf` + `state`. Variants never declare data. One finding per missing state, with `prop` `states.<state>`. | `warn` | `severity`, `states` (`["empty", "error", "loading"]`), `screens` (`[]`, name/id `*` glob), `pattern` (`"{name} / {state}"`) | none |
+| `TOK-005` | Raw token value (opt-in): a literal that exactly equals the value of an existing variable in the node's effective theme but is written raw instead of bound to the variable, so a token change would not propagate. Same slots and matching as TOK-001 (colours normalised and case-insensitive, numbers and strings exact), matched per node theme; a literal inherited from a component is reported once on the defining node with `affectedInstances`, overrides on the instance. Honours `rules.TOK-001.onlyIn` and `ignoreValues`: a slot TOK-001 would skip is not reported, so enabling TOK-005 never adds findings on slots TOK-001 skipped. Message `fill #E5484D equals token $danger; bind the variable so token changes propagate` (several tokens: listed sorted by name). | same as TOK-001 for the property: `block` for colours and `fontSize`, `warn` otherwise | `severity`, `properties` (same nine names as TOK-001; default all) | one token: `replace` with `$name`; several: `candidates` sorted by name |
 
 ### Severities
 
@@ -291,7 +292,7 @@ Safety promises: everything stays local (nothing is pushed or uploaded); earlier
 }
 ```
 
-Opt-in rules (currently `RSP-001` and `STA-001`) are not in the defaults above and run only when `rules.<ID>` is present in your config, even as `{}`; without a config, or without that key, they never run. `severity: "off"` still disables them. `enabled` is internal and is a config error if written.
+Opt-in rules (currently `RSP-001`, `STA-001` and `TOK-005`) are not in the defaults above and run only when `rules.<ID>` is present in your config, even as `{}`; without a config, or without that key, they never run. `severity: "off"` still disables them. `enabled` is internal and is a config error if written.
 
 `rules.<ID>` also accepts `severity`. Unknown option keys under a known rule are kept for later rules to read; known keys of the wrong type are an error.
 
@@ -309,6 +310,7 @@ Opt-in rules (currently `RSP-001` and `STA-001`) are not in the defaults above a
 | `rules.RSP-001.baseBreakpoint` | none | Must be one of the breakpoint names: the unsuffixed base frame stands for that breakpoint, so no frame is required for it (its width is still checked when configured). |
 | `rules.STA-001.states` / `screens` / `pattern` | `["empty", "error", "loading"]` / `[]` / `"{name} / {state}"` | Opt-in. Required states (non-empty list); screen or component names/ids (`*` glob) that declare data; variant name pattern (must contain `{name}` and `{state}`). |
 | `rules.TOK-001.properties` / `ignoreValues` / `onlyIn` | see JSON above | Checked properties, per-property ignored literals, frames to check. |
+| `rules.TOK-005.properties` | all nine TOK-001 properties | Opt-in. Properties checked for raw values equal to a token; `{}` enables the rule. TOK-005 also honours `rules.TOK-001.onlyIn` / `ignoreValues`. |
 | `rules.TOK-002.scales` / `tolerance` | see JSON above / `0` | Allowed values per category; accepted distance from a scale value. |
 
 ### CLI: `design-gates check`
@@ -334,6 +336,8 @@ Exit codes: `0` no `block` violation left after suppression and baseline; `1` at
 ### Suppression
 
 A node may carry `"metadata": { "type": "design-gates", "ignore": ["TOK-001"], "reason": "legacy screen" }`. It suppresses the listed rules on that node and its subtree; suppressed violations are left out of the output. `reason` is mandatory: without a non-empty reason nothing is suppressed and the marker is itself reported as a `block` violation of `SCH-001` ("design-gates suppression without reason"). Setting `rules.SCH-001.severity` to `off` disables SCH-001 entirely, including this report and the file-level report for a `.pen` file that cannot be parsed.
+
+Rule alias: an `ignore` list naming `TOK-001` also suppresses `TOK-005` on that node and its subtree (TOK-005 takes over the slots TOK-001 reports when enabled).
 
 A marker may instead (or also) carry the keys `states: true` (this screen or component declares data, see STA-001), `variantOf` (a compiled id, source id or name of the base) with `state` (or `breakpoint`) naming the variant. `reason` is required only when `ignore` is a non-empty list; a marker with only the other keys is valid and silent.
 
@@ -371,9 +375,27 @@ gives
 
 A breakpoint frame can also be marked with metadata: `{ "type": "design-gates", "variantOf": "checkout", "breakpoint": "tablet" }`.
 
+Example for TOK-005: config `{ "rules": { "TOK-005": {} } }` and a document
+
+```json
+{ "version": "2.6", "variables": { "danger": { "type": "color", "value": "#E5484D" } }, "children": [
+  { "id": "screen", "type": "frame", "width": 100, "height": 100, "children": [
+    { "id": "box", "type": "rectangle", "width": 10, "height": 10, "fill": "#e5484d" }
+  ] }
+] }
+```
+
+gives
+
+```json
+{"violations":[{"rule":"TOK-005","severity":"block","file":"a.pen","nodeId":"box","path":"screen/box","message":"fill #e5484d equals token $danger; bind the variable so token changes propagate","fix":{"type":"replace","prop":"fill","value":"$danger"}}]}
+```
+
 ### Baseline
 
 `design-gates-baseline.json` (repo root) lists accepted violations as `{ file, rule, nodeId, prop, theme }` (`theme` as `axis=value` pairs sorted by axis, empty when absent), so a dark-theme entry never hides the light-theme violation. A matching violation is reported with `baselined: true` and never fails the run. `--update-baseline` rewrites the file (sorted, two-space JSON, trailing newline) with the current violations, so entries that no longer match are pruned; without the flag the file is never written, and a symlinked baseline is refused.
+
+Rule alias: a `TOK-005` violation also counts as baselined when the baseline holds the `TOK-001` entry with the same file, nodeId, prop and theme, so enabling TOK-005 does not un-baseline accepted TOK-001 findings. The aliases live in `RULE_ALIASES` in `src/check/baseline.ts`; the file format is unchanged and `--update-baseline` writes the current rule id (`TOK-005`).
 
 ### Output formats
 

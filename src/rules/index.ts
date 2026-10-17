@@ -11,6 +11,7 @@ import { sch003 } from "./SCH-003.js";
 import { sta001 } from "./STA-001.js";
 import { run as tok001 } from "./TOK-001.js";
 import { run as tok002 } from "./TOK-002.js";
+import { run as tok005 } from "./TOK-005.js";
 import type { DiffContext, Rule, Severity, Violation } from "../gates/types.js";
 
 export interface RuleEntry {
@@ -92,6 +93,13 @@ const ENTRIES: RuleEntry[] = [
     description: "A numeric value, or numeric variable, that is not on the configured spacing, radius, font size or stroke width scale.",
     defaultSeverity: "warn",
     run: tok002,
+  },
+  {
+    id: "TOK-005",
+    title: "Raw token value",
+    description: "A literal equal to the value of an existing variable in the node's theme, written raw instead of bound to it (opt-in).",
+    defaultSeverity: "warn",
+    run: tok005,
   },
 ];
 
