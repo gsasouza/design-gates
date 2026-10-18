@@ -139,7 +139,7 @@ export function variableIndex(compiled: CompiledDocument, theme: CompiledNode["t
   return index;
 }
 
-const globToRegExp = (glob: string): RegExp => new RegExp(`^${glob.split("*").map((s) => s.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*")}$`);
+export const globToRegExp = (glob: string): RegExp => new RegExp(`^${glob.split("*").map((s) => s.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*")}$`);
 
 /** The `onlyIn` / `ignoreValues` options of TOK-001: true when a slot is not excluded by them. */
 export function tok001Filter(compiled: CompiledDocument, cfg: Pick<Tok001Config, "onlyIn" | "ignoreValues">): (node: CompiledNode, slot: Slot) => boolean {

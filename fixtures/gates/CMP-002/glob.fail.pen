@@ -1,0 +1,81 @@
+{
+  "version": "2.6",
+  "variables": {
+    "ink": {
+      "type": "color",
+      "value": "#000000"
+    }
+  },
+  "children": [
+    {
+      "id": "btn",
+      "type": "frame",
+      "name": "Button",
+      "reusable": true,
+      "width": 100,
+      "height": 40,
+      "children": [
+        {
+          "id": "label",
+          "type": "text",
+          "content": "Go",
+          "fill": "$ink"
+        },
+        {
+          "id": "icon",
+          "type": "rectangle",
+          "width": 10,
+          "height": 10
+        },
+        {
+          "id": "body",
+          "type": "frame",
+          "slot": [],
+          "width": 50,
+          "height": 20,
+          "children": [
+            {
+              "id": "inner",
+              "type": "rectangle",
+              "width": 5,
+              "height": 5
+            }
+          ]
+        },
+        {
+          "id": "box",
+          "type": "frame",
+          "width": 50,
+          "height": 20,
+          "children": [
+            {
+              "id": "leaf",
+              "type": "rectangle",
+              "width": 5,
+              "height": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "screen",
+      "type": "frame",
+      "width": 300,
+      "height": 300,
+      "children": [
+        {
+          "id": "a",
+          "type": "ref",
+          "ref": "btn",
+          "descendants": {
+            "label": {
+              "opacity": 0.5,
+              "content": "x"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
