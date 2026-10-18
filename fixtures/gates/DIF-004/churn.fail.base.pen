@@ -1,0 +1,72 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "home",
+      "type": "frame",
+      "name": "Home",
+      "children": [
+        {
+          "id": "a0",
+          "type": "text",
+          "content": "t0",
+          "fill": "#111111"
+        },
+        {
+          "id": "a1",
+          "type": "text",
+          "content": "t1",
+          "fill": "#111111"
+        },
+        {
+          "id": "a2",
+          "type": "text",
+          "content": "t2",
+          "fill": "#111111"
+        },
+        {
+          "id": "a3",
+          "type": "text",
+          "content": "t3",
+          "fill": "#111111"
+        },
+        {
+          "id": "a4",
+          "type": "text",
+          "content": "t4",
+          "fill": "#111111"
+        },
+        {
+          "id": "a5",
+          "type": "text",
+          "content": "t5",
+          "fill": "#111111"
+        },
+        {
+          "id": "a6",
+          "type": "text",
+          "content": "t6",
+          "fill": "#111111"
+        },
+        {
+          "id": "a7",
+          "type": "text",
+          "content": "t7",
+          "fill": "#111111"
+        },
+        {
+          "id": "a8",
+          "type": "text",
+          "content": "t8",
+          "fill": "#111111"
+        },
+        {
+          "id": "a9",
+          "type": "text",
+          "content": "t9",
+          "fill": "#111111"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "home",
+      "type": "frame",
+      "name": "Home",
+      "children": [
+        {
+          "id": "b0",
+          "type": "text",
+          "content": "t0",
+          "fill": "#111111"
+        },
+        {
+          "id": "b1",
+          "type": "text",
+          "content": "t1",
+          "fill": "#111111"
+        },
+        {
+          "id": "b2",
+          "type": "text",
+          "content": "t2",
+          "fill": "#111111"
+        }
+      ]
+    }
+  ]
+}
