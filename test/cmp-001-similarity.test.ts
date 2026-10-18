@@ -47,6 +47,13 @@ test("similarity: a differing parent still aligns its children and unpaired subt
   assert.equal(baxterSimilarity(pen(deep), pen(button("b"))), 4 / 8);
 });
 
+test("similarity: an unpaired child counts with all of its own children", () => {
+  const withGrandkids = button("a", {}, [leaf("1"), leaf("2"), { ...button("3"), children: [leaf("x"), leaf("y")] }]);
+  // shared: root and two leaves (3); the unpaired frame and its two children are 3 nodes only in a.
+  assert.equal(baxterSimilarity(pen(withGrandkids), pen(button("b"))), (2 * 3) / (2 * 3 + 3));
+  assert.equal(baxterSimilarity(pen(button("b")), pen(withGrandkids)), (2 * 3) / (2 * 3 + 3));
+});
+
 test("CMP-001 similarity: a near miss is reported at the threshold and silent above it", () => {
   const doc = [component(), nearCopy("copy")];
   const at = run(doc, cfg(4 / 6));
@@ -91,6 +98,14 @@ test("CMP-001 similarity: ties go to the smallest component id and the best scor
   const better = run([component("a-comp", [leaf("1", { fill: "#222222" }), leaf("2", { fill: "#333333" })]), component("z-comp"), nearCopy("copy")], cfg(0.5));
   assert.equal(better.length, 1);
   assert.match(better[0]!.message, /component "z-comp"/);
+});
+
+test("CMP-001 similarity: the most similar component wins over a lower id", () => {
+  const lowId = component("a-comp", [leaf("1"), leaf("2", { fill: "#222222" }), leaf("3", { fill: "#333333" })]);
+  const highId = component("z-comp", [leaf("1"), leaf("2"), leaf("3")]);
+  const copy = button("copy", {}, [leaf("1"), leaf("2"), leaf("3", { fill: "#000000" })]);
+  const v = run([lowId, highId, copy], cfg(0.5));
+  assert.deepEqual(v.map((x) => x.message), ['Subtree is 75% similar to component "z-comp"; use an instance instead']);
 });
 
 test("CMP-001 similarity: minNodes still applies", () => {
