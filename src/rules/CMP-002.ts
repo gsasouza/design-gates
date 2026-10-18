@@ -24,7 +24,7 @@ const isControlledLiteral = (key: string, value: unknown): boolean =>
 const isSlot = (node: CompiledNode): boolean => node.props.slot !== undefined && node.props.slot !== false;
 
 /** Nodes of the component definition along an override path, below the root; undefined when the path does not resolve. */
-function targetChain(compiled: CompiledDocument, component: CompiledNode, path: string): CompiledNode[] | undefined {
+export function targetChain(compiled: CompiledDocument, component: CompiledNode, path: string): CompiledNode[] | undefined {
   const chain: CompiledNode[] = [];
   let at = component;
   for (const seg of path.split("/")) {

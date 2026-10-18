@@ -1,0 +1,48 @@
+{
+  "version": "2.6",
+  "variables": {
+    "white": {
+      "type": "color",
+      "value": "#ffffff"
+    },
+    "ink": {
+      "type": "color",
+      "value": "#000000"
+    }
+  },
+  "children": [
+    {
+      "id": "btn",
+      "type": "frame",
+      "name": "Button",
+      "reusable": true,
+      "width": 100,
+      "height": 40,
+      "children": [
+        {
+          "id": "label",
+          "type": "text",
+          "content": "Go"
+        }
+      ]
+    },
+    {
+      "id": "screen",
+      "type": "frame",
+      "width": 300,
+      "height": 300,
+      "children": [
+        {
+          "id": "a",
+          "type": "ref",
+          "ref": "btn",
+          "descendants": {
+            "label": {
+              "content": "Stop"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

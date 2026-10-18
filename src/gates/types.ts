@@ -11,7 +11,7 @@ export type Fix =
   | { type: "replace"; prop: string; value: unknown }
   | { type: "candidates"; prop: string; candidates: unknown[] }
   | { type: "ref"; ref: string; descendants: Record<string, Partial<PenNode>> }
-  | { type: "remove" };
+  | { type: "remove"; prop?: string };
 
 export interface Violation {
   rule: string;
