@@ -15,6 +15,7 @@ import type { DesignSource } from "../source/types.js";
 import { WORKTREE } from "../git/reader.js";
 import { parseFailureViolation } from "../rules/parse-failure.js";
 import { registry, runRules, type RuleEntry, type RuleInput } from "../rules/index.js";
+import { applyScopeFile } from "./scope-file.js";
 import { defaultFs, UsageError, type RunFs } from "./run-diff.js";
 
 export const CONFIG_FILE = "design-gates.config.json";
@@ -101,6 +102,8 @@ async function loadConfig(git: GitReader, root: string, from: string, o: CheckOp
   const result = resolveConfig(raw);
   if ("error" in result) throw new UsageError(`invalid config ${file}: ${result.error}`);
   result.config.rules["DIF-001"].scope.push(...(o.scope ?? []));
+  const written = (raw as { rules?: { "DIF-002"?: { scopeFile?: unknown } } } | null)?.rules?.["DIF-002"];
+  await applyScopeFile(git, result.config, written?.scopeFile !== undefined);
   return result.config;
 }
 

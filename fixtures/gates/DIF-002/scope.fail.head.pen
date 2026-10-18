@@ -1,0 +1,44 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "home",
+      "type": "frame",
+      "name": "Home",
+      "children": [
+        {
+          "id": "title",
+          "type": "text",
+          "content": "Hello there",
+          "fill": "#111111"
+        },
+        {
+          "id": "cta",
+          "type": "rectangle",
+          "fill": "#FF0000",
+          "width": 100,
+          "height": 40
+        }
+      ]
+    },
+    {
+      "id": "settings",
+      "type": "frame",
+      "name": "Settings",
+      "children": [
+        {
+          "id": "s-title",
+          "type": "text",
+          "content": "Settings",
+          "fill": "#111111"
+        },
+        {
+          "id": "s-note",
+          "type": "text",
+          "content": "New",
+          "fill": "#111111"
+        }
+      ]
+    }
+  ]
+}
