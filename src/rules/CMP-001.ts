@@ -25,6 +25,8 @@ function contentOverrides(component: PenNode, copy: PenNode, path: string[], out
 export const cmp001: Rule = (compiled, config) => {
   const { minNodes, similarity } = config.rules["CMP-001"];
   const components = listComponents(compiled).map((c) => ({ node: c, pen: toPen(compiled, c) }));
+  const byId = (a: { node: { id: string } }, b: { node: { id: string } }): number => (a.node.id < b.node.id ? -1 : a.node.id > b.node.id ? 1 : 0);
+  const sortedComponents = components.map((c) => ({ ...c, size: countNodes(c.pen) })).sort(byId);
   const byHash = new Map<string, typeof components>();
   for (const c of components) {
     const h = structureHash(c.pen, { mode: "component" });
@@ -56,8 +58,8 @@ export const cmp001: Rule = (compiled, config) => {
     const nodes = countNodes(pen);
     if (nodes < minNodes || hasExact(node, depth)) return undefined;
     let best: { id: string; s: number } | undefined;
-    for (const c of [...components].sort((a, b) => (a.node.id < b.node.id ? -1 : a.node.id > b.node.id ? 1 : 0))) {
-      if (similarityUpperBound(nodes, countNodes(c.pen)) < similarity) continue;
+    for (const c of sortedComponents) {
+      if (similarityUpperBound(nodes, c.size) < similarity) continue;
       const s = baxterSimilarity(pen, c.pen);
       if (s >= similarity && s < 1 && (best === undefined || s > best.s)) best = { id: c.node.id, s };
     }
@@ -76,7 +78,7 @@ export const cmp001: Rule = (compiled, config) => {
     const pen = toPen(compiled, node);
     const matches = countNodes(pen) >= minNodes ? byHash.get(structureHash(pen, { mode: "component" })) : undefined;
     if (matches) {
-      const [first, ...others] = [...matches].sort((a, b) => (a.node.id < b.node.id ? -1 : a.node.id > b.node.id ? 1 : 0));
+      const [first, ...others] = [...matches].sort(byId);
       const descendants: Record<string, Partial<PenNode>> = {};
       contentOverrides(first!.pen, pen, [], descendants);
       const sorted = Object.fromEntries(Object.entries(descendants).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));

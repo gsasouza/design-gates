@@ -114,3 +114,11 @@ test("CMP-001 similarity: minNodes still applies", () => {
   assert.deepEqual(run([comp, small], cfg(0.5, 3)), []);
   assert.equal(run([comp, small], cfg(0.5, 2)).length, 1);
 });
+
+test("CMP-001 similarity: near-miss fixtures (fail at 0.6, pass once the copy drifts further)", async () => {
+  const c = async (name: string, config: GatesConfig) =>
+    registry.find((r) => r.id === "CMP-001")!.run(compile(parsePen(await readFile(gateFixture(`CMP-001/${name}.pen`), "utf8")), { file: name }), config);
+  assert.deepEqual((await c("near-miss.fail", cfg(0.6))).map((v) => [v.nodeId, v.message]), [["copy", 'Subtree is 67% similar to component "button"; use an instance instead']]);
+  assert.deepEqual(await c("near-miss.pass", cfg(0.6)), []);
+  assert.deepEqual(await c("near-miss.fail", DEFAULT_CONFIG), []);
+});
