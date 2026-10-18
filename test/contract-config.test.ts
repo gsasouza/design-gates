@@ -57,17 +57,17 @@ test("invalid contract fields are config errors", () => {
 test("invalid tokenSource fields are config errors", () => {
   const ts = (extra: Record<string, unknown>) => err({ tokenSource: { kind: "css", path: "t.css", ...extra } });
   assert.equal(err({ tokenSource: "x" }), "contract.tokenSource must be an object");
-  assert.equal(err({ tokenSource: { path: "t.css" } }), "contract.tokenSource kind must be one of css, dtcg");
-  assert.equal(err({ tokenSource: { kind: "scss", path: "t.css" } }), "contract.tokenSource kind must be one of css, dtcg");
-  assert.match(err({ tokenSource: { kind: "css" } }), /^contract\.tokenSource path /);
-  assert.match(ts({ path: "" }), /^contract\.tokenSource path /);
-  assert.match(ts({ path: "/abs.css" }), /^contract\.tokenSource path /);
-  assert.match(ts({ path: "../t.css" }), /^contract\.tokenSource path /);
+  assert.equal(err({ tokenSource: { path: "t.css" } }), "contract.tokenSource.kind must be one of css, dtcg");
+  assert.equal(err({ tokenSource: { kind: "scss", path: "t.css" } }), "contract.tokenSource.kind must be one of css, dtcg");
+  assert.match(err({ tokenSource: { kind: "css" } }), /^contract\.tokenSource\.path /);
+  assert.match(ts({ path: "" }), /^contract\.tokenSource\.path /);
+  assert.match(ts({ path: "/abs.css" }), /^contract\.tokenSource\.path /);
+  assert.match(ts({ path: "../t.css" }), /^contract\.tokenSource\.path /);
   assert.equal(ts({ extra: 1 }), 'contract.tokenSource has an unknown key "extra"');
-  assert.match(ts({ selectors: ":root" }), /^contract\.tokenSource selectors /);
-  assert.match(ts({ selectors: [""] }), /^contract\.tokenSource selectors /);
+  assert.match(ts({ selectors: ":root" }), /^contract\.tokenSource\.selectors /);
+  assert.match(ts({ selectors: [""] }), /^contract\.tokenSource\.selectors /);
   assert.match(err({ tokenSource: { kind: "dtcg", path: "t.json", selectors: [":root"] } }), /selectors is only valid for kind css/);
-  assert.match(ts({ themes: [] }), /^contract\.tokenSource themes /);
+  assert.match(ts({ themes: [] }), /^contract\.tokenSource\.themes /);
   assert.match(ts({ themes: { "": ".x" } }), /themes key ""/);
   assert.match(ts({ themes: { default: ".x" } }), /themes key "default"/);
   assert.match(ts({ themes: { dark: ".x" } }), /themes key "dark"/);

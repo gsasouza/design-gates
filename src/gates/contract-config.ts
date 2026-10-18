@@ -88,7 +88,7 @@ export function resolveContract(raw: unknown): { contract: ContractConfig } | { 
   for (const [key, value] of Object.entries(raw)) {
     if (key === "tokenSource") {
       const problem = tokenSource(value);
-      if (problem) return { error: `contract.tokenSource ${problem}` };
+      if (problem) return { error: `contract.tokenSource${/^(kind|path|selectors|themes)\b/.test(problem) ? "." : " "}${problem}` };
       contract.tokenSource = structuredClone(value) as TokenSourceConfig;
       continue;
     }
