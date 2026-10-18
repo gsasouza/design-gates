@@ -68,7 +68,7 @@ test("a valid map reaches the rule as ContractData", async () => {
   seen = [];
   const r = await run({ rules: { "CNT-002": {} } }, { "pen-map.json": '{"a": "A.tsx"}' });
   assert.equal(r.code, 0, r.err);
-  assert.deepEqual(r.calls, ["read:pen-map.json"]);
+  assert.deepEqual(r.calls, ["read:pen-map.json", "exists:A.tsx"]);
   assert.ok(seen.length > 0 && seen.every((c) => c?.mapFile === "pen-map.json" && c.map?.entries.get("a")?.path === "A.tsx"));
 });
 
@@ -106,7 +106,7 @@ test("no rule needing a contract, or a needing rule that is not enabled, never c
   }
 });
 
-test("the default CONTRACT_NEEDS is empty, so an ordinary run does no extra I/O", async () => {
+test("the default CONTRACT_NEEDS does no extra I/O unless a needing rule is enabled", async () => {
   const repo = await createFixtureRepo({ head: "check/clean" });
   try {
     const { reader, calls } = counting({});
@@ -147,5 +147,24 @@ test("git-backed reader lists tracked and untracked non-ignored files, sorted, c
     await assert.rejects(reader.listFiles([":(top)x"]));
   } finally {
     await repo.cleanup();
+  }
+});
+
+test("CON-001 enabled loads the map and reports through the real registry; missing map is exit 2", async () => {
+  const real = { entries: undefined, contractNeeds: undefined };
+  const ok = await run({ rules: { "CON-001": {} } }, { "pen-map.json": "{}" }, real);
+  assert.equal(ok.code, 0, ok.err);
+  assert.deepEqual(ok.calls, ["read:pen-map.json"]);
+  const missing = await run({ rules: { "CON-001": {} } }, {}, real);
+  assert.equal(missing.code, 2);
+  assert.match(missing.err, /pen-map\.json: file not found/);
+});
+
+test("CON-001 not enabled never reads the map", async () => {
+  const real = { entries: undefined, contractNeeds: undefined };
+  for (const config of [{}, { rules: { "CON-001": { severity: "off" } } }]) {
+    const r = await run(config, { "pen-map.json": "{oops" }, real);
+    assert.equal(r.code, 0, r.err);
+    assert.deepEqual(r.calls, []);
   }
 });

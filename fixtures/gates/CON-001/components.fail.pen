@@ -1,0 +1,9 @@
+{"version":"2.6","children":[
+{"id":"btn","type":"frame","name":"Button","reusable":true,"width":10,"height":10},
+{"id":"card","type":"frame","name":"Card","reusable":true,"width":10,"height":10},
+{"id":"icon","type":"frame","name":"Icon","reusable":true,"width":10,"height":10},
+{"id":"tag","type":"frame","name":"Tag","reusable":true,"width":10,"height":10},
+{"id":"s","type":"frame","name":"Home","width":200,"height":200,"children":[
+{"id":"use","type":"ref","ref":"btn"}
+]}
+]}

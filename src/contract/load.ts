@@ -5,7 +5,7 @@ import type { ContractData, ContractTokens, TokenValues } from "./data.js";
 import { readDtcg } from "./dtcg.js";
 import { ContractLoadError } from "./errors.js";
 import type { ContractNeeds } from "./needs.js";
-import { parsePenMap } from "./pen-map.js";
+import { parsePenMap, type PenMap } from "./pen-map.js";
 import type { ContractReader } from "./reader.js";
 
 const isMissing = (err: unknown): boolean => ["ENOENT", "ENOTDIR"].includes((err as { code?: string } | null)?.code ?? "");
@@ -21,6 +21,13 @@ async function readNeeded(reader: ContractReader, file: string, need: "required"
     }
     throw new ContractLoadError(file, `cannot read: ${err instanceof Error ? err.message : String(err)}`);
   }
+}
+
+/** Distinct entry paths the reader says do not exist. */
+async function findMissingPaths(map: PenMap, reader: ContractReader): Promise<Set<string>> {
+  const paths = [...new Set([...map.entries.values()].flatMap((e) => (e.path === undefined ? [] : [e.path])))];
+  const found = await Promise.all(paths.map((p) => reader.exists(p)));
+  return new Set(paths.filter((_, i) => !found[i]));
 }
 
 async function loadTokens(config: GatesConfig, reader: ContractReader, need: "required" | "optional"): Promise<ContractTokens | undefined> {
@@ -60,7 +67,10 @@ export async function loadContract(config: GatesConfig, needs: ContractNeeds, re
   const data: ContractData = { mapFile };
   if (needs.map) {
     const text = await readNeeded(reader, mapFile, needs.map);
-    if (text !== undefined) data.map = parsePenMap(text, mapFile);
+    if (text !== undefined) {
+      data.map = parsePenMap(text, mapFile);
+      data.map.missingPaths = await findMissingPaths(data.map, reader);
+    }
   }
   if (needs.tokens) {
     const tokens = await loadTokens(config, reader, needs.tokens);

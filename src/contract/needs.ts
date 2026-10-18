@@ -6,10 +6,10 @@ export type ContractNeed = "required" | "optional";
 export type ContractNeeds = Partial<Record<ContractInput, ContractNeed>>;
 
 /**
- * Contract inputs per rule. Empty in this card: later cards add entries
- * (CON-001 -> map, CON-002 -> tokens, DIF-003 -> map + markers) and never change the shape.
+ * Contract inputs per rule. Later cards add entries
+ * (CON-002 -> tokens, DIF-003 -> map + markers) and never change the shape.
  */
-export const CONTRACT_NEEDS: Partial<Record<RuleId, ContractNeeds>> = {};
+export const CONTRACT_NEEDS: Partial<Record<RuleId, ContractNeeds>> = { "CON-001": { map: "required" } };
 
 /** Union of the needs of the given rules; `required` wins over `optional`. */
 export function mergeNeeds(ids: readonly RuleId[], table: Partial<Record<RuleId, ContractNeeds>> = CONTRACT_NEEDS): ContractNeeds {

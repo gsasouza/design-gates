@@ -2,11 +2,11 @@ import { CONTROLLED_PROPS, hasNestedQuantifier, isControlledProp, MAX_IGNORE_LEN
 import { resolveContract, type ContractConfig } from "./contract-config.js";
 import type { Severity } from "./types.js";
 
-export const RULE_IDS = ["A11Y-001", "A11Y-003", "A11Y-004", "CMP-001", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "DIF-001", "DIF-002", "DIF-004", "LAY-004", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-003", "TOK-005"] as const;
+export const RULE_IDS = ["A11Y-001", "A11Y-003", "A11Y-004", "CMP-001", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "CON-001", "DIF-001", "DIF-002", "DIF-004", "LAY-004", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-003", "TOK-005"] as const;
 export type RuleId = (typeof RULE_IDS)[number];
 
 /** Rules that run only when the user's config has a `rules.<ID>` entry. */
-export const OPT_IN_RULES: readonly RuleId[] = ["A11Y-003", "A11Y-004", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "DIF-002", "DIF-004", "LAY-004", "RSP-001", "STA-001", "TOK-003", "TOK-005"];
+export const OPT_IN_RULES: readonly RuleId[] = ["A11Y-003", "A11Y-004", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "CON-001", "DIF-002", "DIF-004", "LAY-004", "RSP-001", "STA-001", "TOK-003", "TOK-005"];
 
 export type SeverityOverride = Severity | "off";
 
@@ -100,6 +100,11 @@ export interface Dif004Config extends RuleConfig {
   maxRecreated: number;
 }
 
+export interface Con001Config extends RuleConfig {
+  /** Component name globs (`*` wildcard) that need a map entry; empty = all components. */
+  requireFor: string[];
+}
+
 export interface Dif002Config extends RuleConfig {
   /** Ids, top-frame ids or top-frame names (`*` glob) the change may touch; replaced by the scope file when it exists. */
   scope: string[];
@@ -160,6 +165,7 @@ export interface GatesConfig {
     "CNT-001": Cnt001Config;
     "CNT-002": RuleConfig;
     "CNT-003": Cnt003Config;
+    "CON-001": Con001Config;
     "DIF-001": Dif001Config;
     "DIF-002": Dif002Config;
     "DIF-004": Dif004Config;
@@ -189,6 +195,7 @@ export const DEFAULT_CONFIG: GatesConfig = {
     "CNT-001": { enabled: false, patterns: ["/lorem/", "/ipsum/", "/\\bTODO\\b/", "/xxx/", "Text", "Label"] },
     "CNT-002": { enabled: false },
     "CNT-003": { enabled: false, pattern: "^(Frame|Rectangle|Text|Group|Ellipse)( \\d+)?$" },
+    "CON-001": { enabled: false, requireFor: [] },
     "DIF-001": { warnAt: 5, blockAt: 20, scope: [] },
     "DIF-002": { enabled: false, scope: [], scopeFile: ".pengate/scope.json" },
     "DIF-004": { enabled: false, maxRecreated: 10 },
@@ -324,6 +331,7 @@ const OPTION_CHECKS: Partial<Record<RuleId, Record<string, Check>>> = {
   "CMP-002": { allowedOverrides },
   "CNT-001": { patterns },
   "CNT-003": { pattern: namePattern },
+  "CON-001": { requireFor: stringList },
   "DIF-001": { warnAt: number(0), blockAt: number(0), scope: stringList },
   "DIF-002": { scope: stringList, scopeFile: nonEmptyString },
   "DIF-004": { maxRecreated: integer(1) },
