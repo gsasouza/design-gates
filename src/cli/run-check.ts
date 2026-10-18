@@ -5,8 +5,12 @@ import { FORMATS, formatAgent, formatSarif, formatText, type Format, type Report
 import { applySuppressions, collectSuppressions } from "../check/suppress.js";
 import { compile } from "../compile/compile.js";
 import type { CompileOptions } from "../compile/types.js";
+import { ContractLoadError } from "../contract/errors.js";
+import { loadContract } from "../contract/load.js";
+import { CONTRACT_NEEDS, mergeNeeds, type ContractNeeds } from "../contract/needs.js";
+import { createGitContractReader, type ContractReader } from "../contract/reader.js";
 import { diffVariables } from "../diff/variables.js";
-import { resolveConfig, type GatesConfig } from "../gates/config.js";
+import { resolveConfig, type GatesConfig, type RuleId } from "../gates/config.js";
 import type { DiffContext, Violation } from "../gates/types.js";
 import { createGitReader } from "../git/exec.js";
 import { InvalidRefError, type GitReader } from "../git/reader.js";
@@ -14,7 +18,7 @@ import { readDesignSource } from "../source/read.js";
 import type { DesignSource } from "../source/types.js";
 import { WORKTREE } from "../git/reader.js";
 import { parseFailureViolation } from "../rules/parse-failure.js";
-import { registry, runRules, type RuleEntry, type RuleInput } from "../rules/index.js";
+import { isRuleEnabled, registry, runRules, type RuleEntry, type RuleInput } from "../rules/index.js";
 import { applyScopeFile } from "./scope-file.js";
 import { defaultFs, UsageError, type RunFs } from "./run-diff.js";
 
@@ -41,6 +45,10 @@ export interface CheckDeps {
   fs: Pick<RunFs, "writeFile" | "isSymlink">;
   /** Rules to run; defaults to the registry. */
   entries?: readonly RuleEntry[];
+  /** Reads repo files outside the .pen documents; defaults to the git-backed reader. */
+  contractReader?: ContractReader;
+  /** Which contract inputs each rule needs; defaults to CONTRACT_NEEDS. */
+  contractNeeds?: Partial<Record<RuleId, ContractNeeds>>;
 }
 
 /** The repository root of the current directory (`git rev-parse --show-toplevel`). */
@@ -147,6 +155,11 @@ async function build(o: CheckOptions, deps: CheckDeps): Promise<number> {
   const from = deps.invokedFrom ?? root;
   const config = await loadConfig(git, root, from, o);
 
+  const enabled = entries.filter((e) => isRuleEnabled(e.id, config)).map((e) => e.id);
+  const contract = await loadContract(config, mergeNeeds(enabled, deps.contractNeeds ?? CONTRACT_NEEDS), deps.contractReader ?? createGitContractReader(git)).catch((err: unknown) => {
+    throw err instanceof ContractLoadError ? new UsageError(err.message) : err;
+  });
+
   // `.` (the repo root itself) means all files
   const globs = (o.paths ?? []).map((p) => repoRelative(root, from, p, "path", true)).filter((g) => g !== "");
   if (o.base !== undefined) {
@@ -196,7 +209,7 @@ async function build(o: CheckOptions, deps: CheckDeps): Promise<number> {
     if (!sch001Off) cliViolations.push(...sup.invalid.map((v) => withSchSeverity(v, config)));
   }
 
-  const ruleViolations = runRules(inputs, config, entries);
+  const ruleViolations = runRules(inputs, config, entries, contract);
   const violations: Violation[] = [...cliViolations];
   for (const input of inputs) {
     const own = ruleViolations.filter((v) => v.file === input.file);

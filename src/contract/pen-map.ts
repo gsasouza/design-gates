@@ -1,0 +1,57 @@
+import { isRepoRelativePath } from "../gates/contract-config.js";
+import { ContractLoadError } from "./errors.js";
+
+export interface PenMapEntry {
+  /** Code path, repo-relative; absent for a design-only component. */
+  path?: string;
+  designOnly?: true;
+  /** 1-based line of the entry's key in the map file, when found. */
+  line?: number;
+}
+
+export interface PenMap {
+  file: string;
+  /** Component id -> entry, in file order. */
+  entries: Map<string, PenMapEntry>;
+}
+
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+
+function lineOf(text: string, id: string): number | undefined {
+  const at = text.search(new RegExp(`"${JSON.stringify(id).slice(1, -1).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"\\s*:`));
+  return at < 0 ? undefined : text.slice(0, at).split("\n").length;
+}
+
+function parseEntry(file: string, id: string, raw: unknown): PenMapEntry {
+  const fail = (reason: string): never => {
+    throw new ContractLoadError(file, `component "${id}": ${reason}`);
+  };
+  const checkPath = (p: unknown): string => {
+    if (typeof p !== "string" || !isRepoRelativePath(p)) return fail("path must be a non-empty repo-relative path without ..");
+    return p;
+  };
+  if (typeof raw === "string") return { path: checkPath(raw) };
+  if (!isObject(raw)) return fail('expected a code path string or { "path"?: string, "designOnly"?: true }');
+  for (const key of Object.keys(raw)) if (key !== "path" && key !== "designOnly") fail(`unknown key "${key}"`);
+  if (raw.designOnly !== undefined && raw.designOnly !== true) fail('"designOnly" must be true when present');
+  if (raw.path === undefined && raw.designOnly !== true) fail('needs a "path" unless "designOnly" is true');
+  return { ...(raw.path !== undefined && { path: checkPath(raw.path) }), ...(raw.designOnly === true && { designOnly: true as const }) };
+}
+
+/** Parse pen-map.json text; throws ContractLoadError naming `file` (and the component id for a bad entry). */
+export function parsePenMap(text: string, file: string): PenMap {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch (err) {
+    throw new ContractLoadError(file, `invalid JSON: ${(err as Error).message}`);
+  }
+  if (!isObject(raw)) throw new ContractLoadError(file, "expected a JSON object mapping component ids to code paths");
+  const entries = new Map<string, PenMapEntry>();
+  for (const [id, value] of Object.entries(raw)) {
+    const entry = parseEntry(file, id, value);
+    const line = lineOf(text, id);
+    entries.set(id, line === undefined ? entry : { ...entry, line });
+  }
+  return { file, entries };
+}
