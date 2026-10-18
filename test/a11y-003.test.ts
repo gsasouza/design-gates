@@ -99,3 +99,10 @@ test("a failing copy outside any listed instance counts but is not an affected i
   assert.deepEqual(summary(out), ["inner:warn:default"]);
   assert.equal(out[0]?.affectedInstances, undefined);
 });
+
+test("an unlisted failing copy alone decides severity and theme on the definition", async () => {
+  const out = await a11y3("unlisted-copy.fail");
+  assert.deepEqual(summary(out), ["label:block:mode=dark"]);
+  assert.equal(out[0]?.message, "fontSize 9 ($cap) is below the hardMin 10");
+  assert.equal(out[0]?.affectedInstances, undefined);
+});

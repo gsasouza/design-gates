@@ -167,3 +167,12 @@ test("CNT-003 matches only the first MAX_IGNORE_LENGTH characters of the name", 
   const out = await run(C3, "long.fail", { rules: { [C3]: { pattern: "a*b" } } });
   assert.deepEqual(summary(out), ["c-within:name:warn"]);
 });
+
+test("CNT-002 a reusable text root is reported once on the definition, not on its instance roots", async () => {
+  const out = await run(C2, "text-root.fail");
+  assert.deepEqual(out.map((v) => [v.nodeId, v.affectedInstances]), [["t", ["i1", "i2"]]]);
+});
+
+test("regex guard known gap: alternation inside a quantified group is not detected", () => {
+  for (const p of ["/(a|aa)+/", "/(a|a)*b/"]) assert.ok("config" in resolveConfig({ rules: { [C1]: { patterns: [p] } } }), p);
+});
