@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { lay004 } from "../src/rules/LAY-004.js";
-import { resolveConfig, runRules, type GatesConfig, type Violation } from "../src/index.js";
+import { compile, resolveConfig, runRules, type GatesConfig, type Violation } from "../src/index.js";
 import { compileFixture } from "./helpers/gates.js";
 
 const ON = { rules: { "LAY-004": {} } };
@@ -70,6 +70,7 @@ test("interactive.namePattern matches plain nodes case-insensitively", async () 
 
 test("a custom namePattern replaces the default but keeps components", async () => {
   const raw = { rules: { "LAY-004": { interactive: { namePattern: "^Buttons$" } } } };
+  assert.deepEqual(config(raw).rules["LAY-004"].interactive.components, []);
   assert.deepEqual(summary(await lay4("name-regex.fail", raw)), ["buttons.height:block", "buttons.width:block"]);
 });
 
@@ -136,4 +137,21 @@ test("output is sorted by node then prop and (nodeId, prop) is unique", async ()
     assert.deepEqual(keys, [...keys].sort(), name);
     assert.equal(new Set(keys).size, keys.length, name);
   }
+});
+
+test("names longer than 200 characters are only matched on their first 200", () => {
+  const long = (name: string) => compile({ version: "2.6", children: [{ id: "f", type: "frame", name, width: 10, height: 10 }] } as never, { file: "long.pen" });
+  const run = (name: string) => lay004(long(name), config(ON));
+  assert.deepEqual(run(`${"x".repeat(250)} button`), []);
+  assert.equal(run(`button ${"x".repeat(250)}`).length, 2);
+});
+
+test("interactive.components globs only match the first 200 characters of a component name", () => {
+  const doc = (name: string) => compile({
+    version: "2.6",
+    children: [{ id: "c", type: "frame", name, reusable: true, width: 10, height: 10 }],
+  } as never, { file: "long.pen" });
+  const raw = { rules: { "LAY-004": { interactive: { components: ["*-button"], namePattern: "^zzz$" } } } };
+  assert.equal(lay004(doc("short-button"), config(raw)).length, 2);
+  assert.deepEqual(lay004(doc(`${"x".repeat(250)}-button`), config(raw)), []);
 });

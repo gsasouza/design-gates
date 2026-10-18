@@ -2,6 +2,7 @@ import { getNode, resolveForTheme } from "../compile/query.js";
 import type { CompiledDocument, CompiledNode } from "../compile/types.js";
 import type { GatesConfig } from "../gates/config.js";
 import type { Rule, Violation } from "../gates/types.js";
+import { MAX_IGNORE_LENGTH } from "../gates/tok.js";
 import { globToRegExp } from "./tok-slots.js";
 
 const ID = "LAY-004";
@@ -32,13 +33,13 @@ export const lay004: Rule = (compiled: CompiledDocument, config: GatesConfig) =>
   const { min, recommended, interactive } = config.rules[ID];
   const globs = interactive.components.map(globToRegExp);
   const namePattern = new RegExp(interactive.namePattern, "i");
-  const globMatch = (n: CompiledNode | undefined): boolean => n !== undefined && [n.id, n.sourceId, text(n.props.name)].some((s) => s !== undefined && globs.some((re) => re.test(s)));
+  const globMatch = (n: CompiledNode | undefined): boolean => n !== undefined && [n.id, n.sourceId, text(n.props.name)].some((s) => s !== undefined && globs.some((re) => re.test(s.slice(0, MAX_IGNORE_LENGTH))));
 
   const isInteractive = (node: CompiledNode): boolean => {
     const component = node.instanceOf === undefined ? undefined : getNode(compiled, node.instanceOf);
     if (globMatch(component)) return true;
     if (!node.expanded && node.instanceOf === undefined && node.props.reusable === true && globMatch(node)) return true;
-    return [text(node.props.name), text(component?.props.name)].some((s) => s !== undefined && namePattern.test(s));
+    return [text(node.props.name), text(component?.props.name)].some((s) => s !== undefined && namePattern.test(s.slice(0, MAX_IGNORE_LENGTH)));
   };
 
   const out: Violation[] = [];

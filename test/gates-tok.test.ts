@@ -197,3 +197,15 @@ test("TOK-001 and TOK-002 are deterministic", async () => {
     assert.ok(a.length > 2);
   }
 });
+
+test("TOK-001 onlyIn globs only match the first 200 characters of a top-frame name", async () => {
+  const { compile } = await import("../src/index.js");
+  const doc = (name: string) => compile({
+    version: "2.6",
+    children: [{ id: "f", type: "frame", name, width: 10, height: 10, children: [{ id: "r", type: "rectangle", width: 5, height: 5, fill: "#ff0000" }] }],
+  } as never, { file: "long.pen" });
+  const raw = { rules: { "TOK-001": { onlyIn: ["*-Tail"] } } };
+  const run = (name: string) => runRules([{ file: "long.pen", compiled: doc(name) }], config(raw)).filter((v) => v.rule === "TOK-001");
+  assert.deepEqual(run("short-Tail").map((v) => v.nodeId), ["r"]);
+  assert.deepEqual(run(`${"x".repeat(250)}-Tail`), []);
+});

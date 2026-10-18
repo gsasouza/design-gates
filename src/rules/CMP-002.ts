@@ -1,6 +1,6 @@
 import { getNode } from "../compile/query.js";
 import type { CompiledDocument, CompiledNode } from "../compile/types.js";
-import { CONTROLLED_PROPS } from "../gates/tok.js";
+import { CONTROLLED_PROPS, MAX_IGNORE_LENGTH } from "../gates/tok.js";
 import type { Rule, Violation } from "../gates/types.js";
 import { globToRegExp, literalSlots } from "./tok-slots.js";
 
@@ -45,7 +45,7 @@ export const cmp002: Rule = (compiled, config) => {
     const component = getNode(compiled, node.instanceOf);
     if (!component) continue;
     const name = typeof component.props.name === "string" ? component.props.name : component.id;
-    const keys = allowed.find(({ re }) => re.test(component.id) || (typeof component.props.name === "string" && re.test(component.props.name)))?.keys ?? [];
+    const keys = allowed.find(({ re }) => re.test(component.id.slice(0, MAX_IGNORE_LENGTH)) || (typeof component.props.name === "string" && re.test(component.props.name.slice(0, MAX_IGNORE_LENGTH))))?.keys ?? [];
     const report = (path: string, key: string, message: string): void => {
       out.push({ rule: "CMP-002", severity: "warn", file: compiled.file, nodeId: node.id, path: node.path, prop: `descendants.${path}.${key}`, message });
     };
