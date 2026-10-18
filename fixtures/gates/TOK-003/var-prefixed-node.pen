@@ -1,0 +1,6 @@
+{
+  "version": "2.6",
+  "children": [
+    { "id": "parent", "type": "frame", "width": 100, "height": 100, "metadata": { "type": "design-gates", "ignore": ["TOK-003"], "reason": "legacy" }, "children": [{ "id": "$var:real", "type": "rectangle", "width": 10, "height": 10 }] }
+  ]
+}

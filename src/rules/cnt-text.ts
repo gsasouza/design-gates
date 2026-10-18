@@ -5,12 +5,12 @@ import { affectedInstances } from "./tok-slots.js";
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
 /**
- * Text nodes whose `content` is set by the node itself. Content inherited from a component (provenance
+ * Text nodes whose `content` is set by the node itself. Content inherited from a component (on an expanded node or an instance root; provenance
  * absent or origin `component`) is only reported on the defining node; instance and descendants overrides
  * are reported on the overriding node.
  */
 export function ownTextNodes(compiled: CompiledDocument): CompiledNode[] {
-  return compiled.nodes.filter((n) => n.type === "text" && !(n.expanded && (n.provenance.content === undefined || n.provenance.content.origin === "component")));
+  return compiled.nodes.filter((n) => n.type === "text" && !((n.expanded || n.instanceOf !== undefined) && (n.provenance.content === undefined || n.provenance.content.origin === "component")));
 }
 
 /** A violation of `rule` on a text node's `content`, with `affectedInstances` when the node is inside a component. */

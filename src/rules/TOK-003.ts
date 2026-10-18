@@ -77,8 +77,8 @@ export function run(compiled: CompiledDocument, config: GatesConfig): Violation[
       add(key, used.some((t) => Object.entries(combo).every(([axis, v]) => t[axis] === v)));
     }
     for (const [axis, values] of axes) {
-      const varies = entries.some((e) => axis in entryTheme(e));
-      if (!varies || entries.some((e) => !(axis in entryTheme(e)))) continue;
+      const varies = entries.some((e) => Object.hasOwn(entryTheme(e), axis));
+      if (!varies || entries.some((e) => !Object.hasOwn(entryTheme(e), axis))) continue;
       for (const v of values) {
         if (entries.some((e) => entryTheme(e)[axis] === v)) continue;
         add(`${axis}=${v}`, used.some((t) => t[axis] === v));

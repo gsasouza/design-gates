@@ -42,7 +42,7 @@ export function applySuppressions(violations: Violation[], compiled: CompiledDoc
   const parents = new Map(compiled.nodes.map((n) => [n.id, n.parents]));
   return violations.filter((v) => {
     // Variable findings use a synthetic id that no node marker can target.
-    if (v.nodeId === "" || isVariableNodeId(v.nodeId)) return true;
+    if (v.nodeId === "" || (isVariableNodeId(v.nodeId) && !parents.has(v.nodeId))) return true;
     const rules = [v.rule, ...(RULE_ALIASES[v.rule] ?? [])];
     return ![v.nodeId, ...(parents.get(v.nodeId) ?? [])].some((id) => rules.some((r) => byNode.get(id)?.has(r)));
   });
