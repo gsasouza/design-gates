@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { formatAgent } from "../src/check/format.js";
 import { resolveConfig, runRules, type GatesConfig, type Violation } from "../src/index.js";
+import { MAX_IGNORE_LENGTH } from "../src/gates/tok.js";
 import { compileFixture } from "./helpers/gates.js";
 
 const config = (raw?: unknown): GatesConfig => {
@@ -153,4 +154,16 @@ test("all three rules together on one document keep fingerprints unique", async 
   const prints = out.map((v) => `${v.rule}\u0000${v.nodeId}\u0000${v.prop}`);
   assert.equal(new Set(prints).size, prints.length);
   assert.deepEqual([...new Set(out.map((v) => v.rule))], [C1, C2]);
+});
+
+test("CNT-001 matches only the first MAX_IGNORE_LENGTH characters of the content", async () => {
+  const out = await run(C1, "long.fail");
+  assert.deepEqual(summary(out), ["t-within:content:warn"]);
+  assert.equal(out[0]!.message.endsWith("matches /lorem/"), true);
+});
+
+test("CNT-003 matches only the first MAX_IGNORE_LENGTH characters of the name", async () => {
+  assert.equal(MAX_IGNORE_LENGTH, 200);
+  const out = await run(C3, "long.fail", { rules: { [C3]: { pattern: "a*b" } } });
+  assert.deepEqual(summary(out), ["c-within:name:warn"]);
 });
