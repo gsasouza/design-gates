@@ -1,11 +1,11 @@
-import { CONTROLLED_PROPS, hasNestedQuantifier, isControlledProp, MAX_IGNORE_LENGTH } from "./tok.js";
+import { CONTROLLED_PROPS, hasNestedQuantifier, isControlledProp, MAX_IGNORE_LENGTH, regexSource } from "./tok.js";
 import type { Severity } from "./types.js";
 
-export const RULE_IDS = ["A11Y-001", "A11Y-003", "CMP-001", "DIF-001", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-003", "TOK-005"] as const;
+export const RULE_IDS = ["A11Y-001", "A11Y-003", "CMP-001", "CNT-001", "CNT-002", "CNT-003", "DIF-001", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-003", "TOK-005"] as const;
 export type RuleId = (typeof RULE_IDS)[number];
 
 /** Rules that run only when the user's config has a `rules.<ID>` entry. */
-export const OPT_IN_RULES: readonly RuleId[] = ["A11Y-003", "RSP-001", "STA-001", "TOK-003", "TOK-005"];
+export const OPT_IN_RULES: readonly RuleId[] = ["A11Y-003", "CNT-001", "CNT-002", "CNT-003", "RSP-001", "STA-001", "TOK-003", "TOK-005"];
 
 export type SeverityOverride = Severity | "off";
 
@@ -65,6 +65,16 @@ export interface Cmp001Config extends RuleConfig {
   minNodes: number;
 }
 
+export interface Cnt001Config extends RuleConfig {
+  /** Placeholder texts: `/regex/` (always case-insensitive) or a case-insensitive exact string. */
+  patterns: string[];
+}
+
+export interface Cnt003Config extends RuleConfig {
+  /** Regex source (no slashes) a name must fully match to count as a default name; case-sensitive. */
+  pattern: string;
+}
+
 export interface Dif001Config extends RuleConfig {
   warnAt: number;
   blockAt: number;
@@ -104,6 +114,9 @@ export interface GatesConfig {
     "A11Y-001": A11y001Config;
     "A11Y-003": A11y003Config;
     "CMP-001": Cmp001Config;
+    "CNT-001": Cnt001Config;
+    "CNT-002": RuleConfig;
+    "CNT-003": Cnt003Config;
     "DIF-001": Dif001Config;
     "RSP-001": Rsp001Config;
     "SCH-001": RuleConfig;
@@ -124,6 +137,9 @@ export const DEFAULT_CONFIG: GatesConfig = {
     "A11Y-001": { minRatio: 4.5, minRatioLarge: 3 },
     "A11Y-003": { enabled: false, min: 12, hardMin: 10 },
     "CMP-001": { minNodes: 3 },
+    "CNT-001": { enabled: false, patterns: ["/lorem/", "/ipsum/", "/\\bTODO\\b/", "/xxx/", "Text", "Label"] },
+    "CNT-002": { enabled: false },
+    "CNT-003": { enabled: false, pattern: "^(Frame|Rectangle|Text|Group|Ellipse)( \\d+)?$" },
     "DIF-001": { warnAt: 5, blockAt: 20, scope: [] },
     "RSP-001": { enabled: false, breakpoints: [], screens: [], pattern: "{name} @ {breakpoint}" },
     "SCH-001": {},
@@ -166,23 +182,40 @@ const scales: Check = (v) =>
   isObject(v) && Object.entries(v).every(([k, s]) => (SCALE_CATEGORIES as readonly string[]).includes(k) && isScale(s))
     ? undefined
     : `must be an object with categories ${SCALE_CATEGORIES.join(", ")}, each { "base": n } or an array of numbers`;
-const ignoreValues: Check = (v) => {
-  if (!isObject(v) || !Object.values(v).every(isStringList)) return "must be an object of string arrays keyed by property";
-  for (const list of Object.values(v) as string[][]) {
-    for (const s of list) {
-      if (s.length > 2 && s.startsWith("/") && s.endsWith("/")) {
-        try {
-          new RegExp(s.slice(1, -1));
-        } catch {
-          return `has an invalid regular expression ${s}`;
-        }
-        if (hasNestedQuantifier(s.slice(1, -1))) return `has a regular expression with nested quantifiers ${s}`;
-        if (s.length > MAX_IGNORE_LENGTH) return `has a regular expression longer than ${MAX_IGNORE_LENGTH} characters`;
-      }
-    }
+
+/** Why a regex source is refused (invalid, nested quantifiers, too long), or undefined; `entry` is the text shown and measured. */
+export function regexProblem(source: string, entry: string): string | undefined {
+  try {
+    new RegExp(source);
+  } catch {
+    return `has an invalid regular expression ${entry}`;
+  }
+  if (hasNestedQuantifier(source)) return `has a regular expression with nested quantifiers ${entry}`;
+  if (entry.length > MAX_IGNORE_LENGTH) return `has a regular expression longer than ${MAX_IGNORE_LENGTH} characters`;
+  return undefined;
+}
+
+/** The first problem among the `/regex/` entries of a list. */
+const regexEntriesProblem = (list: readonly string[]): string | undefined => {
+  for (const s of list) {
+    const source = regexSource(s);
+    const problem = source === undefined ? undefined : regexProblem(source, s);
+    if (problem) return problem;
   }
   return undefined;
 };
+
+const ignoreValues: Check = (v) => {
+  if (!isObject(v) || !Object.values(v).every(isStringList)) return "must be an object of string arrays keyed by property";
+  for (const list of Object.values(v) as string[][]) {
+    const problem = regexEntriesProblem(list);
+    if (problem) return problem;
+  }
+  return undefined;
+};
+
+const patterns: Check = (v) => (isStringList(v) ? regexEntriesProblem(v) : "must be an array of strings");
+const namePattern: Check = (v) => (typeof v === "string" ? regexProblem(v, v) : "must be a regular expression source string");
 
 const properties: Check = (v) =>
   isStringList(v) && v.every(isControlledProp) ? undefined : `must be an array of ${CONTROLLED_PROPS.join(", ")}`;
@@ -219,6 +252,8 @@ const OPTION_CHECKS: Partial<Record<RuleId, Record<string, Check>>> = {
   "A11Y-001": { minRatio: number(1), minRatioLarge: number(1) },
   "A11Y-003": { min: positive, hardMin: positive },
   "CMP-001": { minNodes: integer(1) },
+  "CNT-001": { patterns },
+  "CNT-003": { pattern: namePattern },
   "DIF-001": { warnAt: number(0), blockAt: number(0), scope: stringList },
   "RSP-001": { breakpoints, screens: stringList, pattern: breakpointPattern, baseBreakpoint: (v) => (typeof v === "string" ? undefined : "must be a string") },
   "STA-001": { states, screens: stringList, pattern },
