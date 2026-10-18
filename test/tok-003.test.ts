@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { defaultFs } from "../src/cli/run-diff.js";
-import { applySuppressions } from "../src/check/suppress.js";
+import { applySuppressions, collectSuppressions } from "../src/check/suppress.js";
 import { runCheck } from "../src/cli/run-check.js";
 import { resolveConfig, runRules, type GatesConfig, type Violation } from "../src/index.js";
 import { compileFixture } from "./helpers/gates.js";
@@ -154,4 +154,16 @@ test("node suppression markers never apply to a variable finding", async () => {
   const compiled = await compileFixture("TOK-003/used-dark.fail.pen");
   const byNode = new Map([["$var:bg", new Set(["TOK-003"])], ["dark", new Set(["TOK-003"])]]);
   assert.deepEqual(applySuppressions([violation], compiled, byNode), [violation]);
+});
+
+test("an axis named like an Object.prototype key gives no false check-2 finding", async () => {
+  assert.deepEqual(await tok3("axis-proto-name.pass"), []);
+  assert.deepEqual(await tok3("axis-proto-name.pass", all), []);
+});
+
+test("a real node whose id starts with $var: is still suppressed by its ancestor's marker", async () => {
+  const compiled = await compileFixture("TOK-003/var-prefixed-node.pen");
+  const { byNode } = collectSuppressions(compiled, "x.pen");
+  const violation: Violation = { rule: "TOK-003", severity: "warn", file: "x.pen", nodeId: "$var:real", path: "$var:real", message: "m" };
+  assert.deepEqual(applySuppressions([violation], compiled, byNode), []);
 });

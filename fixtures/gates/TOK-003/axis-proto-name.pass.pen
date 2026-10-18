@@ -1,0 +1,8 @@
+{
+  "version": "2.6",
+  "themes": { "constructor": ["a", "b"] },
+  "variables": { "bg": { "type": "color", "value": [{ "value": "#fff" }, { "value": "#000", "theme": { "constructor": "a" } }] } },
+  "children": [
+    { "id": "box", "type": "frame", "width": 100, "height": 100, "theme": { "constructor": "b" }, "children": [{ "id": "inner", "type": "rectangle", "width": 10, "height": 10, "fill": "$bg" }] }
+  ]
+}
