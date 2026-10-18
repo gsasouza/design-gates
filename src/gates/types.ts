@@ -1,6 +1,7 @@
 import type { CompiledDocument } from "../compile/types.js";
 import type { VariablesDiff } from "../diff/variables.js";
 import type { PenNode } from "../pen/types.js";
+import type { ContractData } from "../contract/data.js";
 import type { GatesConfig } from "./config.js";
 
 /** Only `block` can fail a run; `info` is purely informational. */
@@ -40,4 +41,4 @@ export interface DiffContext {
   variables?: VariablesDiff;
 }
 
-export type Rule = (compiled: CompiledDocument, config: GatesConfig, diff?: DiffContext) => Violation[];
+export type Rule = (compiled: CompiledDocument, config: GatesConfig, diff?: DiffContext, contract?: ContractData) => Violation[];

@@ -158,6 +158,15 @@ export function createGitReader(
       return [...new Set(out.filter((p) => designFormatOf(p)))].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
     },
 
+    async listFiles(globs) {
+      if (globs.length === 0) return [];
+      for (const g of globs) {
+        if (g === "" || g.startsWith("/") || g.startsWith(":") || g.split("/").includes("..")) throw new Error(`glob must stay inside the repository: "${g}"`);
+      }
+      const out = parseNul(await git("ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", ...buildPathspecs(globs)));
+      return [...new Set(out)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    },
+
     async readBlob(ref, filePath) {
       const rr = await resolve(ref);
       return git("show", `${rr}:${filePath}`);

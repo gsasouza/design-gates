@@ -1,4 +1,5 @@
 import { CONTROLLED_PROPS, hasNestedQuantifier, isControlledProp, MAX_IGNORE_LENGTH, regexSource } from "./tok.js";
+import { resolveContract, type ContractConfig } from "./contract-config.js";
 import type { Severity } from "./types.js";
 
 export const RULE_IDS = ["A11Y-001", "A11Y-003", "A11Y-004", "CMP-001", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "DIF-001", "DIF-002", "DIF-004", "LAY-004", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-003", "TOK-005"] as const;
@@ -147,6 +148,8 @@ export interface GatesConfig {
   canvasColor: string;
   /** Escalates only the rules that say so (TOK-002 warn -> block); the CLI still fails only on block. */
   strict: boolean;
+  /** Repo files outside the .pen documents; absent unless the user configures it. */
+  contract?: ContractConfig;
   rules: {
     "A11Y-001": A11y001Config;
     "A11Y-003": A11y003Config;
@@ -364,7 +367,7 @@ export function resolveConfig(raw: unknown): ConfigResult {
   if (raw === undefined || raw === null) return { config };
   if (!isObject(raw)) return { error: "config must be an object" };
   for (const key of Object.keys(raw)) {
-    if (key !== "canvasColor" && key !== "strict" && key !== "rules") return { error: `unknown config key "${key}"` };
+    if (key !== "canvasColor" && key !== "strict" && key !== "rules" && key !== "contract") return { error: `unknown config key "${key}"` };
   }
   if (raw.canvasColor !== undefined) {
     if (typeof raw.canvasColor !== "string" || !COLOR.test(raw.canvasColor)) return { error: "canvasColor must be a hex colour such as #FFFFFF" };
@@ -373,6 +376,11 @@ export function resolveConfig(raw: unknown): ConfigResult {
   if (raw.strict !== undefined) {
     if (typeof raw.strict !== "boolean") return { error: "strict must be a boolean" };
     config.strict = raw.strict;
+  }
+  if (raw.contract !== undefined) {
+    const resolved = resolveContract(raw.contract);
+    if ("error" in resolved) return resolved;
+    config.contract = resolved.contract;
   }
   if (raw.rules !== undefined) {
     if (!isObject(raw.rules)) return { error: "rules must be an object" };
