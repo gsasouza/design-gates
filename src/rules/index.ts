@@ -13,6 +13,7 @@ import { con001 } from "./CON-001.js";
 import { con002 } from "./CON-002.js";
 import { dif001 } from "./DIF-001.js";
 import { dif002 } from "./DIF-002.js";
+import { dif003 } from "./DIF-003.js";
 import { dif004 } from "./DIF-004.js";
 import { downgradeFigBlocks } from "./fig-review.js";
 import { lay004 } from "./LAY-004.js";
@@ -128,6 +129,13 @@ const ENTRIES: RuleEntry[] = [
     description: "A frame changed since the base in a node outside the declared scope (opt-in, only with --base).",
     defaultSeverity: "warn",
     run: dif002,
+  },
+  {
+    id: "DIF-003",
+    title: "Removed node referenced by code",
+    description: "A node removed since the base that the pen map or a code marker still references (opt-in, only with --base).",
+    defaultSeverity: "block",
+    run: dif003,
   },
   {
     id: "DIF-004",

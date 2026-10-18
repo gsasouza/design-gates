@@ -1,0 +1,18 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "home",
+      "type": "frame",
+      "name": "Home",
+      "children": [
+        {
+          "id": "title",
+          "type": "text",
+          "content": "title",
+          "fill": "#111111"
+        }
+      ]
+    }
+  ]
+}

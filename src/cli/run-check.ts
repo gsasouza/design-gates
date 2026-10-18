@@ -155,7 +155,8 @@ async function build(o: CheckOptions, deps: CheckDeps): Promise<number> {
   const from = deps.invokedFrom ?? root;
   const config = await loadConfig(git, root, from, o);
 
-  const enabled = entries.filter((e) => isRuleEnabled(e.id, config)).map((e) => e.id);
+  // DIF-003 only runs against a base, so without --base its inputs are not read at all.
+  const enabled = entries.filter((e) => isRuleEnabled(e.id, config) && (e.id !== "DIF-003" || o.base !== undefined)).map((e) => e.id);
   const contract = await loadContract(config, mergeNeeds(enabled, deps.contractNeeds ?? CONTRACT_NEEDS), deps.contractReader ?? createGitContractReader(git)).catch((err: unknown) => {
     throw err instanceof ContractLoadError ? new UsageError(err.message) : err;
   });
