@@ -1,0 +1,54 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "button",
+      "type": "frame",
+      "name": "button",
+      "width": 120,
+      "height": 40,
+      "fill": "#0055FF",
+      "children": [
+        {
+          "id": "i",
+          "type": "ellipse",
+          "width": 16,
+          "height": 16,
+          "fill": "#FFFFFF"
+        },
+        {
+          "id": "j",
+          "type": "ellipse",
+          "width": 16,
+          "height": 16,
+          "fill": "#FFFFFF"
+        }
+      ],
+      "reusable": true
+    },
+    {
+      "id": "copy",
+      "type": "frame",
+      "name": "copy",
+      "width": 120,
+      "height": 40,
+      "fill": "#0055FF",
+      "children": [
+        {
+          "id": "ci",
+          "type": "ellipse",
+          "width": 16,
+          "height": 16,
+          "fill": "#000000"
+        },
+        {
+          "id": "cj",
+          "type": "ellipse",
+          "width": 16,
+          "height": 16,
+          "fill": "#000000"
+        }
+      ]
+    }
+  ]
+}

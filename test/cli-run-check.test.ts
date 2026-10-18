@@ -191,6 +191,23 @@ test("--scope is appended to rules.DIF-001.scope", async () => {
   });
 });
 
+test("a scope file outside the repo exits 2 (relative, absolute and symlinked)", async () => {
+  await withRepo("check/clean", async (repo) => {
+    const outside = path.join(path.dirname(repo), `${path.basename(repo)}-outside.json`);
+    await writeFile(outside, '{"scope":["Button"]}');
+    const configure = (scopeFile?: string) =>
+      writeFile(path.join(repo, "design-gates.config.json"), JSON.stringify({ rules: { "DIF-002": scopeFile === undefined ? {} : { scopeFile } } }));
+    await configure("../outside.json");
+    assert.equal((await check(repo)).code, 2);
+    await configure(outside);
+    assert.equal((await check(repo)).code, 2);
+    await configure();
+    await mkdir(path.join(repo, ".pengate"), { recursive: true });
+    await symlink(outside, path.join(repo, ".pengate", "scope.json"));
+    assert.equal((await check(repo)).code, 2);
+  });
+});
+
 test("--base passes a diff context to the rules", async () => {
   await withRepo("check/clean-edited", async (repo) => {
     const seen: unknown[] = [];
