@@ -145,3 +145,13 @@ test("names longer than 200 characters are only matched on their first 200", () 
   assert.deepEqual(run(`${"x".repeat(250)} button`), []);
   assert.equal(run(`button ${"x".repeat(250)}`).length, 2);
 });
+
+test("interactive.components globs only match the first 200 characters of a component name", () => {
+  const doc = (name: string) => compile({
+    version: "2.6",
+    children: [{ id: "c", type: "frame", name, reusable: true, width: 10, height: 10 }],
+  } as never, { file: "long.pen" });
+  const raw = { rules: { "LAY-004": { interactive: { components: ["*-button"], namePattern: "^zzz$" } } } };
+  assert.equal(lay004(doc("short-button"), config(raw)).length, 2);
+  assert.deepEqual(lay004(doc(`${"x".repeat(250)}-button`), config(raw)), []);
+});

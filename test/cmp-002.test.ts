@@ -135,3 +135,17 @@ test("a frame with slot: false is not a slot, so type and children overrides on 
     "b:descendants.body.children",
   ]);
 });
+
+test("allowedOverrides globs only match the first 200 characters of a component id or name", () => {
+  const doc = (id: string, name: string) => compile({
+    version: "2.6",
+    children: [
+      { id, type: "frame", name, reusable: true, children: [{ id: "t", type: "text", content: "x" }] },
+      { id: "u", type: "ref", ref: id, descendants: { t: { opacity: 0.5 } } },
+    ],
+  } as never, { file: "long.pen" });
+  const raw = { rules: { "CMP-002": { allowedOverrides: { "*-Tail": ["opacity"] } } } };
+  assert.deepEqual(cmp002(doc("c", "short-Tail"), config(raw)), []);
+  assert.deepEqual(cmp002(doc("c", `${"x".repeat(250)}-Tail`), config(raw)).map((v) => v.prop), ["descendants.t.opacity"]);
+  assert.deepEqual(cmp002(doc(`${"x".repeat(250)}-Tail`, "N"), config(raw)).map((v) => v.prop), ["descendants.t.opacity"]);
+});
