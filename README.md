@@ -312,6 +312,7 @@ Opt-in rules (currently `A11Y-003`, `A11Y-004`, `CMP-002`, `CMP-005`, `CNT-001`,
 | `canvasColor` | `"#FFFFFF"` | Colour assumed behind top-level frames for contrast. |
 | `strict` | `false` | Escalates the rules that say so (TOK-002 warn -> block). |
 | `rules.<ID>.severity` | the rule's default severity (see Rules) | `block`, `warn`, `review`, `info` or `off`; `off` disables the rule (for SCH-001 it also silences the "suppression without reason" report). |
+| `contract` | absent | Optional object for repo files outside the `.pen` documents, read by contract rules (none ship yet). Unknown keys, wrong types and paths that are empty, absolute or contain `..` are config errors (exit 2). Without it behaviour is unchanged. Keys: `mapFile` (default `"pen-map.json"`), `tokenSource` (`{ "kind": "css" \| "dtcg", "path", "selectors"?, "themes"? }`), `codeGlobs` (default `[]`, for DIF-003). See "Contract files" below. |
 | `rules.A11Y-001.minRatio` / `minRatioLarge` | `4.5` / `3` | Minimum contrast ratio for normal / large text. |
 | `rules.A11Y-003.min` / `hardMin` | `12` / `10` | Opt-in; `{}` enables the rule. Font sizes below `min` warn, below `hardMin` block. Both must be numbers > 0 and `hardMin` must not exceed `min`. |
 | `rules.A11Y-004.requireScrim` | `true` | Opt-in; `{}` enables the rule. Boolean. `true`: text over an image-like background with no scrim warns. `false`: the same text is `review` (fixed severity, not actionable). A scrim is a layer between the text and the background with an enabled solid fill of effective alpha >= 0.3 (fill alpha times accumulated node opacity). |
@@ -337,6 +338,46 @@ Opt-in rules (currently `A11Y-003`, `A11Y-004`, `CMP-002`, `CMP-005`, `CNT-001`,
 | `rules.TOK-003.themeAxes` / `requireAllCombinations` | `[]` / `false` | Opt-in; `{}` enables the rule. Theme axes that need a value (empty = all declared axes); check every declared combination instead of only those nodes use. |
 | `rules.TOK-005.properties` | all nine TOK-001 properties | Opt-in. Properties checked for raw values equal to a token; `{}` enables the rule. TOK-005 also honours `rules.TOK-001.onlyIn` / `ignoreValues`. |
 | `rules.TOK-002.scales` / `tolerance` | see JSON above / `0` | Allowed values per category; accepted distance from a scale value. |
+
+#### Contract files
+
+`contract` tells rules where to find repo files other than the `.pen` documents. A file is read only when an enabled rule needs it (no such rule ships in this version, so no extra file is read). A malformed file, or a missing file a rule requires, is a usage error (exit 2) naming the file.
+
+`pen-map.json` maps a component id to a code path, or to an object; an object needs `path` unless `designOnly` is `true`. Paths are repo-relative, not absolute, without `..`:
+
+```json
+{
+  "button": "src/components/Button.tsx",
+  "card": { "path": "src/components/Card.tsx" },
+  "illustration": { "designOnly": true }
+}
+```
+
+`tokenSource.kind: "css"` reads custom properties; `themes` maps a theme key (`axis=value`, several axes sorted and comma-joined, as in `Violation.theme`) to a selector; `selectors` (default `[":root"]`) are the selectors of the default theme:
+
+```json
+{ "contract": { "tokenSource": { "kind": "css", "path": "src/tokens.css", "themes": { "mode=dark": "[data-theme=dark]" } } } }
+```
+
+```css
+:root { --color-bg: #ffffff; }
+[data-theme=dark] { --color-bg: #111111; }
+```
+
+Limits of the CSS reader: comments are ignored; only `--name: value;` declarations directly inside a rule whose comma-separated selector list contains a configured selector exactly (whitespace-collapsed; `[data-theme=dark]` does not match `[data-theme="dark"]`) are read, values trimmed; the contents of every at-rule block (`@media`, `@supports`, `@layer`, `@container`) are skipped; nested rules are ignored; a repeated property takes the later value; `var()` is not resolved; unbalanced braces or unterminated strings/comments are errors.
+
+`tokenSource.kind: "dtcg"` reads a DTCG 2025.10 JSON file for the default theme, and `themes` maps a theme key to another DTCG file:
+
+```json
+{ "color": { "$type": "color", "bg": { "$value": { "colorSpace": "srgb", "components": [1, 1, 1], "hex": "#ffffff" } }, "surface": { "$value": "{color.bg}" } },
+  "space": { "md": { "$type": "dimension", "$value": { "value": 16, "unit": "px" } } } }
+```
+
+Tokens are keyed by dotted path (`color.bg`); `$type` is inherited from the nearest group; `{a.b}` aliases resolve within the file (a cycle or missing target is an error); a colour uses `hex` (alpha appended below 1) or is converted from `srgb` components, any other colour space needs `hex`; a dimension becomes `16px`.
+
+### Roadmap
+
+- CON-003: component overrides against code props (needs TypeScript parsing).
 
 ### CLI: `design-gates check`
 

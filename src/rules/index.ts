@@ -23,6 +23,7 @@ import { run as tok001 } from "./TOK-001.js";
 import { run as tok002 } from "./TOK-002.js";
 import { run as tok003 } from "./TOK-003.js";
 import { run as tok005 } from "./TOK-005.js";
+import type { ContractData } from "../contract/data.js";
 import type { DiffContext, Rule, Severity, Violation } from "../gates/types.js";
 
 export interface RuleEntry {
@@ -214,15 +215,20 @@ function adjust(v: Violation, override: Severity | "off" | undefined): Violation
   return { ...v, severity: override };
 }
 
+/** Whether runRules runs a rule: an opt-in rule needs `enabled`, and `severity: "off"` disables any rule. */
+export function isRuleEnabled(id: RuleId, config: GatesConfig): boolean {
+  if (OPT_IN_RULES.includes(id) && config.rules[id]?.enabled !== true) return false;
+  return config.rules[id]?.severity !== "off";
+}
+
 /** Run every enabled rule on every file; output sorted by file, nodeId, rule, prop, message. */
-export function runRules(files: readonly RuleInput[], config: GatesConfig, entries: readonly RuleEntry[] = registry): Violation[] {
+export function runRules(files: readonly RuleInput[], config: GatesConfig, entries: readonly RuleEntry[] = registry, contract?: ContractData): Violation[] {
   const out: Violation[] = [];
   for (const input of files) {
     for (const entry of entries) {
-      if (OPT_IN_RULES.includes(entry.id) && config.rules[entry.id]?.enabled !== true) continue;
+      if (!isRuleEnabled(entry.id, config)) continue;
       const override = config.rules[entry.id]?.severity;
-      if (override === "off") continue;
-      const adjusted = entry.run(input.compiled, config, input.diff).map((v) => adjust({ ...v, file: input.file }, override));
+      const adjusted = entry.run(input.compiled, config, input.diff, contract).map((v) => adjust({ ...v, file: input.file }, override));
       out.push(...downgradeFigBlocks(adjusted, input.compiled));
     }
   }

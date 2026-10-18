@@ -32,6 +32,8 @@ export interface GitReader {
   readWorktreeBytes(path: string): Promise<Buffer>;
   /** Sorted repo-relative paths of tracked and untracked (not ignored) .pen and .fig files matching `globs`. */
   listDesignFiles?(globs: string[]): Promise<string[]>;
+  /** Sorted repo-relative paths of tracked and untracked (not ignored) files matching `globs`; no globs gives none. */
+  listFiles?(globs: string[]): Promise<string[]>;
 }
 
 /** Default diff base: the merge base of `main` and HEAD. */
