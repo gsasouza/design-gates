@@ -4,6 +4,7 @@ import { readCssCustomProperties } from "../src/contract/css.js";
 import { readDtcg } from "../src/contract/dtcg.js";
 import { ContractLoadError } from "../src/contract/errors.js";
 import { loadContract } from "../src/contract/load.js";
+import { loadMarkers } from "../src/contract/markers.js";
 import { parsePenMap } from "../src/contract/pen-map.js";
 import { createGitContractReader, type ContractReader } from "../src/contract/reader.js";
 import { resolveConfig, type GatesConfig } from "../src/index.js";
@@ -37,6 +38,23 @@ test("pen-map: malformed input is a load error naming file and component", () =>
   throwsLoad(() => parsePenMap('{"btn": "/etc/passwd"}', "pen-map.json"), "pen-map.json", /component "btn"/);
   throwsLoad(() => parsePenMap('{"btn": "../x.tsx"}', "pen-map.json"), "pen-map.json", /component "btn"/);
   throwsLoad(() => parsePenMap('{"btn": {"path": "a/../../x"}}', "pen-map.json"), "pen-map.json", /component "btn"/);
+  for (const bad of ["..\\x", "C:/x", "a\0b"]) {
+    throwsLoad(() => parsePenMap(JSON.stringify({ btn: bad }), "pen-map.json"), "pen-map.json", /component "btn"/);
+    throwsLoad(() => parsePenMap(JSON.stringify({ btn: { path: bad } }), "pen-map.json"), "pen-map.json", /component "btn"/);
+  }
+});
+
+test("pen-map: line is that of the top-level id, not a nested key of the same name", () => {
+  const map = parsePenMap('{\n  "a": {\n    "path": "A.tsx"\n  },\n  "path": "P.tsx"\n}', "pen-map.json");
+  assert.equal(map.entries.get("path")!.line, 5);
+  assert.equal(map.entries.get("a")!.line, 2);
+});
+
+test("css: a selector list with several configured selectors fills each of them", () => {
+  const r = readCssCustomProperties("[data-theme=light], :root { --a: 1; }", [":root", "[data-theme=light]", "[data-theme=dark]"], "t.css");
+  assert.deepEqual([...r.get(":root")!], [["--a", "1"]]);
+  assert.deepEqual([...r.get("[data-theme=light]")!], [["--a", "1"]]);
+  assert.equal(r.get("[data-theme=dark]")!.size, 0);
 });
 
 const CSS = `
@@ -193,4 +211,28 @@ test("git contract reader: listFiles([]) never calls git; exists maps ENOENT to 
   assert.equal(await r.exists("ok"), true);
   assert.equal(await r.exists("gone"), false);
   await assert.rejects(r.exists("bad"));
+});
+
+test("loadContract: DIF-003-only run (map optional) makes no exists() calls", async () => {
+  const calls: string[] = [];
+  const files = { "pen-map.json": '{"a": "src/a.ts"}' };
+  const data = await loadContract(cfg(), { map: "optional" }, fakeReader(files, calls));
+  assert.deepEqual(data?.map?.missingPaths, undefined);
+  assert.equal(calls.some((c) => c.startsWith("exists:")), false);
+  const required = await loadContract(cfg(), { map: "required" }, fakeReader(files, calls));
+  assert.ok(calls.some((c) => c.startsWith("exists:")));
+  assert.ok(required?.map?.missingPaths);
+});
+
+test("loadMarkers: a file over 1 MiB by size() is never read", async () => {
+  const calls: string[] = [];
+  const reader: ContractReader = {
+    ...fakeReader({ "big.ts": "// @node:x\n", "ok.ts": "// @node:y\n" }, calls),
+    async size(p) {
+      return p === "big.ts" ? 1024 * 1024 + 1 : 10;
+    },
+  };
+  const markers = await loadMarkers("@node:<id>", ["**"], reader);
+  assert.deepEqual([...markers.keys()], ["y"]);
+  assert.equal(calls.includes("read:big.ts"), false);
 });

@@ -27,6 +27,7 @@ export async function loadMarkers(pattern: string, globs: string[], reader: Cont
   for (const file of files) {
     let text: string;
     try {
+      if (reader.size && (await reader.size(file)) > MAX_BYTES) continue;
       text = await reader.readFile(file);
     } catch {
       continue;

@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { readFile, realpath } from "node:fs/promises";
+import { readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import { designFormatOf } from "../source/format.js";
 import {
@@ -179,6 +179,10 @@ export function createGitReader(
 
     async readWorktree(filePath) {
       return readFile(await guardedWorktreePath(filePath), "utf8");
+    },
+
+    async worktreeSize(filePath) {
+      return (await stat(await guardedWorktreePath(filePath))).size;
     },
 
     async readWorktreeBytes(filePath) {

@@ -52,6 +52,11 @@ test("invalid contract fields are config errors", () => {
   assert.match(err({ codeGlobs: ["/abs/**"] }), /^contract\.codeGlobs /);
   assert.match(err({ codeGlobs: ["../x/**"] }), /^contract\.codeGlobs /);
   assert.match(err({ codeGlobs: [":(top)x"] }), /^contract\.codeGlobs /);
+  for (const bad of ["..\\x", "C:/x", "a\0b"]) {
+    assert.match(err({ mapFile: bad }), /^contract\.mapFile /);
+    assert.match(err({ codeGlobs: [bad] }), /^contract\.codeGlobs /);
+    assert.match(err({ tokenSource: { kind: "css", path: bad } }), /^contract\.tokenSource\.path /);
+  }
 });
 
 test("invalid tokenSource fields are config errors", () => {
