@@ -1,0 +1,1 @@
+{ "version": "2.6", "variables": { "color.bg": { "type": "color", "value": "#FFF" }, "space/md": { "type": "number", "value": 8 }, "font.family": { "type": "string", "value": "Inter" }, "color.surface": { "type": "color", "value": "$color.bg" }, "color.accent": { "type": "color", "value": "#FFFFFF" } }, "children": [] }

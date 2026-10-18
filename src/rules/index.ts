@@ -10,6 +10,7 @@ import { cnt001 } from "./CNT-001.js";
 import { cnt002 } from "./CNT-002.js";
 import { cnt003 } from "./CNT-003.js";
 import { con001 } from "./CON-001.js";
+import { con002 } from "./CON-002.js";
 import { dif001 } from "./DIF-001.js";
 import { dif002 } from "./DIF-002.js";
 import { dif004 } from "./DIF-004.js";
@@ -106,6 +107,13 @@ const ENTRIES: RuleEntry[] = [
     description: "A reusable component with no pen-map.json entry (and not designOnly), or whose mapped code path does not exist (opt-in).",
     defaultSeverity: "warn",
     run: con001,
+  },
+  {
+    id: "CON-002",
+    title: "Variable vs code token",
+    description: "A document variable whose value differs from the code token of the same name (block), or has no code token (warn) (opt-in).",
+    defaultSeverity: "block",
+    run: con002,
   },
   {
     id: "DIF-001",

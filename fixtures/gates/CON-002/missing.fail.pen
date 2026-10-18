@@ -1,0 +1,1 @@
+{ "version": "2.6", "variables": { "color.bg": { "type": "color", "value": "#fff" }, "color.nope": { "type": "color", "value": "#123456" } }, "children": [] }
