@@ -3,6 +3,7 @@ import type { CompiledDocument } from "../compile/types.js";
 import type { GatesConfig } from "../gates/config.js";
 import type { Violation } from "../gates/types.js";
 import { themeKey } from "../diff/variables.js";
+import { variableNodeId } from "../gates/variable-id.js";
 import { defaultTheme, resolveVariable, type Theme } from "../render/themes.js";
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
@@ -89,8 +90,8 @@ export function run(compiled: CompiledDocument, config: GatesConfig): Violation[
         rule: "TOK-003",
         severity: isUsed ? "block" : "warn",
         file: compiled.file,
-        nodeId: `$var:${name}`,
-        path: `$var:${name}`,
+        nodeId: variableNodeId(name),
+        path: variableNodeId(name),
         prop,
         message: `Variable $${name} has no value for ${prop}`,
         theme: prop,
