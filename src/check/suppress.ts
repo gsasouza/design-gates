@@ -1,5 +1,6 @@
 import type { CompiledDocument } from "../compile/types.js";
 import type { Violation } from "../gates/types.js";
+import { isVariableNodeId } from "../gates/variable-id.js";
 import { RULE_ALIASES } from "./baseline.js";
 
 export const SUPPRESSION_NO_REASON = "design-gates suppression without reason";
@@ -40,7 +41,8 @@ export function applySuppressions(violations: Violation[], compiled: CompiledDoc
   if (byNode.size === 0) return violations;
   const parents = new Map(compiled.nodes.map((n) => [n.id, n.parents]));
   return violations.filter((v) => {
-    if (v.nodeId === "") return true;
+    // Variable findings use a synthetic id that no node marker can target.
+    if (v.nodeId === "" || isVariableNodeId(v.nodeId)) return true;
     const rules = [v.rule, ...(RULE_ALIASES[v.rule] ?? [])];
     return ![v.nodeId, ...(parents.get(v.nodeId) ?? [])].some((id) => rules.some((r) => byNode.get(id)?.has(r)));
   });

@@ -1,11 +1,11 @@
 import { CONTROLLED_PROPS, hasNestedQuantifier, isControlledProp, MAX_IGNORE_LENGTH } from "./tok.js";
 import type { Severity } from "./types.js";
 
-export const RULE_IDS = ["A11Y-001", "CMP-001", "DIF-001", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-005"] as const;
+export const RULE_IDS = ["A11Y-001", "CMP-001", "DIF-001", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-003", "TOK-005"] as const;
 export type RuleId = (typeof RULE_IDS)[number];
 
 /** Rules that run only when the user's config has a `rules.<ID>` entry. */
-export const OPT_IN_RULES: readonly RuleId[] = ["RSP-001", "STA-001", "TOK-005"];
+export const OPT_IN_RULES: readonly RuleId[] = ["RSP-001", "STA-001", "TOK-003", "TOK-005"];
 
 export type SeverityOverride = Severity | "off";
 
@@ -24,6 +24,13 @@ export interface Tok001Config extends RuleConfig {
   ignoreValues: Record<string, string[]>;
   /** Top-level frame names or ids to check (`*` glob); empty = all frames. */
   onlyIn: string[];
+}
+
+export interface Tok003Config extends RuleConfig {
+  /** Theme axes that need a value; empty = every axis the document declares. */
+  themeAxes: string[];
+  /** Check every declared combination, not only the ones nodes use. */
+  requireAllCombinations: boolean;
 }
 
 export interface Tok005Config extends RuleConfig {
@@ -97,6 +104,7 @@ export interface GatesConfig {
     "STA-001": Sta001Config;
     "TOK-001": Tok001Config;
     "TOK-002": Tok002Config;
+    "TOK-003": Tok003Config;
     "TOK-005": Tok005Config;
   };
 }
@@ -123,6 +131,7 @@ export const DEFAULT_CONFIG: GatesConfig = {
       },
       tolerance: 0,
     },
+    "TOK-003": { enabled: false, themeAxes: [], requireAllCombinations: false },
     "TOK-005": { enabled: false, properties: ["fill", "stroke", "effect.color", "cornerRadius", "gap", "padding", "fontSize", "strokeWidth", "fontFamily"] },
   },
 };
@@ -138,6 +147,7 @@ const isNumber = (v: unknown, min: number): v is number => typeof v === "number"
 
 type Check = (value: unknown) => string | undefined;
 const stringList: Check = (v) => (isStringList(v) ? undefined : "must be an array of strings");
+const boolean: Check = (v) => (typeof v === "boolean" ? undefined : "must be a boolean");
 const number = (min: number): Check => (v) => (isNumber(v, min) ? undefined : `must be a number >= ${min}`);
 const integer = (min: number): Check => (v) => (isNumber(v, min) && Number.isInteger(v) ? undefined : `must be an integer >= ${min}`);
 const isScale = (v: unknown): boolean =>
@@ -203,6 +213,7 @@ const OPTION_CHECKS: Partial<Record<RuleId, Record<string, Check>>> = {
   "STA-001": { states, screens: stringList, pattern },
   "TOK-001": { properties, ignoreValues, onlyIn: stringList },
   "TOK-002": { scales, tolerance: number(0) },
+  "TOK-003": { themeAxes: stringList, requireAllCombinations: boolean },
   "TOK-005": { properties },
 };
 

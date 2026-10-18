@@ -11,6 +11,7 @@ import { sch003 } from "./SCH-003.js";
 import { sta001 } from "./STA-001.js";
 import { run as tok001 } from "./TOK-001.js";
 import { run as tok002 } from "./TOK-002.js";
+import { run as tok003 } from "./TOK-003.js";
 import { run as tok005 } from "./TOK-005.js";
 import type { DiffContext, Rule, Severity, Violation } from "../gates/types.js";
 
@@ -93,6 +94,13 @@ const ENTRIES: RuleEntry[] = [
     description: "A numeric value, or numeric variable, that is not on the configured spacing, radius, font size or stroke width scale.",
     defaultSeverity: "warn",
     run: tok002,
+  },
+  {
+    id: "TOK-003",
+    title: "Incomplete theme",
+    description: "A themed variable has no value for a theme combination in use, or for a declared value of an axis it varies on (opt-in).",
+    defaultSeverity: "block",
+    run: tok003,
   },
   {
     id: "TOK-005",
