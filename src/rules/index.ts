@@ -3,6 +3,7 @@ import { OPT_IN_RULES, type GatesConfig, type RuleId } from "../gates/config.js"
 import { runA11y001 } from "./A11Y-001.js";
 import { a11y003 } from "./A11Y-003.js";
 import { cmp001 } from "./CMP-001.js";
+import { cmp002 } from "./CMP-002.js";
 import { cnt001 } from "./CNT-001.js";
 import { cnt002 } from "./CNT-002.js";
 import { cnt003 } from "./CNT-003.js";
@@ -49,6 +50,13 @@ const ENTRIES: RuleEntry[] = [
     description: "A subtree that exactly repeats a reusable component's structure instead of being an instance of it.",
     defaultSeverity: "warn",
     run: cmp001,
+  },
+  {
+    id: "CMP-002",
+    title: "Improper override",
+    description: "An instance override of a property outside the component's allowlist, or a node or children replacement outside a slot (opt-in).",
+    defaultSeverity: "warn",
+    run: cmp002,
   },
   {
     id: "CNT-001",
