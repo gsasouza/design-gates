@@ -80,7 +80,7 @@ export async function loadContract(config: GatesConfig, needs: ContractNeeds, re
     const text = await readNeeded(reader, mapFile, needs.map);
     if (text !== undefined) {
       data.map = parsePenMap(text, mapFile);
-      data.map.missingPaths = await findMissingPaths(data.map, mapFile, reader);
+      if (needs.map === "required") data.map.missingPaths = await findMissingPaths(data.map, mapFile, reader);
     }
   }
   if (needs.tokens) {

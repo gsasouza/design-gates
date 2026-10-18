@@ -26,6 +26,8 @@ export interface GitReader {
   listChangedDesignFiles(base: string, head: string | Worktree, globs: string[]): Promise<ChangedFile[]>;
   readBlob(ref: string, path: string): Promise<string>;
   readWorktree(path: string): Promise<string>;
+  /** Byte size of the worktree file, without reading it. */
+  worktreeSize?(path: string): Promise<number>;
   /** Raw bytes of the blob, never text-decoded (for binary `.fig` files). */
   readBlobBytes(ref: string, path: string): Promise<Buffer>;
   /** Raw bytes of the worktree file, never text-decoded (for binary `.fig` files). */

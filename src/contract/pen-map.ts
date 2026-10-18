@@ -19,9 +19,32 @@ export interface PenMap {
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
+/** Line of the top-level key `id` (nested keys with the same name are ignored). */
 function lineOf(text: string, id: string): number | undefined {
-  const at = text.search(new RegExp(`"${JSON.stringify(id).slice(1, -1).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"\\s*:`));
-  return at < 0 ? undefined : text.slice(0, at).split("\n").length;
+  let depth = 0;
+  let line = 1;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]!;
+    if (c === "\n") line++;
+    else if (c === "{" || c === "[") depth++;
+    else if (c === "}" || c === "]") depth--;
+    else if (c === '"') {
+      let j = i + 1;
+      while (j < text.length && text[j] !== '"') j += text[j] === "\\" ? 2 : 1;
+      if (depth === 1 && /^\s*:/.test(text.slice(j + 1, j + 64)) && decodeKey(text.slice(i, j + 1)) === id) return line;
+      line += text.slice(i, j).split("\n").length - 1;
+      i = j;
+    }
+  }
+  return undefined;
+}
+
+function decodeKey(literal: string): string | undefined {
+  try {
+    return JSON.parse(literal) as string;
+  } catch {
+    return undefined;
+  }
 }
 
 function parseEntry(file: string, id: string, raw: unknown): PenMapEntry {

@@ -315,7 +315,7 @@ Opt-in rules (currently `A11Y-003`, `A11Y-004`, `CMP-002`, `CMP-005`, `CNT-001`,
 | `canvasColor` | `"#FFFFFF"` | Colour assumed behind top-level frames for contrast. |
 | `strict` | `false` | Escalates the rules that say so (TOK-002 warn -> block). |
 | `rules.<ID>.severity` | the rule's default severity (see Rules) | `block`, `warn`, `review`, `info` or `off`; `off` disables the rule (for SCH-001 it also silences the "suppression without reason" report). |
-| `contract` | absent | Optional object for repo files outside the `.pen` documents, read by contract rules (none ship yet). Unknown keys, wrong types and paths that are empty, absolute or contain `..` are config errors (exit 2). Without it behaviour is unchanged. Keys: `mapFile` (default `"pen-map.json"`), `tokenSource` (`{ "kind": "css" \| "dtcg", "path", "selectors"?, "themes"? }`), `codeGlobs` (default `[]`: globs of code files DIF-003 scans for markers, e.g. `["src/**/*.tsx"]`). See "Contract files" below. |
+| `contract` | absent | Optional object for repo files outside the `.pen` documents, read by contract rules (CON-001, CON-002 and DIF-003). Unknown keys, wrong types and paths that are empty, absolute or contain `..` are config errors (exit 2). Without it behaviour is unchanged. Keys: `mapFile` (default `"pen-map.json"`), `tokenSource` (`{ "kind": "css" \| "dtcg", "path", "selectors"?, "themes"? }`), `codeGlobs` (default `[]`: globs of code files DIF-003 scans for markers, e.g. `["src/**/*.tsx"]`). See "Contract files" below. |
 | `rules.A11Y-001.minRatio` / `minRatioLarge` | `4.5` / `3` | Minimum contrast ratio for normal / large text. |
 | `rules.A11Y-003.min` / `hardMin` | `12` / `10` | Opt-in; `{}` enables the rule. Font sizes below `min` warn, below `hardMin` block. Both must be numbers > 0 and `hardMin` must not exceed `min`. |
 | `rules.A11Y-004.requireScrim` | `true` | Opt-in; `{}` enables the rule. Boolean. `true`: text over an image-like background with no scrim warns. `false`: the same text is `review` (fixed severity, not actionable). A scrim is a layer between the text and the background with an enabled solid fill of effective alpha >= 0.3 (fill alpha times accumulated node opacity). |
@@ -347,7 +347,7 @@ Opt-in rules (currently `A11Y-003`, `A11Y-004`, `CMP-002`, `CMP-005`, `CNT-001`,
 
 #### Contract files
 
-`contract` tells rules where to find repo files other than the `.pen` documents. A file is read only when an enabled rule needs it (no such rule ships in this version, so no extra file is read). A malformed file, or a missing file a rule requires, is a usage error (exit 2) naming the file.
+`contract` tells rules where to find repo files other than the `.pen` documents. A file is read only when an enabled rule needs it (CON-001 reads the pen map, CON-002 the token source, DIF-003 the optional map and the files matching `codeGlobs`; with none of them enabled no extra file is read). A malformed file, or a missing file a rule requires, is a usage error (exit 2) naming the file.
 
 `pen-map.json` maps a component id to a code path, or to an object; an object needs `path` unless `designOnly` is `true`. Paths are repo-relative, not absolute, without `..`:
 

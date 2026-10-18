@@ -4,6 +4,8 @@ import type { GitReader } from "../git/reader.js";
 export interface ContractReader {
   readFile(path: string): Promise<string>;
   exists(path: string): Promise<boolean>;
+  /** Byte size of a file, when the reader can tell without reading it. */
+  size?(path: string): Promise<number>;
   /** Sorted tracked and untracked (not ignored) files matching the globs; no globs gives none. */
   listFiles(globs: string[]): Promise<string[]>;
 }
@@ -23,6 +25,7 @@ export function createGitContractReader(git: GitReader): ContractReader {
         throw err;
       }
     },
+    size: git.worktreeSize ? (path) => git.worktreeSize!(path) : undefined,
     async listFiles(globs) {
       if (globs.length === 0) return [];
       if (!git.listFiles) throw new Error("git reader cannot list files");

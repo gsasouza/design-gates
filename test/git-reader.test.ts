@@ -244,6 +244,12 @@ describe("git reader (real git)", () => {
       assert.equal(await gitIn("rev-parse", "HEAD"), before.head);
     });
 
+    it("refuses globs that leave the repo", async () => {
+      const reader = createGitReader(repo.path);
+      await assert.rejects(reader.listFiles!(["/abs/**"]), /inside the repository/);
+      await assert.rejects(reader.listFiles!(["a/../../x"]), /inside the repository/);
+    });
+
     it("reads worktree files and refuses to escape the repo", async () => {
       const reader = createGitReader(repo.path);
       assert.equal(await reader.readWorktree("untracked.pen"), "{}\n");

@@ -37,6 +37,23 @@ test("pen-map: malformed input is a load error naming file and component", () =>
   throwsLoad(() => parsePenMap('{"btn": "/etc/passwd"}', "pen-map.json"), "pen-map.json", /component "btn"/);
   throwsLoad(() => parsePenMap('{"btn": "../x.tsx"}', "pen-map.json"), "pen-map.json", /component "btn"/);
   throwsLoad(() => parsePenMap('{"btn": {"path": "a/../../x"}}', "pen-map.json"), "pen-map.json", /component "btn"/);
+  for (const bad of ["..\\x", "C:/x", "a\0b"]) {
+    throwsLoad(() => parsePenMap(JSON.stringify({ btn: bad }), "pen-map.json"), "pen-map.json", /component "btn"/);
+    throwsLoad(() => parsePenMap(JSON.stringify({ btn: { path: bad } }), "pen-map.json"), "pen-map.json", /component "btn"/);
+  }
+});
+
+test("pen-map: line is that of the top-level id, not a nested key of the same name", () => {
+  const map = parsePenMap('{\n  "a": {\n    "path": "A.tsx"\n  },\n  "path": "P.tsx"\n}', "pen-map.json");
+  assert.equal(map.entries.get("path")!.line, 5);
+  assert.equal(map.entries.get("a")!.line, 2);
+});
+
+test("css: a selector list with several configured selectors fills each of them", () => {
+  const r = readCssCustomProperties("[data-theme=light], :root { --a: 1; }", [":root", "[data-theme=light]", "[data-theme=dark]"], "t.css");
+  assert.deepEqual([...r.get(":root")!], [["--a", "1"]]);
+  assert.deepEqual([...r.get("[data-theme=light]")!], [["--a", "1"]]);
+  assert.equal(r.get("[data-theme=dark]")!.size, 0);
 });
 
 const CSS = `

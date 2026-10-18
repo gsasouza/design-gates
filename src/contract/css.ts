@@ -4,6 +4,7 @@ import { ContractLoadError } from "./errors.js";
  * Minimal CSS custom-property reader. Limits (also in the README):
  * - comments are stripped; strings and parentheses are respected when looking for braces and semicolons;
  * - a rule counts when its comma-separated selector list contains a configured selector exactly
+ *   (every configured selector in the list receives the declarations)
  *   (compared after collapsing whitespace; `[data-theme=dark]` does not match `[data-theme="dark"]`);
  * - only `--name: value;` declarations directly in such a rule are read, values trimmed (`!important` is kept);
  *   other properties and nested rules inside it are ignored;
@@ -36,10 +37,13 @@ export function readCssCustomProperties(text: string, selectors: readonly string
     const prelude = src.slice(pos, stop).trim();
     const close = matchClose(src, stop, fail);
     pos = close + 1; // an at-rule block is consumed whole, so its contents are never read
-    const hit = splitTop(prelude).map(normalize).find((s) => wanted.has(s));
-    if (hit === undefined) continue;
-    const target = out.get(byNormal.get(hit)!)!;
-    for (const [name, value] of declarations(src.slice(stop + 1, close), fail)) target.set(name, value);
+    const hits = new Set(splitTop(prelude).map(normalize).filter((s) => wanted.has(s)));
+    if (hits.size === 0) continue;
+    const decls = declarations(src.slice(stop + 1, close), fail);
+    for (const hit of hits) {
+      const target = out.get(byNormal.get(hit)!)!;
+      for (const [name, value] of decls) target.set(name, value);
+    }
   }
   return out;
 }
