@@ -1,11 +1,11 @@
 import { CONTROLLED_PROPS, hasNestedQuantifier, isControlledProp, MAX_IGNORE_LENGTH, regexSource } from "./tok.js";
 import type { Severity } from "./types.js";
 
-export const RULE_IDS = ["A11Y-001", "A11Y-003", "CMP-001", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "DIF-001", "LAY-004", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-003", "TOK-005"] as const;
+export const RULE_IDS = ["A11Y-001", "A11Y-003", "A11Y-004", "CMP-001", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "DIF-001", "LAY-004", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-003", "TOK-005"] as const;
 export type RuleId = (typeof RULE_IDS)[number];
 
 /** Rules that run only when the user's config has a `rules.<ID>` entry. */
-export const OPT_IN_RULES: readonly RuleId[] = ["A11Y-003", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "LAY-004", "RSP-001", "STA-001", "TOK-003", "TOK-005"];
+export const OPT_IN_RULES: readonly RuleId[] = ["A11Y-003", "A11Y-004", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "LAY-004", "RSP-001", "STA-001", "TOK-003", "TOK-005"];
 
 export type SeverityOverride = Severity | "off";
 
@@ -52,6 +52,11 @@ export interface Tok002Config extends RuleConfig {
 export interface A11y001Config extends RuleConfig {
   minRatio: number;
   minRatioLarge: number;
+}
+
+export interface A11y004Config extends RuleConfig {
+  /** Text over an image-like background needs a scrim; without one it warns (false: review). */
+  requireScrim: boolean;
 }
 
 export interface A11y003Config extends RuleConfig {
@@ -131,6 +136,7 @@ export interface GatesConfig {
   rules: {
     "A11Y-001": A11y001Config;
     "A11Y-003": A11y003Config;
+    "A11Y-004": A11y004Config;
     "CMP-001": Cmp001Config;
     "CMP-002": Cmp002Config;
     "CMP-005": RuleConfig;
@@ -157,6 +163,7 @@ export const DEFAULT_CONFIG: GatesConfig = {
   rules: {
     "A11Y-001": { minRatio: 4.5, minRatioLarge: 3 },
     "A11Y-003": { enabled: false, min: 12, hardMin: 10 },
+    "A11Y-004": { enabled: false, requireScrim: true },
     "CMP-001": { minNodes: 3 },
     "CMP-002": { enabled: false, allowedOverrides: { "*": ["content", "enabled", "icon"] } },
     "CMP-005": { enabled: false },
@@ -290,6 +297,7 @@ const breakpointPattern: Check = (v) =>
 const OPTION_CHECKS: Partial<Record<RuleId, Record<string, Check>>> = {
   "A11Y-001": { minRatio: number(1), minRatioLarge: number(1) },
   "A11Y-003": { min: positive, hardMin: positive },
+  "A11Y-004": { requireScrim: boolean },
   "CMP-001": { minNodes: integer(1) },
   "CMP-002": { allowedOverrides },
   "CNT-001": { patterns },

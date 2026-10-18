@@ -2,6 +2,7 @@ import type { CompiledDocument } from "../compile/types.js";
 import { OPT_IN_RULES, type GatesConfig, type RuleId } from "../gates/config.js";
 import { runA11y001 } from "./A11Y-001.js";
 import { a11y003 } from "./A11Y-003.js";
+import { runA11y004 } from "./A11Y-004.js";
 import { cmp001 } from "./CMP-001.js";
 import { cmp002 } from "./CMP-002.js";
 import { cmp005 } from "./CMP-005.js";
@@ -45,6 +46,13 @@ const ENTRIES: RuleEntry[] = [
     description: "A font size below the configured minimum warns, below the hard minimum blocks (opt-in).",
     defaultSeverity: "warn",
     run: a11y003,
+  },
+  {
+    id: "A11Y-004",
+    title: "Text over image",
+    description: "Text over an image, mesh gradient, shader or background blur has a scrim between it and the background (opt-in).",
+    defaultSeverity: "warn",
+    run: runA11y004,
   },
   {
     id: "CMP-001",

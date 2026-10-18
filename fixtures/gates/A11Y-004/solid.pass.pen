@@ -1,0 +1,1 @@
+{"version":"2.6","children":[{"id":"card","type":"frame","width":200,"height":100,"fill":"#222222","children":[{"id":"label","type":"text","content":"Hello","fill":"#FFFFFF","fontSize":16}]}]}

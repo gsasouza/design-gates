@@ -1,0 +1,1 @@
+{"version":"2.6","children":[{"id":"glass","type":"frame","width":200,"height":100,"effect":{"type":"background_blur","radius":8},"children":[{"id":"label","type":"text","content":"Hello","fill":"#FFFFFF","fontSize":16}]}]}
