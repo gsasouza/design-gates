@@ -1,0 +1,1 @@
+{"version":"2.6","children":[{"id":"chip","type":"frame","reusable":true,"name":"Chip","width":20,"height":20},{"id":"screen","type":"frame","width":400,"height":400,"children":[{"id":"i1","type":"ref","ref":"chip"},{"id":"i2","type":"ref","ref":"chip","width":30},{"id":"other","type":"frame","name":"Other","width":10,"height":10}]}]}
