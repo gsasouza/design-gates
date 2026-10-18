@@ -10,6 +10,7 @@ import { cnt002 } from "./CNT-002.js";
 import { cnt003 } from "./CNT-003.js";
 import { dif001 } from "./DIF-001.js";
 import { downgradeFigBlocks } from "./fig-review.js";
+import { lay004 } from "./LAY-004.js";
 import { rsp001 } from "./RSP-001.js";
 import { sch001 } from "./SCH-001.js";
 import { sch002 } from "./SCH-002.js";
@@ -93,6 +94,13 @@ const ENTRIES: RuleEntry[] = [
     description: "A changed component or variable and the instances, nodes and screens it affects.",
     defaultSeverity: "warn",
     run: dif001,
+  },
+  {
+    id: "LAY-004",
+    title: "Touch target",
+    description: "An interactive node (matched by component glob or name pattern) is at least the minimum size, and ideally the recommended size, in width and height (opt-in).",
+    defaultSeverity: "warn",
+    run: lay004,
   },
   {
     id: "RSP-001",

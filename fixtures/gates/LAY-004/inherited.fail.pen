@@ -1,0 +1,1 @@
+{"version":"2.6","children":[{"id":"btn","type":"frame","reusable":true,"name":"Button","width":20,"height":20,"children":[{"id":"label","type":"text","name":"Caption","content":"x","width":5,"height":5}]},{"id":"screen","type":"frame","width":400,"height":400,"children":[{"id":"i1","type":"ref","ref":"btn"},{"id":"i2","type":"ref","ref":"btn","width":10}]}]}

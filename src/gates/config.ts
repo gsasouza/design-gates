@@ -1,11 +1,11 @@
 import { CONTROLLED_PROPS, hasNestedQuantifier, isControlledProp, MAX_IGNORE_LENGTH, regexSource } from "./tok.js";
 import type { Severity } from "./types.js";
 
-export const RULE_IDS = ["A11Y-001", "A11Y-003", "CMP-001", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "DIF-001", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-003", "TOK-005"] as const;
+export const RULE_IDS = ["A11Y-001", "A11Y-003", "CMP-001", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "DIF-001", "LAY-004", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-003", "TOK-005"] as const;
 export type RuleId = (typeof RULE_IDS)[number];
 
 /** Rules that run only when the user's config has a `rules.<ID>` entry. */
-export const OPT_IN_RULES: readonly RuleId[] = ["A11Y-003", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "RSP-001", "STA-001", "TOK-003", "TOK-005"];
+export const OPT_IN_RULES: readonly RuleId[] = ["A11Y-003", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "LAY-004", "RSP-001", "STA-001", "TOK-003", "TOK-005"];
 
 export type SeverityOverride = Severity | "off";
 
@@ -87,6 +87,19 @@ export interface Dif001Config extends RuleConfig {
   scope: string[];
 }
 
+export interface Lay004Config extends RuleConfig {
+  /** Sizes below this block. */
+  min: number;
+  /** Sizes below this (and at least `min`) warn. */
+  recommended: number;
+  interactive: {
+    /** Component id-or-name globs (`*` wildcard) whose instances and definitions are interactive. */
+    components: string[];
+    /** Regex source, case-insensitive, matched against a node's (or its component's) name. */
+    namePattern: string;
+  };
+}
+
 export interface Sta001Config extends RuleConfig {
   /** State names every declaring screen or component needs a variant for. */
   states: string[];
@@ -125,6 +138,7 @@ export interface GatesConfig {
     "CNT-002": RuleConfig;
     "CNT-003": Cnt003Config;
     "DIF-001": Dif001Config;
+    "LAY-004": Lay004Config;
     "RSP-001": Rsp001Config;
     "SCH-001": RuleConfig;
     "SCH-002": RuleConfig;
@@ -150,6 +164,7 @@ export const DEFAULT_CONFIG: GatesConfig = {
     "CNT-002": { enabled: false },
     "CNT-003": { enabled: false, pattern: "^(Frame|Rectangle|Text|Group|Ellipse)( \\d+)?$" },
     "DIF-001": { warnAt: 5, blockAt: 20, scope: [] },
+    "LAY-004": { enabled: false, min: 24, recommended: 44, interactive: { components: [], namePattern: "\\b(button|btn|link|checkbox|radio|switch|toggle|tab|input|icon-?button)\\b" } },
     "RSP-001": { enabled: false, breakpoints: [], screens: [], pattern: "{name} @ {breakpoint}" },
     "SCH-001": {},
     "SCH-002": {},
@@ -226,6 +241,16 @@ const ignoreValues: Check = (v) => {
 const patterns: Check = (v) => (isStringList(v) ? regexEntriesProblem(v) : "must be an array of strings");
 const namePattern: Check = (v) => (typeof v === "string" ? regexProblem(v, v) : "must be a regular expression source string");
 
+const interactive: Check = (v) => {
+  if (!isObject(v) || Object.keys(v).some((k) => k !== "components" && k !== "namePattern")) return "must be an object with only components and namePattern";
+  if (v.components !== undefined && !isStringList(v.components)) return "components must be an array of strings";
+  if (v.namePattern !== undefined) {
+    const problem = namePattern(v.namePattern);
+    if (problem) return `namePattern ${problem}`;
+  }
+  return undefined;
+};
+
 const properties: Check = (v) =>
   isStringList(v) && v.every(isControlledProp) ? undefined : `must be an array of ${CONTROLLED_PROPS.join(", ")}`;
 
@@ -270,6 +295,7 @@ const OPTION_CHECKS: Partial<Record<RuleId, Record<string, Check>>> = {
   "CNT-001": { patterns },
   "CNT-003": { pattern: namePattern },
   "DIF-001": { warnAt: number(0), blockAt: number(0), scope: stringList },
+  "LAY-004": { min: positive, recommended: positive, interactive },
   "RSP-001": { breakpoints, screens: stringList, pattern: breakpointPattern, baseBreakpoint: (v) => (typeof v === "string" ? undefined : "must be a string") },
   "STA-001": { states, screens: stringList, pattern },
   "TOK-001": { properties, ignoreValues, onlyIn: stringList },
@@ -286,7 +312,8 @@ function resolveRule(id: RuleId, raw: unknown): RuleConfig | string {
     const check = key === "severity" ? (v: unknown) => (typeof v === "string" && SEVERITIES.includes(v) ? undefined : `must be one of ${SEVERITIES.join(", ")}`) : OPTION_CHECKS[id]?.[key];
     const problem = check?.(value);
     if (problem) return `rules.${id}.${key} ${problem}`;
-    Object.defineProperty(out, key, { value: structuredClone(value), enumerable: true, writable: true, configurable: true });
+    const merged = id === "LAY-004" && key === "interactive" ? { ...(out.interactive as object), ...(value as object) } : value;
+    Object.defineProperty(out, key, { value: structuredClone(merged), enumerable: true, writable: true, configurable: true });
   }
   if (OPT_IN_RULES.includes(id)) out.enabled = true;
   if (id === "RSP-001") {
@@ -297,6 +324,7 @@ function resolveRule(id: RuleId, raw: unknown): RuleConfig | string {
     }
   }
   if (id === "A11Y-003" && (out.hardMin as number) > (out.min as number)) return "rules.A11Y-003.hardMin must not exceed min";
+  if (id === "LAY-004" && (out.recommended as number) < (out.min as number)) return "rules.LAY-004.recommended must not be below min";
   if (id === "DIF-001" && (out.warnAt as number) > (out.blockAt as number)) return "rules.DIF-001.warnAt must not exceed blockAt";
   return out as RuleConfig;
 }

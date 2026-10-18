@@ -1,0 +1,1 @@
+{"version":"2.6","children":[{"id":"screen","type":"frame","width":400,"height":400,"children":[{"id":"save","type":"frame","name":"Save BTN","width":30,"height":30},{"id":"icon","type":"frame","name":"Icon-Button","width":50,"height":50},{"id":"buttons","type":"frame","name":"Buttons","width":10,"height":10}]}]}
