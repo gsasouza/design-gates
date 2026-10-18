@@ -196,7 +196,7 @@ Safety promises: everything stays local (nothing is pushed or uploaded); earlier
 
 ## Gates
 
-`design-gates check` runs a deterministic rule engine over `.pen` documents (phase 1: SCH-001/002/003, TOK-001, TOK-002, A11Y-001, CMP-001, DIF-001, and the opt-in A11Y-003, RSP-001, STA-001, TOK-003 and TOK-005). This section is the foundation: the compiler, the config model and the rule registry. Rules are pure functions of the compiled document, the config and an optional diff; they never read the clock or the network.
+`design-gates check` runs a deterministic rule engine over `.pen` documents (phase 1: SCH-001/002/003, TOK-001, TOK-002, A11Y-001, CMP-001, DIF-001, and the opt-in A11Y-003, CNT-001, CNT-002, CNT-003, RSP-001, STA-001, TOK-003 and TOK-005). This section is the foundation: the compiler, the config model and the rule registry. Rules are pure functions of the compiled document, the config and an optional diff; they never read the clock or the network.
 
 ### Rules
 
@@ -207,6 +207,9 @@ Safety promises: everything stays local (nothing is pushed or uploaded); earlier
 | SCH-002 | Broken reference: `ref` to a missing or non-reusable node, `descendants` path missing in the expanded component, reference cycle. | block | `severity` | none |
 | SCH-003 | Broken variable: undefined `$name`, alias cycle (message lists the chain), escaped variable string `"\\$name"`. | block | `severity` | escaped variable: `replace` with `$name` |
 | CMP-001 | Detached instance (exact only): a non-`ref` subtree outside any component whose component-mode `structureHash` equals a reusable component's (same shape and styling; names and text ignored) and that has at least `minNodes` nodes. Only the outermost match is reported; with several matching components the smallest id is used and the others are listed in the message. | warn | `severity`, `minNodes` (default 3) | `ref` with `descendants` holding the new text `content`, keyed by slash-separated id path |
+| `CNT-001` | Placeholder text (opt-in): a `text` node whose string `content` matches an entry of `patterns`. `/source/` entries are regular expressions, always case-insensitive (no flags after the closing slash), tested against the first 200 characters; any other string is a case-insensitive exact match of the trimmed content (`Text` does not match `Textual`). The message names the first matching pattern. Content inherited from a component is reported once on the defining node with `affectedInstances`; instance and `descendants` overrides on the overriding node. | `warn` | `severity`, `patterns` | none |
+| `CNT-002` | Empty text (opt-in): a `text` node whose `content` is missing, not a string, empty or whitespace-only. Inheritance as CNT-001 (missing content on an expanded copy counts as inherited). | `warn` | `severity` | `remove`: remove the reported node |
+| `CNT-003` | Default name (opt-in): a component or screen (nested frames are not candidates) whose `name` is missing or not a string, or fully matches `pattern`. Reported on the component or screen with prop `name`; the message gives the offending name or says it is missing. | `warn` for components, `info` for screens | `severity`, `pattern` | none |
 | DIF-001 | Blast radius, only with `--base`: a changed reusable component (compared by its own props and children, nested components on their own) with its transitive instances and the screens containing them; a changed variable or theme value with the affected nodes per theme. | warn at `warnAt`, block at `blockAt`; block is warn when in `scope` | `severity`, `warnAt` (5), `blockAt` (20), `scope` (`[]`, ids/names, `*` glob; `--scope` adds to it) | none |
 | `A11Y-003` | Minimum font size (opt-in): a `fontSize` (literal or `$variable`, resolved in the node's effective theme) below `hardMin` blocks, below `min` warns. Unresolved or non-numeric values are skipped (SCH-003 covers them). A size the node sets itself (including instance overrides) is reported on that node. An inherited size is reported once on the component definition, for the worst of the definition and its expanded copies (each in its own theme), with `theme` of the worst and `affectedInstances`. | `warn` (`block` below `hardMin`) | `severity`, `min` (`12`), `hardMin` (`10`) | none |
 | TOK-001 | Hard-coded value: a literal (not a `$variable`) in fill, stroke (colour), `effect.color`, `cornerRadius`, `gap`, `padding`, `fontSize`, `strokeWidth` (`stroke.thickness`, a number or per-side object) or `fontFamily`. Colours are read through the solid-paint reader, so a gradient or image is not reported. A literal inside a component is reported once on the node that defines it, with `affectedInstances`; instance overrides are reported on the instance. When TOK-005 is enabled (configured and not `off`), TOK-001 no longer reports a slot TOK-005 reports (a literal equal to a token in a property TOK-005 checks); literals with no matching token stay TOK-001. | `block` for colours and `fontSize`, `warn` otherwise | `severity`, `properties` (all nine names above), `ignoreValues` (per property; plain strings, or `/regex/` strings of at most 200 characters and without nested quantifiers such as `(a+)+` (best-effort check; rejected as a config error), for example `{ "fill": ["transparent", "/^#00/"] }`), `onlyIn` (top-level frame names or ids, `*` glob; `[]` = all) | one variable has the value in the node's theme: `replace` with `$name`; several: `candidates` sorted by name; none: no fix |
@@ -294,7 +297,7 @@ Safety promises: everything stays local (nothing is pushed or uploaded); earlier
 }
 ```
 
-Opt-in rules (currently `A11Y-003`, `RSP-001`, `STA-001`, `TOK-003` and `TOK-005`) are not in the defaults above and run only when `rules.<ID>` is present in your config, even as `{}`; without a config, or without that key, they never run. `severity: "off"` still disables them. `enabled` is internal and is a config error if written.
+Opt-in rules (currently `A11Y-003`, `CNT-001`, `CNT-002`, `CNT-003`, `RSP-001`, `STA-001`, `TOK-003` and `TOK-005`) are not in the defaults above and run only when `rules.<ID>` is present in your config, even as `{}`; without a config, or without that key, they never run. `severity: "off"` still disables them. `enabled` is internal and is a config error if written.
 
 `rules.<ID>` also accepts `severity`. Unknown option keys under a known rule are kept for later rules to read; known keys of the wrong type are an error.
 
@@ -306,6 +309,9 @@ Opt-in rules (currently `A11Y-003`, `RSP-001`, `STA-001`, `TOK-003` and `TOK-005
 | `rules.A11Y-001.minRatio` / `minRatioLarge` | `4.5` / `3` | Minimum contrast ratio for normal / large text. |
 | `rules.A11Y-003.min` / `hardMin` | `12` / `10` | Opt-in; `{}` enables the rule. Font sizes below `min` warn, below `hardMin` block. Both must be numbers > 0 and `hardMin` must not exceed `min`. |
 | `rules.CMP-001.minNodes` | `3` | Minimum subtree size for a repeated structure to be reported. |
+| `rules.CNT-001.patterns` | `["/lorem/", "/ipsum/", "/\\bTODO\\b/", "/xxx/", "Text", "Label"]` | Opt-in; `{}` enables the rule. Placeholder texts; replaces the defaults. Entries use the TOK-001 `ignoreValues` form (`/regex/` or plain string) and the same validation: a regular expression must compile, be at most 200 characters and have no nested quantifiers. |
+| `rules.CNT-002` | none | Opt-in; `{}` enables the rule. Only `severity`. |
+| `rules.CNT-003.pattern` | `"^(Frame\|Rectangle\|Text\|Group\|Ellipse)( \\d+)?$"` | Opt-in; `{}` enables the rule. Regular expression source (no slashes, case-sensitive) a name must fully match to be a default name (matched as `^(?:pattern)$`, against the first 200 characters). Same validation as CNT-001 entries. |
 | `rules.DIF-001.warnAt` / `blockAt` | `5` / `20` | Change thresholds for warn / block. |
 | `rules.DIF-001.scope` | `[]` | Scope ids; `--scope` appends to it. |
 | `rules.RSP-001.breakpoints` | required | Opt-in. Non-empty list; each entry is a name (`"mobile"`) or `{ "name": "mobile", "width": 375 }` (`width` a positive number). Names are unique, case-insensitively. Missing or invalid is a config error (exit 2). |
@@ -403,7 +409,7 @@ Rule alias: a `TOK-005` violation also counts as baselined when the baseline hol
 
 ### Output formats
 
-`agent` (default): compact one-line JSON, violations sorted by file, nodeId, rule; keys in the fixed order `rule, severity, file, nodeId, path, message`, then `fix`, `affectedInstances`, `theme`, `baselined` only when present.
+`agent` (default): compact one-line JSON, violations sorted by file, nodeId, rule; keys in the fixed order `rule, severity, file, nodeId, path, message`, then `fix`, `affectedInstances`, `theme`, `baselined` only when present. `fix` is one of `replace` (`prop`, `value`), `candidates` (`prop`, `candidates`), `ref` (`ref`, `descendants`) or `remove` (`{ "type": "remove" }`: remove the reported node, as CNT-002 suggests); fixes are only reported, never applied.
 
 ```json
 {"violations":[{"rule":"SCH-002","severity":"block","file":"bad.pen","nodeId":"use","path":"f/use","message":"Instance refers to missing node \"ghost\""}]}

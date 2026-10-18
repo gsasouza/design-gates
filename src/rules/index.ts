@@ -3,6 +3,9 @@ import { OPT_IN_RULES, type GatesConfig, type RuleId } from "../gates/config.js"
 import { runA11y001 } from "./A11Y-001.js";
 import { a11y003 } from "./A11Y-003.js";
 import { cmp001 } from "./CMP-001.js";
+import { cnt001 } from "./CNT-001.js";
+import { cnt002 } from "./CNT-002.js";
+import { cnt003 } from "./CNT-003.js";
 import { dif001 } from "./DIF-001.js";
 import { downgradeFigBlocks } from "./fig-review.js";
 import { rsp001 } from "./RSP-001.js";
@@ -46,6 +49,27 @@ const ENTRIES: RuleEntry[] = [
     description: "A subtree that exactly repeats a reusable component's structure instead of being an instance of it.",
     defaultSeverity: "warn",
     run: cmp001,
+  },
+  {
+    id: "CNT-001",
+    title: "Placeholder text",
+    description: "A text node whose content matches a placeholder pattern such as lorem ipsum, TODO, Text or Label (opt-in).",
+    defaultSeverity: "warn",
+    run: cnt001,
+  },
+  {
+    id: "CNT-002",
+    title: "Empty text",
+    description: "A text node whose content is missing, empty or only whitespace (opt-in).",
+    defaultSeverity: "warn",
+    run: cnt002,
+  },
+  {
+    id: "CNT-003",
+    title: "Default name",
+    description: "A component or screen with no name or a default name such as Frame 12 (opt-in).",
+    defaultSeverity: "warn",
+    run: cnt003,
   },
   {
     id: "DIF-001",

@@ -1,0 +1,7 @@
+{"version":"2.6","children":[
+{"id":"comp","type":"frame","name":"Card","reusable":true,"width":100,"height":50,"children":[{"id":"title","type":"text"}]},
+{"id":"screen","type":"frame","name":"Home","width":200,"height":200,"children":[
+{"id":"i1","type":"ref","ref":"comp"},
+{"id":"i2","type":"ref","ref":"comp"},
+{"id":"i3","type":"ref","ref":"comp","descendants":{"title":{"content":"  "}}}
+]}]}

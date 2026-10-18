@@ -1,0 +1,10 @@
+{"version":"2.6","children":[
+{"id":"c-default","type":"frame","name":"Frame 12","reusable":true,"width":10,"height":10},
+{"id":"c-noname","type":"frame","reusable":true,"width":10,"height":10},
+{"id":"c-good","type":"frame","name":"Frame header","reusable":true,"width":10,"height":10},
+{"id":"c-bare","type":"frame","name":"Group","reusable":true,"width":10,"height":10},
+{"id":"s-default","type":"frame","name":"Rectangle","width":200,"height":200,"children":[
+{"id":"nested","type":"frame","name":"Frame 1","width":10,"height":10}
+]},
+{"id":"s-good","type":"frame","name":"Home","width":200,"height":200}
+]}

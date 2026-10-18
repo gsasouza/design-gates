@@ -1,0 +1,7 @@
+{"version":"2.6","children":[{"id":"screen","type":"frame","name":"Home","width":200,"height":200,"children":[
+{"id":"t-missing","type":"text"},
+{"id":"t-empty","type":"text","content":""},
+{"id":"t-blank","type":"text","content":"   "},
+{"id":"t-number","type":"text","content":5},
+{"id":"t-a","type":"text","content":"a"}
+]}]}
