@@ -41,7 +41,7 @@ function instanceOfCopy(compiled: CompiledDocument, copy: CompiledNode): string 
 }
 
 export const a11y003: Rule = (compiled: CompiledDocument, config: GatesConfig) => {
-  const min = 12, hardMin = 10;
+  const { min, hardMin } = config.rules["A11Y-003"];
   const level = (value: number): "block" | "warn" | undefined => (value < hardMin ? "block" : value < min ? "warn" : undefined);
 
   const copies = new Map<string, CompiledNode[]>();
