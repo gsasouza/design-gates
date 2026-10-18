@@ -1,0 +1,1 @@
+{"version":"2.6","children":[{"id":"hero","type":"frame","width":200,"height":100,"fill":{"type":"shader","code":"x"},"children":[{"id":"label","type":"text","content":"Hello","fill":"#FFFFFF","fontSize":16}]}]}

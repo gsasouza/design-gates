@@ -1,0 +1,1 @@
+{"version":"2.6","children":[{"id":"hero","type":"frame","width":300,"height":200,"fill":{"type":"image","url":"hero.png"},"children":[{"id":"card","type":"frame","width":200,"height":100,"fill":"#ffffff","children":[{"id":"label","type":"text","content":"Hello","fill":"#000000","fontSize":16}]}]}]}

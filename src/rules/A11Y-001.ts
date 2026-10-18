@@ -1,11 +1,10 @@
 import { themeKey } from "../diff/variables.js";
-import { getNode, resolveForTheme } from "../compile/query.js";
+import { getNode } from "../compile/query.js";
 import type { CompiledDocument, CompiledNode } from "../compile/types.js";
 import type { GatesConfig } from "../gates/config.js";
 import type { Rule, Violation } from "../gates/types.js";
-import { gradientStops, solidColor } from "../pen/paint.js";
-import type { PenFill } from "../pen/types.js";
 import type { Theme } from "../render/themes.js";
+import { ancestorsOf, isObject, numberProp, opacityAbove, paintOf, walkBackground } from "./a11y/background.js";
 import { composite, contrastRatio, isLargeText, parseColor, withOpacity, type Rgba } from "./a11y/color.js";
 
 const ID = "A11Y-001";
@@ -13,59 +12,8 @@ const ID = "A11Y-001";
 const MAX_COMBINATIONS = 16;
 /** Most distinct background candidates tracked while compositing gradients. */
 const MAX_BACKGROUNDS = 256;
-const MAX_STOPS = 16;
-const MAX_ANCESTORS = 256;
 
 const byString = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
-const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
-
-type Paint = { kind: "none" } | { kind: "solid"; colors: Rgba[] } | { kind: "unknown" };
-
-/** True unless the fill is missing, empty, or has only disabled entries. */
-function hasVisiblePaint(fill: unknown): boolean {
-  if (fill === undefined || fill === null) return false;
-  const list = Array.isArray(fill) ? fill : [fill];
-  return list.some((p) => (typeof p === "string" ? true : isObject(p) && p.enabled !== false));
-}
-
-function resolveValue(compiled: CompiledDocument, value: unknown, theme: Theme): unknown {
-  if (typeof value !== "string" || !value.startsWith("$")) return value;
-  const r = resolveForTheme(compiled, value, theme);
-  return r.status === "ok" ? r.value : undefined;
-}
-
-/** Colours a fill takes in a theme (one for solid, one per stop for gradients), or unknown when it cannot be evaluated. */
-function paintOf(compiled: CompiledDocument, fill: unknown, theme: Theme): Paint {
-  if (!hasVisiblePaint(fill)) return { kind: "none" };
-  const parse = (raw: string): Rgba | undefined => parseColor(resolveValue(compiled, raw, theme));
-  const solid = solidColor(fill as PenFill);
-  if (solid !== undefined) {
-    const c = parse(solid);
-    return c ? { kind: "solid", colors: [c] } : { kind: "unknown" };
-  }
-  const stops = gradientStops(fill as PenFill);
-  if (stops && stops.length > 0) {
-    const colors = stops.slice(0, MAX_STOPS).map((s) => parse(s.color));
-    return colors.every((c): c is Rgba => c !== undefined) ? { kind: "solid", colors } : { kind: "unknown" };
-  }
-  return { kind: "unknown" };
-}
-
-function numberProp(compiled: CompiledDocument, node: CompiledNode, prop: string, theme: Theme, fallback: number): number {
-  const v = resolveValue(compiled, node.props[prop], theme);
-  const n = typeof v === "string" && v.trim() !== "" ? Number(v) : v;
-  return typeof n === "number" && Number.isFinite(n) ? n : fallback;
-}
-
-function ancestorsOf(compiled: CompiledDocument, node: CompiledNode): CompiledNode[] {
-  const out: CompiledNode[] = [];
-  for (const id of [...node.parents].reverse().slice(0, MAX_ANCESTORS)) {
-    const a = getNode(compiled, id);
-    if (a) out.push(a);
-  }
-  return out;
-}
-
 /** Theme axes pinned by the node or an ancestor. */
 function pinnedAxes(chain: CompiledNode[]): Set<string> {
   const pinned = new Set<string>();
@@ -116,26 +64,30 @@ function evaluate(compiled: CompiledDocument, config: GatesConfig, text: Compile
   if (own.kind === "unknown") return review("text color cannot be evaluated; review contrast manually");
 
   // accumulated opacity of the node and each ancestor, from the node upward
-  const opacity = [text, ...chain].map((n) => numberProp(compiled, n, "opacity", theme, 1));
-  const above = (i: number): number => opacity.slice(i).reduce((a, b) => a * b, 1);
+  const above = opacityAbove(compiled, text, chain, theme);
 
   // layers outermost last; stop at the first opaque one
   const layers: Rgba[][] = [];
   const used: CompiledNode[] = [];
   let closed = false;
-  for (const [i, a] of chain.entries()) {
+  let early: Evaluation | undefined;
+  walkBackground(chain, above, (a, factor) => {
     const paint = paintOf(compiled, a.props.fill, theme);
-    if (paint.kind === "none") continue;
+    if (paint.kind === "none") return false;
     used.push(a);
-    if (paint.kind === "unknown") return { ...review("background has an image, shader or unsupported fill; contrast cannot be computed"), used };
-    const factor = above(i + 1);
+    if (paint.kind === "unknown") {
+      early = { ...review("background has an image, shader or unsupported fill; contrast cannot be computed"), used };
+      return true;
+    }
     const colors = paint.colors.map((c) => withOpacity(c, factor));
     layers.push(colors);
     if (colors.every((c) => c.a >= 1)) {
       closed = true;
-      break;
+      return true;
     }
-  }
+    return false;
+  });
+  if (early) return early;
 
   const canvas = parseColor(config.canvasColor) ?? { r: 255, g: 255, b: 255, a: 1 };
   let backgrounds: Rgba[] = [{ ...canvas, a: 1 }];
@@ -162,7 +114,7 @@ function evaluate(compiled: CompiledDocument, config: GatesConfig, text: Compile
   return { outcome: { kind: "ratio", ratio: worst, min }, used, closed };
 }
 
-const fromComponent = (n: CompiledNode, prop: string): boolean => n.provenance[prop] === undefined || n.provenance[prop]!.origin === "component";
+export const fromComponent = (n: CompiledNode, prop: string): boolean => n.provenance[prop] === undefined || n.provenance[prop]!.origin === "component";
 
 /** True when the text colour, every background fill and every opacity come from the component itself. */
 function selfContained(compiled: CompiledDocument, text: CompiledNode, chain: CompiledNode[], ev: Evaluation): boolean {
@@ -176,7 +128,7 @@ function selfContained(compiled: CompiledDocument, text: CompiledNode, chain: Co
 }
 
 /** The component definition node this expanded node was copied from. */
-function definitionOf(compiled: CompiledDocument, node: CompiledNode): CompiledNode | undefined {
+export function definitionOf(compiled: CompiledDocument, node: CompiledNode): CompiledNode | undefined {
   let cur: CompiledNode | undefined = node;
   for (let i = 0; i < 64 && cur?.expanded; i++) cur = cur.source === undefined ? undefined : getNode(compiled, cur.source);
   return cur && !cur.expanded ? cur : undefined;
