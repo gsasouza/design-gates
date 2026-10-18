@@ -86,3 +86,16 @@ test("invalid options are config errors", () => {
   }
   assert.ok("config" in resolveConfig({ rules: { "A11Y-003": { min: 10, hardMin: 10 } } }));
 });
+
+test("the worst copy decides severity and theme on the definition", async () => {
+  const out = await a11y3("worst-case.fail");
+  assert.deepEqual(summary(out), ["label:block:mode=dark"]);
+  assert.equal(out[0]?.message, "fontSize 9 ($body) is below the hardMin 10");
+  assert.deepEqual(out[0]?.affectedInstances, ["iDark", "iLight"]);
+});
+
+test("a failing copy outside any listed instance counts but is not an affected instance", async () => {
+  const out = await a11y3("nested-copy.fail");
+  assert.deepEqual(summary(out), ["inner:warn:default"]);
+  assert.equal(out[0]?.affectedInstances, undefined);
+});
