@@ -1,0 +1,53 @@
+{
+  "version": "2.6",
+  "variables": {
+    "white": {
+      "type": "color",
+      "value": "#ffffff"
+    },
+    "ink": {
+      "type": "color",
+      "value": "#000000"
+    }
+  },
+  "children": [
+    {
+      "id": "chip",
+      "type": "frame",
+      "name": "Chip",
+      "reusable": true,
+      "width": 50,
+      "height": 20,
+      "children": [
+        {
+          "id": "label",
+          "type": "text",
+          "content": "Go",
+          "fill": "$ink",
+          "opacity": 1,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "id": "screen",
+      "type": "frame",
+      "width": 300,
+      "height": 300,
+      "children": [
+        {
+          "id": "a",
+          "type": "ref",
+          "ref": "chip",
+          "descendants": {
+            "label": {
+              "fill": "$ink",
+              "opacity": 1,
+              "enabled": true
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
