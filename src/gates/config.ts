@@ -2,11 +2,11 @@ import { CONTROLLED_PROPS, hasNestedQuantifier, isControlledProp, MAX_IGNORE_LEN
 import { resolveContract, type ContractConfig } from "./contract-config.js";
 import type { Severity } from "./types.js";
 
-export const RULE_IDS = ["A11Y-001", "A11Y-003", "A11Y-004", "CMP-001", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "CON-001", "CON-002", "DIF-001", "DIF-002", "DIF-004", "LAY-004", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-003", "TOK-005"] as const;
+export const RULE_IDS = ["A11Y-001", "A11Y-003", "A11Y-004", "CMP-001", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "CON-001", "CON-002", "DIF-001", "DIF-002", "DIF-003", "DIF-004", "LAY-004", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-003", "TOK-005"] as const;
 export type RuleId = (typeof RULE_IDS)[number];
 
 /** Rules that run only when the user's config has a `rules.<ID>` entry. */
-export const OPT_IN_RULES: readonly RuleId[] = ["A11Y-003", "A11Y-004", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "CON-001", "CON-002", "DIF-002", "DIF-004", "LAY-004", "RSP-001", "STA-001", "TOK-003", "TOK-005"];
+export const OPT_IN_RULES: readonly RuleId[] = ["A11Y-003", "A11Y-004", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "CON-001", "CON-002", "DIF-002", "DIF-003", "DIF-004", "LAY-004", "RSP-001", "STA-001", "TOK-003", "TOK-005"];
 
 export type SeverityOverride = Severity | "off";
 
@@ -95,6 +95,11 @@ export interface Dif001Config extends RuleConfig {
   scope: string[];
 }
 
+export interface Dif003Config extends RuleConfig {
+  /** Code marker with exactly one `<id>` placeholder, matched literally. */
+  markerPattern: string;
+}
+
 export interface Dif004Config extends RuleConfig {
   /** Recreated (removed + added with the same shape) node pairs at which the finding is raised; integer >= 1. */
   maxRecreated: number;
@@ -174,6 +179,7 @@ export interface GatesConfig {
     "CON-002": Con002Config;
     "DIF-001": Dif001Config;
     "DIF-002": Dif002Config;
+    "DIF-003": Dif003Config;
     "DIF-004": Dif004Config;
     "LAY-004": Lay004Config;
     "RSP-001": Rsp001Config;
@@ -205,6 +211,7 @@ export const DEFAULT_CONFIG: GatesConfig = {
     "CON-002": { enabled: false, nameTransform: "kebab-css" },
     "DIF-001": { warnAt: 5, blockAt: 20, scope: [] },
     "DIF-002": { enabled: false, scope: [], scopeFile: ".pengate/scope.json" },
+    "DIF-003": { enabled: false, markerPattern: "@pen:<id>" },
     "DIF-004": { enabled: false, maxRecreated: 10 },
     "LAY-004": { enabled: false, min: 24, recommended: 44, interactive: { components: [], namePattern: "\\b(button|btn|link|checkbox|radio|switch|toggle|tab|input|icon-?button)\\b" } },
     "RSP-001": { enabled: false, breakpoints: [], screens: [], pattern: "{name} @ {breakpoint}" },
@@ -342,6 +349,7 @@ const OPTION_CHECKS: Partial<Record<RuleId, Record<string, Check>>> = {
   "CON-002": { nameTransform: (v) => (v === "kebab-css" || v === "dtcg-path" ? undefined : 'must be "kebab-css" or "dtcg-path"') },
   "DIF-001": { warnAt: number(0), blockAt: number(0), scope: stringList },
   "DIF-002": { scope: stringList, scopeFile: nonEmptyString },
+  "DIF-003": { markerPattern: (v) => (typeof v === "string" && v.split("<id>").length === 2 ? undefined : "must be a string containing exactly one <id> placeholder") },
   "DIF-004": { maxRecreated: integer(1) },
   "LAY-004": { min: positive, recommended: positive, interactive },
   "RSP-001": { breakpoints, screens: stringList, pattern: breakpointPattern, baseBreakpoint: (v) => (typeof v === "string" ? undefined : "must be a string") },

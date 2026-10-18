@@ -2,6 +2,7 @@ import { DEFAULT_CONTRACT } from "../gates/contract-config.js";
 import type { GatesConfig } from "../gates/config.js";
 import { readCssCustomProperties } from "./css.js";
 import type { ContractData, ContractTokens, TokenValues } from "./data.js";
+import { loadMarkers } from "./markers.js";
 import { readDtcg } from "./dtcg.js";
 import { ContractLoadError } from "./errors.js";
 import type { ContractNeeds } from "./needs.js";
@@ -86,5 +87,6 @@ export async function loadContract(config: GatesConfig, needs: ContractNeeds, re
     const tokens = await loadTokens(config, reader, needs.tokens);
     if (tokens) data.tokens = tokens;
   }
+  if (needs.markers) data.markers = await loadMarkers(config.rules["DIF-003"].markerPattern, config.contract?.codeGlobs ?? DEFAULT_CONTRACT.codeGlobs, reader);
   return data;
 }

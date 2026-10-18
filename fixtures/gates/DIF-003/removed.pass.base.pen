@@ -1,0 +1,30 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "id": "home",
+      "type": "frame",
+      "name": "Home",
+      "children": [
+        {
+          "id": "btn-primary",
+          "type": "text",
+          "content": "btn-primary",
+          "fill": "#111111"
+        },
+        {
+          "id": "btn-old",
+          "type": "text",
+          "content": "btn-old",
+          "fill": "#111111"
+        },
+        {
+          "id": "title",
+          "type": "text",
+          "content": "title",
+          "fill": "#111111"
+        }
+      ]
+    }
+  ]
+}
