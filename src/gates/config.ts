@@ -2,11 +2,11 @@ import { CONTROLLED_PROPS, hasNestedQuantifier, isControlledProp, MAX_IGNORE_LEN
 import { resolveContract, type ContractConfig } from "./contract-config.js";
 import type { Severity } from "./types.js";
 
-export const RULE_IDS = ["A11Y-001", "A11Y-003", "A11Y-004", "CMP-001", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "CON-001", "DIF-001", "DIF-002", "DIF-004", "LAY-004", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-003", "TOK-005"] as const;
+export const RULE_IDS = ["A11Y-001", "A11Y-003", "A11Y-004", "CMP-001", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "CON-001", "CON-002", "DIF-001", "DIF-002", "DIF-004", "LAY-004", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-003", "TOK-005"] as const;
 export type RuleId = (typeof RULE_IDS)[number];
 
 /** Rules that run only when the user's config has a `rules.<ID>` entry. */
-export const OPT_IN_RULES: readonly RuleId[] = ["A11Y-003", "A11Y-004", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "CON-001", "DIF-002", "DIF-004", "LAY-004", "RSP-001", "STA-001", "TOK-003", "TOK-005"];
+export const OPT_IN_RULES: readonly RuleId[] = ["A11Y-003", "A11Y-004", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "CON-001", "CON-002", "DIF-002", "DIF-004", "LAY-004", "RSP-001", "STA-001", "TOK-003", "TOK-005"];
 
 export type SeverityOverride = Severity | "off";
 
@@ -105,6 +105,11 @@ export interface Con001Config extends RuleConfig {
   requireFor: string[];
 }
 
+export interface Con002Config extends RuleConfig {
+  /** How a .pen variable name maps to the code token key. */
+  nameTransform: "kebab-css" | "dtcg-path";
+}
+
 export interface Dif002Config extends RuleConfig {
   /** Ids, top-frame ids or top-frame names (`*` glob) the change may touch; replaced by the scope file when it exists. */
   scope: string[];
@@ -166,6 +171,7 @@ export interface GatesConfig {
     "CNT-002": RuleConfig;
     "CNT-003": Cnt003Config;
     "CON-001": Con001Config;
+    "CON-002": Con002Config;
     "DIF-001": Dif001Config;
     "DIF-002": Dif002Config;
     "DIF-004": Dif004Config;
@@ -196,6 +202,7 @@ export const DEFAULT_CONFIG: GatesConfig = {
     "CNT-002": { enabled: false },
     "CNT-003": { enabled: false, pattern: "^(Frame|Rectangle|Text|Group|Ellipse)( \\d+)?$" },
     "CON-001": { enabled: false, requireFor: [] },
+    "CON-002": { enabled: false, nameTransform: "kebab-css" },
     "DIF-001": { warnAt: 5, blockAt: 20, scope: [] },
     "DIF-002": { enabled: false, scope: [], scopeFile: ".pengate/scope.json" },
     "DIF-004": { enabled: false, maxRecreated: 10 },
@@ -332,6 +339,7 @@ const OPTION_CHECKS: Partial<Record<RuleId, Record<string, Check>>> = {
   "CNT-001": { patterns },
   "CNT-003": { pattern: namePattern },
   "CON-001": { requireFor: stringList },
+  "CON-002": { nameTransform: (v) => (v === "kebab-css" || v === "dtcg-path" ? undefined : 'must be "kebab-css" or "dtcg-path"') },
   "DIF-001": { warnAt: number(0), blockAt: number(0), scope: stringList },
   "DIF-002": { scope: stringList, scopeFile: nonEmptyString },
   "DIF-004": { maxRecreated: integer(1) },

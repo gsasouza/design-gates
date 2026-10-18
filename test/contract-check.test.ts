@@ -168,3 +168,27 @@ test("CON-001 not enabled never reads the map", async () => {
     assert.deepEqual(r.calls, []);
   }
 });
+
+test("CON-002 enabled loads the token source through the real registry; a missing or malformed one is exit 2", async () => {
+  const real = { entries: undefined, contractNeeds: undefined };
+  const cfg = { contract: { tokenSource: { kind: "css", path: "tokens.css" } }, rules: { "CON-002": {} } };
+  const ok = await run(cfg, { "tokens.css": ":root{--a:1}" }, real);
+  assert.equal(ok.code, 0, ok.err);
+  assert.deepEqual(ok.calls, ["read:tokens.css"]);
+  const missing = await run(cfg, {}, real);
+  assert.equal(missing.code, 2);
+  assert.match(missing.err, /tokens\.css: file not found/);
+  const noSource = await run({ rules: { "CON-002": {} } }, {}, real);
+  assert.equal(noSource.code, 2);
+  assert.match(noSource.err, /tokenSource/);
+});
+
+test("CON-002 not enabled never reads the token source", async () => {
+  const real = { entries: undefined, contractNeeds: undefined };
+  const contract = { tokenSource: { kind: "css", path: "tokens.css" } };
+  for (const config of [{ contract }, { contract, rules: { "CON-002": { severity: "off" } } }]) {
+    const r = await run(config, { "tokens.css": "{oops" }, real);
+    assert.equal(r.code, 0, r.err);
+    assert.deepEqual(r.calls, []);
+  }
+});

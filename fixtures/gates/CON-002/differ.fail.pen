@@ -1,0 +1,1 @@
+{ "version": "2.6", "variables": { "color.bg": { "type": "color", "value": "#000" }, "space/md": { "type": "number", "value": 12 }, "color.same": { "type": "color", "value": "#fff" } }, "children": [] }
