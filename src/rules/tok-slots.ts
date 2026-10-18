@@ -1,7 +1,7 @@
 import { getNode, listInstances } from "../compile/query.js";
 import type { CompiledDocument, CompiledNode } from "../compile/types.js";
 import type { Tok001Config } from "../gates/config.js";
-import { isIgnored, normalizeColor, type ControlledProp } from "../gates/tok.js";
+import { isIgnored, MAX_IGNORE_LENGTH, normalizeColor, type ControlledProp } from "../gates/tok.js";
 import { solidColor } from "../pen/paint.js";
 import type { PenFill } from "../pen/types.js";
 import { isVariableRef, resolveAlias } from "../render/themes.js";
@@ -148,7 +148,7 @@ export function tok001Filter(compiled: CompiledDocument, cfg: Pick<Tok001Config,
     if (!only.length) return true;
     const top = getNode(compiled, node.topFrameId);
     const names = [top?.id, top?.sourceId, typeof top?.props.name === "string" ? top.props.name : undefined];
-    return names.some((n) => n !== undefined && only.some((re) => re.test(n)));
+    return names.some((n) => n !== undefined && only.some((re) => re.test(n.slice(0, MAX_IGNORE_LENGTH))));
   };
   return (node, slot) => inScope(node) && !isIgnored(slot.value, Object.hasOwn(cfg.ignoreValues, slot.controlled) ? cfg.ignoreValues[slot.controlled] ?? [] : []);
 }
