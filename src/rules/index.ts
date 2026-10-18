@@ -9,6 +9,7 @@ import { cmp005 } from "./CMP-005.js";
 import { cnt001 } from "./CNT-001.js";
 import { cnt002 } from "./CNT-002.js";
 import { cnt003 } from "./CNT-003.js";
+import { con001 } from "./CON-001.js";
 import { dif001 } from "./DIF-001.js";
 import { dif002 } from "./DIF-002.js";
 import { dif004 } from "./DIF-004.js";
@@ -98,6 +99,13 @@ const ENTRIES: RuleEntry[] = [
     description: "A component or screen with no name or a default name such as Frame 12 (opt-in).",
     defaultSeverity: "warn",
     run: cnt003,
+  },
+  {
+    id: "CON-001",
+    title: "Component without mapping",
+    description: "A reusable component with no pen-map.json entry (and not designOnly), or whose mapped code path does not exist (opt-in).",
+    defaultSeverity: "warn",
+    run: con001,
   },
   {
     id: "DIF-001",

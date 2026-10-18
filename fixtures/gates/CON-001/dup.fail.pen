@@ -1,0 +1,4 @@
+{"version":"2.6","children":[
+{"id":"btn","type":"frame","name":"Button","reusable":true,"width":10,"height":10},
+{"id":"btn","type":"frame","name":"Button","reusable":true,"width":10,"height":10}
+]}

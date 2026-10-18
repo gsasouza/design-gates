@@ -303,7 +303,7 @@ test("sarif output has the 2.1.0 shape", async () => {
     const r = await check(repo, { format: "sarif" }, { entries: [...registry.filter((r) => r.id !== "CMP-001"), quietRule("info")] });
     const doc = JSON.parse(r.out);
     validateSarif(doc);
-    assert.deepEqual(doc.runs[0].tool.driver.rules.map((x: { id: string }) => x.id), ["A11Y-001", "A11Y-003", "A11Y-004", "CMP-001", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "DIF-001", "DIF-002", "DIF-004", "LAY-004", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-003", "TOK-005"]);
+    assert.deepEqual(doc.runs[0].tool.driver.rules.map((x: { id: string }) => x.id), ["A11Y-001", "A11Y-003", "A11Y-004", "CMP-001", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "CON-001", "DIF-001", "DIF-002", "DIF-004", "LAY-004", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-003", "TOK-005"]);
     assert.deepEqual(doc.runs[0].results.map((x: { ruleId: string; level: string }) => [x.ruleId, x.level]), [["CMP-001", "note"], ["SCH-002", "error"]]);
     assert.equal(doc.runs[0].results[1].locations[0].physicalLocation.artifactLocation.uri, "bad.pen");
     assert.equal(doc.runs[0].results[1].locations[0].logicalLocations[0].fullyQualifiedName, "f/use");
@@ -383,5 +383,24 @@ test("a document too deep to diff under --base is reported as SCH-001, not exit 
     const r = await check(repo, { base: "base" });
     assert.notEqual(r.code, 2, r.err);
     assert.ok(parse(r).violations.some((v) => v.file === "deep.pen"));
+  });
+});
+
+test("real git: a pen-map path leaving the repository is a contract error naming pen-map.json and the path", async () => {
+  await withRepo("check/clean", async (repo) => {
+    await writeFile(path.join(repo, "design-gates.config.json"), '{"rules":{"CON-001":{}}}');
+    await writeFile(path.join(repo, "pen-map.json"), '{"btn":"link/cli-run-check.test.js"}');
+    await symlink(path.dirname(fileURLToPath(import.meta.url)), path.join(repo, "link"));
+    const prev = process.cwd();
+    process.chdir(repo);
+    try {
+      let err = "";
+      const code = await runCheck({}, { ...defaultCheckDeps(), stdout: () => undefined, stderr: (t) => (err += t) });
+      assert.equal(code, 2, err);
+      assert.match(err, /pen-map\.json/);
+      assert.match(err, /link\/cli-run-check\.test\.js/);
+    } finally {
+      process.chdir(prev);
+    }
   });
 });

@@ -13,6 +13,8 @@ export interface PenMap {
   file: string;
   /** Component id -> entry, in file order. */
   entries: Map<string, PenMapEntry>;
+  /** Entry paths that do not exist in the repo; filled by the loader (absent until then). */
+  missingPaths?: Set<string>;
 }
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);

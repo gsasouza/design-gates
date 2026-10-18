@@ -5,7 +5,7 @@ import type { ContractData, ContractTokens, TokenValues } from "./data.js";
 import { readDtcg } from "./dtcg.js";
 import { ContractLoadError } from "./errors.js";
 import type { ContractNeeds } from "./needs.js";
-import { parsePenMap } from "./pen-map.js";
+import { parsePenMap, type PenMap } from "./pen-map.js";
 import type { ContractReader } from "./reader.js";
 
 const isMissing = (err: unknown): boolean => ["ENOENT", "ENOTDIR"].includes((err as { code?: string } | null)?.code ?? "");
@@ -21,6 +21,23 @@ async function readNeeded(reader: ContractReader, file: string, need: "required"
     }
     throw new ContractLoadError(file, `cannot read: ${err instanceof Error ? err.message : String(err)}`);
   }
+}
+
+/** Distinct entry paths the reader says do not exist; a path the reader rejects is a load error. */
+async function findMissingPaths(map: PenMap, mapFile: string, reader: ContractReader): Promise<Set<string>> {
+  const owner = new Map<string, string>();
+  for (const [id, e] of map.entries) if (e.path !== undefined && !owner.has(e.path)) owner.set(e.path, id);
+  const paths = [...owner.keys()];
+  const found = await Promise.all(
+    paths.map(async (p) => {
+      try {
+        return await reader.exists(p);
+      } catch {
+        throw new ContractLoadError(mapFile, `entry ${owner.get(p)}: path ${p} escapes the repository`);
+      }
+    }),
+  );
+  return new Set(paths.filter((_, i) => !found[i]));
 }
 
 async function loadTokens(config: GatesConfig, reader: ContractReader, need: "required" | "optional"): Promise<ContractTokens | undefined> {
@@ -60,7 +77,10 @@ export async function loadContract(config: GatesConfig, needs: ContractNeeds, re
   const data: ContractData = { mapFile };
   if (needs.map) {
     const text = await readNeeded(reader, mapFile, needs.map);
-    if (text !== undefined) data.map = parsePenMap(text, mapFile);
+    if (text !== undefined) {
+      data.map = parsePenMap(text, mapFile);
+      data.map.missingPaths = await findMissingPaths(data.map, mapFile, reader);
+    }
   }
   if (needs.tokens) {
     const tokens = await loadTokens(config, reader, needs.tokens);
