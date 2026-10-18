@@ -47,6 +47,12 @@ export interface CompiledNode {
   source?: string;
   /** Compiled id of the component an instance node expands. */
   instanceOf?: string;
+  /**
+   * Raw `descendants` overrides of an instance written in the document (not on a copy expanded below
+   * another instance): clones of the entries whose path resolved, keyed by path, with every key
+   * including `type` and `children`, which `props` drops. Absent when there are none.
+   */
+  overrides?: Record<string, Record<string, unknown>>;
 }
 
 export type DiagnosticRule = "SCH-001" | "SCH-002" | "SCH-003";

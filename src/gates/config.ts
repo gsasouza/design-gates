@@ -1,11 +1,11 @@
 import { CONTROLLED_PROPS, hasNestedQuantifier, isControlledProp, MAX_IGNORE_LENGTH, regexSource } from "./tok.js";
 import type { Severity } from "./types.js";
 
-export const RULE_IDS = ["A11Y-001", "A11Y-003", "CMP-001", "CNT-001", "CNT-002", "CNT-003", "DIF-001", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-003", "TOK-005"] as const;
+export const RULE_IDS = ["A11Y-001", "A11Y-003", "CMP-001", "CMP-002", "CNT-001", "CNT-002", "CNT-003", "DIF-001", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-003", "TOK-005"] as const;
 export type RuleId = (typeof RULE_IDS)[number];
 
 /** Rules that run only when the user's config has a `rules.<ID>` entry. */
-export const OPT_IN_RULES: readonly RuleId[] = ["A11Y-003", "CNT-001", "CNT-002", "CNT-003", "RSP-001", "STA-001", "TOK-003", "TOK-005"];
+export const OPT_IN_RULES: readonly RuleId[] = ["A11Y-003", "CMP-002", "CNT-001", "CNT-002", "CNT-003", "RSP-001", "STA-001", "TOK-003", "TOK-005"];
 
 export type SeverityOverride = Severity | "off";
 
@@ -65,6 +65,11 @@ export interface Cmp001Config extends RuleConfig {
   minNodes: number;
 }
 
+export interface Cmp002Config extends RuleConfig {
+  /** Component id-or-name glob (`*` wildcard) -> allowed override keys; the first matching key in insertion order wins. */
+  allowedOverrides: Record<string, string[]>;
+}
+
 export interface Cnt001Config extends RuleConfig {
   /** Placeholder texts: `/regex/` (always case-insensitive) or a case-insensitive exact string. */
   patterns: string[];
@@ -114,6 +119,7 @@ export interface GatesConfig {
     "A11Y-001": A11y001Config;
     "A11Y-003": A11y003Config;
     "CMP-001": Cmp001Config;
+    "CMP-002": Cmp002Config;
     "CNT-001": Cnt001Config;
     "CNT-002": RuleConfig;
     "CNT-003": Cnt003Config;
@@ -137,6 +143,7 @@ export const DEFAULT_CONFIG: GatesConfig = {
     "A11Y-001": { minRatio: 4.5, minRatioLarge: 3 },
     "A11Y-003": { enabled: false, min: 12, hardMin: 10 },
     "CMP-001": { minNodes: 3 },
+    "CMP-002": { enabled: false, allowedOverrides: { "*": ["content", "enabled", "icon"] } },
     "CNT-001": { enabled: false, patterns: ["/lorem/", "/ipsum/", "/\\bTODO\\b/", "/xxx/", "Text", "Label"] },
     "CNT-002": { enabled: false },
     "CNT-003": { enabled: false, pattern: "^(Frame|Rectangle|Text|Group|Ellipse)( \\d+)?$" },
@@ -220,6 +227,11 @@ const namePattern: Check = (v) => (typeof v === "string" ? regexProblem(v, v) : 
 const properties: Check = (v) =>
   isStringList(v) && v.every(isControlledProp) ? undefined : `must be an array of ${CONTROLLED_PROPS.join(", ")}`;
 
+const allowedOverrides: Check = (v) =>
+  isObject(v) && Object.values(v).every((l) => isStringList(l) && l.every((s) => s !== ""))
+    ? undefined
+    : "must be an object mapping a component id or name glob to an array of non-empty strings";
+
 const states: Check = (v) => {
   if (!(isStringList(v) && v.length > 0 && v.every((s) => s.trim() !== ""))) return "must be a non-empty array of non-empty strings";
   const keys = v.map((s) => s.trim().toLowerCase());
@@ -252,6 +264,7 @@ const OPTION_CHECKS: Partial<Record<RuleId, Record<string, Check>>> = {
   "A11Y-001": { minRatio: number(1), minRatioLarge: number(1) },
   "A11Y-003": { min: positive, hardMin: positive },
   "CMP-001": { minNodes: integer(1) },
+  "CMP-002": { allowedOverrides },
   "CNT-001": { patterns },
   "CNT-003": { pattern: namePattern },
   "DIF-001": { warnAt: number(0), blockAt: number(0), scope: stringList },

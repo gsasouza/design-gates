@@ -34,6 +34,7 @@ interface Draft {
   expanded: boolean;
   source?: string;
   instanceOf?: string;
+  overrides?: Record<string, Record<string, unknown>>;
 }
 
 interface Ctx {
@@ -207,6 +208,7 @@ export function compile(doc: PenDocument, opts: CompileOptions = {}): CompiledDo
         srcDiag(inst, { rule: "SCH-002", code: "descendant-missing", prop: key, message: `Override path "${key}" not found in "${String(inst.ref)}"` });
         continue;
       }
+      if (!root.expanded) (root.overrides ??= {})[key] = clone(value);
       const prov = ownProv(inst, ctx);
       for (const [prop, v] of Object.entries(value)) {
         if (IDENTITY.has(prop)) continue;
@@ -272,6 +274,7 @@ export function compile(doc: PenDocument, opts: CompileOptions = {}): CompiledDo
       expanded: draft.expanded,
       ...(draft.source !== undefined ? { source: draft.source } : {}),
       ...(draft.instanceOf !== undefined ? { instanceOf: draft.instanceOf } : {}),
+      ...(draft.overrides !== undefined ? { overrides: draft.overrides } : {}),
     };
     nodes.push(node);
     for (const [key, value] of draft.props) scan(node, draft, value, key, key, 0);
