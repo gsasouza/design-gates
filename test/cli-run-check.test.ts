@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdir, readFile, symlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defaultFs } from "../src/cli/run-diff.js";
@@ -195,16 +195,25 @@ test("a scope file outside the repo exits 2 (relative, absolute and symlinked)",
   await withRepo("check/clean", async (repo) => {
     const outside = path.join(path.dirname(repo), `${path.basename(repo)}-outside.json`);
     await writeFile(outside, '{"scope":["Button"]}');
-    const configure = (scopeFile?: string) =>
-      writeFile(path.join(repo, "design-gates.config.json"), JSON.stringify({ rules: { "DIF-002": scopeFile === undefined ? {} : { scopeFile } } }));
-    await configure("../outside.json");
-    assert.equal((await check(repo)).code, 2);
-    await configure(outside);
-    assert.equal((await check(repo)).code, 2);
-    await configure();
-    await mkdir(path.join(repo, ".pengate"), { recursive: true });
-    await symlink(outside, path.join(repo, ".pengate", "scope.json"));
-    assert.equal((await check(repo)).code, 2);
+    try {
+      const configure = (scopeFile?: string) =>
+        writeFile(path.join(repo, "design-gates.config.json"), JSON.stringify({ rules: { "DIF-002": scopeFile === undefined ? {} : { scopeFile } } }));
+      const expectEscape = async () => {
+        const r = await check(repo);
+        assert.equal(r.code, 2);
+        assert.match(r.err, /escapes the repository/);
+      };
+      await configure(`../${path.basename(outside)}`);
+      await expectEscape();
+      await configure(outside);
+      await expectEscape();
+      await configure();
+      await mkdir(path.join(repo, ".pengate"), { recursive: true });
+      await symlink(outside, path.join(repo, ".pengate", "scope.json"));
+      await expectEscape();
+    } finally {
+      await rm(outside, { force: true });
+    }
   });
 });
 
