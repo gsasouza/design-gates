@@ -124,3 +124,11 @@ test("the rule itself returns findings sorted by nodeId then prop", async () => 
   const compiled = await compileFixture("A11Y-004/multi.fail.pen");
   assert.deepEqual(summary(runA11y004(compiled, config(ON))), ["a.fill:warn", "b.fill:warn"]);
 });
+
+test("an opaque white card between the image and the text ends the walk", async () => {
+  assert.deepEqual(await run("card-over-image.pass"), []);
+});
+
+test("a disabled background_blur effect is ignored", async () => {
+  assert.deepEqual(await run("blur-disabled.pass"), []);
+});
