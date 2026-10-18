@@ -127,3 +127,11 @@ test("compile keeps raw overrides, including type and children, on non-expanded 
   assert.deepEqual(a?.overrides, { box: { type: "ellipse" }, "box/leaf": { type: "ellipse" } });
   assert.equal(compiled.nodes.filter((n) => n.overrides !== undefined).length, 1);
 });
+
+test("a frame with slot: false is not a slot, so type and children overrides on it are reported", async () => {
+  assert.deepEqual(props(await run("slot-false.fail")), [
+    "a:descendants.body.type",
+    "a:descendants.body/inner.type",
+    "b:descendants.body.children",
+  ]);
+});
