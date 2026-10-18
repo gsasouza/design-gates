@@ -1,6 +1,7 @@
 import type { CompiledDocument } from "../compile/types.js";
 import { OPT_IN_RULES, type GatesConfig, type RuleId } from "../gates/config.js";
 import { runA11y001 } from "./A11Y-001.js";
+import { a11y003 } from "./A11Y-003.js";
 import { cmp001 } from "./CMP-001.js";
 import { dif001 } from "./DIF-001.js";
 import { downgradeFigBlocks } from "./fig-review.js";
@@ -31,6 +32,13 @@ const ENTRIES: RuleEntry[] = [
     description: "Text color against its effective background meets WCAG contrast in every theme combination.",
     defaultSeverity: "block",
     run: runA11y001,
+  },
+  {
+    id: "A11Y-003",
+    title: "Minimum font size",
+    description: "A font size below the configured minimum warns, below the hard minimum blocks (opt-in).",
+    defaultSeverity: "warn",
+    run: a11y003,
   },
   {
     id: "CMP-001",

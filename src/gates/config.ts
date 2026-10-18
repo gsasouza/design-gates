@@ -1,11 +1,11 @@
 import { CONTROLLED_PROPS, hasNestedQuantifier, isControlledProp, MAX_IGNORE_LENGTH } from "./tok.js";
 import type { Severity } from "./types.js";
 
-export const RULE_IDS = ["A11Y-001", "CMP-001", "DIF-001", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-003", "TOK-005"] as const;
+export const RULE_IDS = ["A11Y-001", "A11Y-003", "CMP-001", "DIF-001", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-003", "TOK-005"] as const;
 export type RuleId = (typeof RULE_IDS)[number];
 
 /** Rules that run only when the user's config has a `rules.<ID>` entry. */
-export const OPT_IN_RULES: readonly RuleId[] = ["RSP-001", "STA-001", "TOK-003", "TOK-005"];
+export const OPT_IN_RULES: readonly RuleId[] = ["A11Y-003", "RSP-001", "STA-001", "TOK-003", "TOK-005"];
 
 export type SeverityOverride = Severity | "off";
 
@@ -54,6 +54,13 @@ export interface A11y001Config extends RuleConfig {
   minRatioLarge: number;
 }
 
+export interface A11y003Config extends RuleConfig {
+  /** Font sizes below this warn. */
+  min: number;
+  /** Font sizes below this block. */
+  hardMin: number;
+}
+
 export interface Cmp001Config extends RuleConfig {
   minNodes: number;
 }
@@ -95,6 +102,7 @@ export interface GatesConfig {
   strict: boolean;
   rules: {
     "A11Y-001": A11y001Config;
+    "A11Y-003": A11y003Config;
     "CMP-001": Cmp001Config;
     "DIF-001": Dif001Config;
     "RSP-001": Rsp001Config;
@@ -114,6 +122,7 @@ export const DEFAULT_CONFIG: GatesConfig = {
   strict: false,
   rules: {
     "A11Y-001": { minRatio: 4.5, minRatioLarge: 3 },
+    "A11Y-003": { enabled: false, min: 12, hardMin: 10 },
     "CMP-001": { minNodes: 3 },
     "DIF-001": { warnAt: 5, blockAt: 20, scope: [] },
     "RSP-001": { enabled: false, breakpoints: [], screens: [], pattern: "{name} @ {breakpoint}" },
@@ -149,6 +158,7 @@ type Check = (value: unknown) => string | undefined;
 const stringList: Check = (v) => (isStringList(v) ? undefined : "must be an array of strings");
 const boolean: Check = (v) => (typeof v === "boolean" ? undefined : "must be a boolean");
 const number = (min: number): Check => (v) => (isNumber(v, min) ? undefined : `must be a number >= ${min}`);
+const positive: Check = (v) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? undefined : "must be a number > 0");
 const integer = (min: number): Check => (v) => (isNumber(v, min) && Number.isInteger(v) ? undefined : `must be an integer >= ${min}`);
 const isScale = (v: unknown): boolean =>
   Array.isArray(v) ? v.every((n) => isNumber(n, -Infinity)) : isObject(v) && Object.keys(v).length === 1 && typeof v.base === "number" && Number.isFinite(v.base) && v.base > 0;
@@ -207,6 +217,7 @@ const breakpointPattern: Check = (v) =>
 /** Validators for the option keys each rule knows; other keys are kept untouched. */
 const OPTION_CHECKS: Partial<Record<RuleId, Record<string, Check>>> = {
   "A11Y-001": { minRatio: number(1), minRatioLarge: number(1) },
+  "A11Y-003": { min: positive, hardMin: positive },
   "CMP-001": { minNodes: integer(1) },
   "DIF-001": { warnAt: number(0), blockAt: number(0), scope: stringList },
   "RSP-001": { breakpoints, screens: stringList, pattern: breakpointPattern, baseBreakpoint: (v) => (typeof v === "string" ? undefined : "must be a string") },
@@ -235,6 +246,7 @@ function resolveRule(id: RuleId, raw: unknown): RuleConfig | string {
       return "rules.RSP-001.baseBreakpoint must be one of the breakpoint names";
     }
   }
+  if (id === "A11Y-003" && (out.hardMin as number) > (out.min as number)) return "rules.A11Y-003.hardMin must not exceed min";
   if (id === "DIF-001" && (out.warnAt as number) > (out.blockAt as number)) return "rules.DIF-001.warnAt must not exceed blockAt";
   return out as RuleConfig;
 }

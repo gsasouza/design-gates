@@ -1,0 +1,1 @@
+{"version":"2.6","children":[{"id":"label","type":"text","reusable":true,"content":"x","fontSize":10},{"id":"screen","type":"frame","width":200,"height":200,"children":[{"id":"i2","type":"ref","ref":"label"},{"id":"i1","type":"ref","ref":"label"}]}]}
