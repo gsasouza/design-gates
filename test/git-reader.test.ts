@@ -250,6 +250,12 @@ describe("git reader (real git)", () => {
       await assert.rejects(reader.listFiles!(["a/../../x"]), /inside the repository/);
     });
 
+    it("reports a worktree file size without reading it", async () => {
+      const reader = createGitReader(repo.path);
+      assert.equal(await reader.worktreeSize!("untracked.pen"), 3);
+      await assert.rejects(reader.worktreeSize!("../outside.pen"), /escapes/);
+    });
+
     it("reads worktree files and refuses to escape the repo", async () => {
       const reader = createGitReader(repo.path);
       assert.equal(await reader.readWorktree("untracked.pen"), "{}\n");
