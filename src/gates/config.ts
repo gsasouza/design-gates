@@ -68,6 +68,8 @@ export interface A11y003Config extends RuleConfig {
 
 export interface Cmp001Config extends RuleConfig {
   minNodes: number;
+  /** Near-miss threshold 0 < n <= 1 for Baxter similarity to a component; unset reports exact matches only. */
+  similarity?: number;
 }
 
 export interface Cmp002Config extends RuleConfig {
@@ -315,7 +317,7 @@ const OPTION_CHECKS: Partial<Record<RuleId, Record<string, Check>>> = {
   "A11Y-001": { minRatio: number(1), minRatioLarge: number(1) },
   "A11Y-003": { min: positive, hardMin: positive },
   "A11Y-004": { requireScrim: boolean },
-  "CMP-001": { minNodes: integer(1) },
+  "CMP-001": { minNodes: integer(1), similarity: (v) => (typeof v === "number" && Number.isFinite(v) && v > 0 && v <= 1 ? undefined : "must be a number > 0 and <= 1") },
   "CMP-002": { allowedOverrides },
   "CNT-001": { patterns },
   "CNT-003": { pattern: namePattern },
