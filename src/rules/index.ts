@@ -10,6 +10,7 @@ import { cnt001 } from "./CNT-001.js";
 import { cnt002 } from "./CNT-002.js";
 import { cnt003 } from "./CNT-003.js";
 import { dif001 } from "./DIF-001.js";
+import { dif002 } from "./DIF-002.js";
 import { downgradeFigBlocks } from "./fig-review.js";
 import { lay004 } from "./LAY-004.js";
 import { rsp001 } from "./RSP-001.js";
@@ -102,6 +103,13 @@ const ENTRIES: RuleEntry[] = [
     description: "A changed component or variable and the instances, nodes and screens it affects.",
     defaultSeverity: "warn",
     run: dif001,
+  },
+  {
+    id: "DIF-002",
+    title: "Out of scope",
+    description: "A frame changed since the base in a node outside the declared scope (opt-in, only with --base).",
+    defaultSeverity: "warn",
+    run: dif002,
   },
   {
     id: "LAY-004",

@@ -1,6 +1,7 @@
 import { getNode, listComponents, listInstances, resolveForTheme, topFrameOf } from "../compile/query.js";
 import type { CompiledDocument, CompiledNode } from "../compile/types.js";
 import type { Dif001Config } from "../gates/config.js";
+import { matchesScope } from "./scope.js";
 import type { Rule, Severity, Violation } from "../gates/types.js";
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
@@ -33,13 +34,6 @@ function signature(compiled: CompiledDocument, component: CompiledNode): string 
   };
   walk(component, 0);
   return JSON.stringify(rows.map(([path, row]) => [path.slice(component.path.length), row]));
-}
-
-function matchesScope(scope: readonly string[], ...names: (string | undefined)[]): boolean {
-  return scope.some((pattern) => {
-    const re = new RegExp(`^${pattern.split("*").map((p) => p.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*")}$`);
-    return names.some((n) => n !== undefined && re.test(n));
-  });
 }
 
 function severityFor(count: number, config: Dif001Config, names: (string | undefined)[]): Severity | undefined {

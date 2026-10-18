@@ -1,11 +1,11 @@
 import { CONTROLLED_PROPS, hasNestedQuantifier, isControlledProp, MAX_IGNORE_LENGTH, regexSource } from "./tok.js";
 import type { Severity } from "./types.js";
 
-export const RULE_IDS = ["A11Y-001", "A11Y-003", "A11Y-004", "CMP-001", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "DIF-001", "LAY-004", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-003", "TOK-005"] as const;
+export const RULE_IDS = ["A11Y-001", "A11Y-003", "A11Y-004", "CMP-001", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "DIF-001", "DIF-002", "LAY-004", "RSP-001", "SCH-001", "SCH-002", "SCH-003", "STA-001", "TOK-001", "TOK-002", "TOK-003", "TOK-005"] as const;
 export type RuleId = (typeof RULE_IDS)[number];
 
 /** Rules that run only when the user's config has a `rules.<ID>` entry. */
-export const OPT_IN_RULES: readonly RuleId[] = ["A11Y-003", "A11Y-004", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "LAY-004", "RSP-001", "STA-001", "TOK-003", "TOK-005"];
+export const OPT_IN_RULES: readonly RuleId[] = ["A11Y-003", "A11Y-004", "CMP-002", "CMP-005", "CNT-001", "CNT-002", "CNT-003", "DIF-002", "LAY-004", "RSP-001", "STA-001", "TOK-003", "TOK-005"];
 
 export type SeverityOverride = Severity | "off";
 
@@ -92,6 +92,13 @@ export interface Dif001Config extends RuleConfig {
   scope: string[];
 }
 
+export interface Dif002Config extends RuleConfig {
+  /** Ids, top-frame ids or top-frame names (`*` glob) the change may touch; replaced by the scope file when it exists. */
+  scope: string[];
+  /** Repo-relative JSON file `{ "scope": string[] }`. */
+  scopeFile: string;
+}
+
 export interface Lay004Config extends RuleConfig {
   /** Sizes below this block. */
   min: number;
@@ -144,6 +151,7 @@ export interface GatesConfig {
     "CNT-002": RuleConfig;
     "CNT-003": Cnt003Config;
     "DIF-001": Dif001Config;
+    "DIF-002": Dif002Config;
     "LAY-004": Lay004Config;
     "RSP-001": Rsp001Config;
     "SCH-001": RuleConfig;
@@ -171,6 +179,7 @@ export const DEFAULT_CONFIG: GatesConfig = {
     "CNT-002": { enabled: false },
     "CNT-003": { enabled: false, pattern: "^(Frame|Rectangle|Text|Group|Ellipse)( \\d+)?$" },
     "DIF-001": { warnAt: 5, blockAt: 20, scope: [] },
+    "DIF-002": { enabled: false, scope: [], scopeFile: ".pengate/scope.json" },
     "LAY-004": { enabled: false, min: 24, recommended: 44, interactive: { components: [], namePattern: "\\b(button|btn|link|checkbox|radio|switch|toggle|tab|input|icon-?button)\\b" } },
     "RSP-001": { enabled: false, breakpoints: [], screens: [], pattern: "{name} @ {breakpoint}" },
     "SCH-001": {},
@@ -203,6 +212,7 @@ const isNumber = (v: unknown, min: number): v is number => typeof v === "number"
 
 type Check = (value: unknown) => string | undefined;
 const stringList: Check = (v) => (isStringList(v) ? undefined : "must be an array of strings");
+const nonEmptyString: Check = (v) => (typeof v === "string" && v !== "" ? undefined : "must be a non-empty string");
 const boolean: Check = (v) => (typeof v === "boolean" ? undefined : "must be a boolean");
 const number = (min: number): Check => (v) => (isNumber(v, min) ? undefined : `must be a number >= ${min}`);
 const positive: Check = (v) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? undefined : "must be a number > 0");
@@ -303,6 +313,7 @@ const OPTION_CHECKS: Partial<Record<RuleId, Record<string, Check>>> = {
   "CNT-001": { patterns },
   "CNT-003": { pattern: namePattern },
   "DIF-001": { warnAt: number(0), blockAt: number(0), scope: stringList },
+  "DIF-002": { scope: stringList, scopeFile: nonEmptyString },
   "LAY-004": { min: positive, recommended: positive, interactive },
   "RSP-001": { breakpoints, screens: stringList, pattern: breakpointPattern, baseBreakpoint: (v) => (typeof v === "string" ? undefined : "must be a string") },
   "STA-001": { states, screens: stringList, pattern },
