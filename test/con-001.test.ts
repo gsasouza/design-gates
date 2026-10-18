@@ -42,6 +42,11 @@ test("designOnly entries are silent", async () => {
   assert.deepEqual(out, []);
 });
 
+test("a designOnly entry with a nonexistent path is silent", async () => {
+  const out = await run("components.fail", map({ btn: "a.tsx", card: { designOnly: true, path: "src/Gone.tsx" }, icon: { designOnly: true }, tag: "b.tsx" }, ["src/Gone.tsx"]));
+  assert.deepEqual(out, []);
+});
+
 test("a mapped path that does not exist warns on prop path, naming the path", async () => {
   const out = await run("components.fail", map({ btn: "src/Gone.tsx", card: "ok.tsx", icon: "ok.tsx", tag: "ok.tsx" }, ["src/Gone.tsx"]));
   assert.deepEqual(summary(out), ["btn:path:warn"]);

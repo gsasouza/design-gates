@@ -23,10 +23,20 @@ async function readNeeded(reader: ContractReader, file: string, need: "required"
   }
 }
 
-/** Distinct entry paths the reader says do not exist. */
-async function findMissingPaths(map: PenMap, reader: ContractReader): Promise<Set<string>> {
-  const paths = [...new Set([...map.entries.values()].flatMap((e) => (e.path === undefined ? [] : [e.path])))];
-  const found = await Promise.all(paths.map((p) => reader.exists(p)));
+/** Distinct entry paths the reader says do not exist; a path the reader rejects is a load error. */
+async function findMissingPaths(map: PenMap, mapFile: string, reader: ContractReader): Promise<Set<string>> {
+  const owner = new Map<string, string>();
+  for (const [id, e] of map.entries) if (e.path !== undefined && !owner.has(e.path)) owner.set(e.path, id);
+  const paths = [...owner.keys()];
+  const found = await Promise.all(
+    paths.map(async (p) => {
+      try {
+        return await reader.exists(p);
+      } catch {
+        throw new ContractLoadError(mapFile, `entry ${owner.get(p)}: path ${p} escapes the repository`);
+      }
+    }),
+  );
   return new Set(paths.filter((_, i) => !found[i]));
 }
 
@@ -69,7 +79,7 @@ export async function loadContract(config: GatesConfig, needs: ContractNeeds, re
     const text = await readNeeded(reader, mapFile, needs.map);
     if (text !== undefined) {
       data.map = parsePenMap(text, mapFile);
-      data.map.missingPaths = await findMissingPaths(data.map, reader);
+      data.map.missingPaths = await findMissingPaths(data.map, mapFile, reader);
     }
   }
   if (needs.tokens) {

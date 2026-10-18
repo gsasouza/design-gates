@@ -385,3 +385,22 @@ test("a document too deep to diff under --base is reported as SCH-001, not exit 
     assert.ok(parse(r).violations.some((v) => v.file === "deep.pen"));
   });
 });
+
+test("real git: a pen-map path leaving the repository is a contract error naming pen-map.json and the path", async () => {
+  await withRepo("check/clean", async (repo) => {
+    await writeFile(path.join(repo, "design-gates.config.json"), '{"rules":{"CON-001":{}}}');
+    await writeFile(path.join(repo, "pen-map.json"), '{"btn":"link/cli-run-check.test.js"}');
+    await symlink(path.dirname(fileURLToPath(import.meta.url)), path.join(repo, "link"));
+    const prev = process.cwd();
+    process.chdir(repo);
+    try {
+      let err = "";
+      const code = await runCheck({}, { ...defaultCheckDeps(), stdout: () => undefined, stderr: (t) => (err += t) });
+      assert.equal(code, 2, err);
+      assert.match(err, /pen-map\.json/);
+      assert.match(err, /link\/cli-run-check\.test\.js/);
+    } finally {
+      process.chdir(prev);
+    }
+  });
+});
